@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0064)file:///C:/Users/shara/Downloads/clocktower-storyteller_222.html -->
+<!-- saved from url=(0064)file:///C:/Users/shara/Downloads/clocktower-storyteller_228.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
@@ -370,6 +370,29 @@ bdi{unicode-bidi:isolate;}
 .court-board-area{position:relative;flex:1;}
 .court-board-wrap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(75vh,70vw,700px);aspect-ratio:1/1;}
 .court-history-panel{position:absolute;right:0;top:0;bottom:0;width:280px;padding:16px;overflow-y:auto;border-left:1px solid var(--line);box-sizing:border-box;}
+.court-history-toggle-btn{display:none;}
+.court-history-close-btn{display:none;}
+/* On narrower screens (phones, small tablets, and — critically — foldables, whose folded
+   width can be quite narrow even though they report as a "normal" device) the board is
+   centered using the FULL width of court-board-area, with no awareness that the history
+   panel is reserving a fixed 280px on the right. On a wide enough screen there's enough
+   margin either side of the board for that not to matter, but past a certain point the
+   circular board's right-hand tokens end up rendered underneath the (opaque, on-top)
+   history panel — which then silently blocks touch/click on anything under it. Rather than
+   trying to precisely recompute the board's centering per screen width (fragile across the
+   huge range of real device sizes), the history panel simply doesn't overlay the board at
+   all below this breakpoint — it's hidden until explicitly opened, and opens as its own
+   full-screen view instead of a permanent sidebar. */
+@media (max-width: 900px){
+  .court-history-panel{
+    display:none;
+    position:fixed;inset:0;width:100%;z-index:600;
+    background:var(--bg-deep);padding:20px;border-left:none;
+  }
+  .court-history-panel.mobile-visible{display:block;}
+  .court-history-toggle-btn{display:inline-flex;}
+  .court-history-close-btn{display:inline-flex;}
+}
 .court-history-title{font-family:'Cinzel',serif;font-size:15px;color:var(--gold-bright);margin-bottom:10px;}
 .court-line-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;}
 .court-token{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;z-index:3;cursor:pointer;user-select:none;}
@@ -510,20 +533,8 @@ bdi{unicode-bidi:isolate;}
   <div class="panel">
     <div class="row" style="gap:8px;">
       <button class="ghost small" onclick="exportBackup()">💾 Export backup</button>
-      <button class="ghost small" onclick="copyBackupToClipboard(this)">📋 Copy backup to clipboard</button>
       <button class="ghost small" onclick="triggerImportBackup()">📥 Import backup (file)</button>
-      <button class="ghost small" onclick="togglePasteImport()">📋 Import backup (paste text)</button>
-      <button class="ghost small" onclick="triggerImportIcons()" style="border-color:#8a5fd6;">🖼️ Import icons (from Icon Manager)</button>
       <input type="file" id="backup-import-input" accept="application/json" style="display:none;" onchange="handleImportBackupFile(this)">
-      <input type="file" id="icons-import-input" accept="application/json" style="display:none;" onchange="handleImportIconsFile(this)">
-    </div>
-    <div id="paste-import-area" style="display:none;margin-top:10px;">
-      <p class="muted" style="margin:0 0 6px;">Open the backup file in any text app, copy all of its contents, and paste it below.</p>
-      <textarea id="paste-import-text" rows="4" style="width:100%;font-family:monospace;font-size:11px;" placeholder="Paste the exported JSON here..."></textarea>
-      <div class="row" style="margin-top:6px;">
-        <button class="primary small" onclick="handlePasteImportBackup()">Restore from pasted text</button>
-        <button class="ghost small" onclick="togglePasteImport()">Cancel</button>
-      </div>
     </div>
   </div>
   <div class="panel">
@@ -560,7 +571,7 @@ bdi{unicode-bidi:isolate;}
       
     </span>
   
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;cursor:pointer;" onclick="quickAddFromRoster(&#39;بوعلي&#39;)">
+    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
       <bdi>بوعلي</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
       
     </span>
@@ -570,7 +581,7 @@ bdi{unicode-bidi:isolate;}
       
     </span>
   
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;cursor:pointer;" onclick="quickAddFromRoster(&#39;فهد&#39;)">
+    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
       <bdi>فهد</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
       
     </span>
@@ -689,10 +700,24 @@ bdi{unicode-bidi:isolate;}
       <input value="+96550656501" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-kbsfn5&#39;, this.value)">
       <button class="ghost small" onclick="removePlayerName(&#39;p-kbsfn5&#39;)" style="padding:4px 8px;">✕</button>
     </div>
+  
+    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
+      <span class="seat-num">7</span>
+      <bdi style="flex:1;min-width:40px;">فهد</bdi>
+      <input value="+96555891959" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-hmk5yz&#39;, this.value)">
+      <button class="ghost small" onclick="removePlayerName(&#39;p-hmk5yz&#39;)" style="padding:4px 8px;">✕</button>
+    </div>
+  
+    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
+      <span class="seat-num">8</span>
+      <bdi style="flex:1;min-width:40px;">بوعلي</bdi>
+      <input value="+96590069997" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p_1787034808582_8160&#39;, this.value)">
+      <button class="ghost small" onclick="removePlayerName(&#39;p_1787034808582_8160&#39;)" style="padding:4px 8px;">✕</button>
+    </div>
   </div></div>
     <div class="hr"></div>
     <div class="row between">
-      <span class="muted">6 players added</span>
+      <span class="muted">8 players added</span>
       <div class="row">
         <button class="ghost small" onclick="resetAllPlayers()">Reset players</button>
         <button class="primary" onclick="pageTurnTransition(()=&gt;go(&#39;tokens&#39;))">Continue to token setup ›</button>
@@ -785,7 +810,7 @@ const SCRIPTS = {
       ],
     },
     firstNightOrder: ['Barista','Philosopher','Snake Charmer','Evil Twin','Witch','Cerenovus','Clockmaker','Dreamer','Seamstress','Mathematician'],
-    otherNightOrder: ['Bone Collector','Barista','Philosopher','Snake Charmer','Witch','Cerenovus','Pit-Hag','Fang Gu','No Dashii','Vortox','Vigormortis','Sage','Dreamer','Flowergirl','Town Crier','Oracle','Seamstress','Juggler','Mathematician'],
+    otherNightOrder: ['Bone Collector','Barista','Harlot','Philosopher','Snake Charmer','Witch','Cerenovus','Pit-Hag','Fang Gu','No Dashii','Vortox','Vigormortis','Sage','Dreamer','Flowergirl','Town Crier','Oracle','Seamstress','Juggler','Mathematician'],
   },
   bmr: {
     label:'Bad Moon Rising',
@@ -962,7 +987,7 @@ const EXCLUSIVE_MARKERS = ['red_herring', 'protected', 'butler_master', 'cursed'
    STATE
    ========================================================================== */
 let game = null;
-let ui = { modal:null, warnPopup:null }; // transient, non-persisted UI state
+let ui = { modal:null, warnPopup:null, courtHistoryMobileVisible:false }; // transient, non-persisted UI state
 let route = 'boot';
 let roster = []; // persisted list of regular players' names, independent of any single game
 let customIcons = {}; // persisted map of character name -> user-uploaded icon (base64 data URL), independent of any single game
@@ -1880,6 +1905,17 @@ function messageFor(step, player){
     case 'Exorcist': return `اختر لاعبًا (غير من اخترته الليلة السابقة): إذا كان هو العفريت, فإنه لن يستيقظ الليلة, ولكنه سيعرفك`;
     case 'Professor': return `اذا كنت تريد استخدام قدرتك هذه الليلة فاختر لاعبا ميتا, اذا كان من القرويين فإنك تعيده للحياة , وإلا رد بكلمة لا.`;
     case 'Bone Collector': return `اذا كنت تريد استخدام قدرتك هذه الليلة فاختر لاعبًا ميتًا لتعيد له قدرته حتى الغسق, وإلا رد بكلمة لا.`;
+    case 'Harlot': {
+      const pick = game.infoPicks[keyFor('Harlot')];
+      if(!pick || !pick.target) return '(اختر لاعبًا أدناه لإنشاء هذه الرسالة)';
+      const target = game.players.find(x=>x.id===pick.target);
+      if(!target) return '';
+      if(pick.agreed===undefined) return `بانتظار إجابة ${target.name}.`;
+      if(pick.agreed===false) return `لم يوافق ${target.name} على كشف شخصيته لك.`;
+      const realChar = target.isDrunk ? target.drunkCover : target.character;
+      const shown = isUnreliable(p) ? fakeCharacterName(realChar) : realChar;
+      return `شخصية ${target.name} هي: ${charBoth(shown)}.`;
+    }
     case 'Chambermaid': {
       const pick = game.infoPicks[keyFor('Chambermaid')];
       if(!pick || !pick.p1 || !pick.p2) return '(اختر لاعبين أدناه لإنشاء هذه الرسالة)';
@@ -2896,20 +2932,8 @@ screens['names'] = () => `
   <div class="panel">
     <div class="row" style="gap:8px;">
       <button class="ghost small" onclick="exportBackup()">💾 Export backup</button>
-      <button class="ghost small" onclick="copyBackupToClipboard(this)">📋 Copy backup to clipboard</button>
       <button class="ghost small" onclick="triggerImportBackup()">📥 Import backup (file)</button>
-      <button class="ghost small" onclick="togglePasteImport()">📋 Import backup (paste text)</button>
-      <button class="ghost small" onclick="triggerImportIcons()" style="border-color:#8a5fd6;">🖼️ Import icons (from Icon Manager)</button>
       <input type="file" id="backup-import-input" accept="application/json" style="display:none;" onchange="handleImportBackupFile(this)">
-      <input type="file" id="icons-import-input" accept="application/json" style="display:none;" onchange="handleImportIconsFile(this)">
-    </div>
-    <div id="paste-import-area" style="display:none;margin-top:10px;">
-      <p class="muted" style="margin:0 0 6px;">Open the backup file in any text app, copy all of its contents, and paste it below.</p>
-      <textarea id="paste-import-text" rows="4" style="width:100%;font-family:monospace;font-size:11px;" placeholder="Paste the exported JSON here..."></textarea>
-      <div class="row" style="margin-top:6px;">
-        <button class="primary small" onclick="handlePasteImportBackup()">Restore from pasted text</button>
-        <button class="ghost small" onclick="togglePasteImport()">Cancel</button>
-      </div>
     </div>
   </div>
   <div class="panel">
@@ -3826,7 +3850,19 @@ function onTokenDragMove(e){
   document.querySelectorAll('.seat-gap.drop-hover').forEach(s=>s.classList.remove('drop-hover'));
   const target = findSeatDropTarget(e.clientX, e.clientY);
   if(target && target.type==='slot') target.el.classList.add('drop-hover');
-  if(target && target.type==='gap') target.el.classList.add('drop-hover');
+  if(target && target.type==='gap'){
+    target.el.classList.add('drop-hover');
+    // Also highlight the two players this insert would actually land between — same glow
+    // used for a direct-slot hover, so it reads as one consistent "this is where it lands"
+    // language rather than two different visual effects.
+    const n = game.players.length;
+    if(n>0){
+      const beforeSlot = document.querySelector(`.seat-slot[data-slot="${target.insertAfter}"]`);
+      const afterSlot = document.querySelector(`.seat-slot[data-slot="${(target.insertAfter+1)%n}"]`);
+      if(beforeSlot) beforeSlot.classList.add('drop-hover');
+      if(afterSlot) afterSlot.classList.add('drop-hover');
+    }
+  }
 }
 function onTokenDragEnd(e){
   document.removeEventListener('pointermove', onTokenDragMove);
@@ -4034,6 +4070,12 @@ function toggleCourtHistoryDay(dayNum){
   ui.courtHistoryExpandedDays[dayNum] = !current;
   refreshCourt();
 }
+// Below the 900px breakpoint, the history panel is hidden by default (so it can never overlap
+// and block the board) and only appears as a full-screen view when explicitly opened here.
+function toggleCourtHistoryMobile(){
+  ui.courtHistoryMobileVisible = !ui.courtHistoryMobileVisible;
+  refreshCourt();
+}
 function courtHistoryForDay(dayNum){
   game.court.historyByDay = game.court.historyByDay || {};
   game.court.historyByDay[dayNum] = game.court.historyByDay[dayNum] || [];
@@ -4070,9 +4112,9 @@ function courtScreenHtml(){
   return `
     <div class="court-fullscreen" dir="rtl">
       <div class="court-topbar">
-        <button class="ghost small" onclick="pageTurnTransition(()=>go('play'), true)">→ العودة إلى دفتر الراوي</button>
+        <button class="ghost small" onclick="ui.courtHistoryMobileVisible=false;pageTurnTransition(()=>go('play'), true)">→ العودة إلى دفتر الراوي</button>
         <div class="court-title" id="court-storyteller-target">⚖️ المحكمة — اليوم ${game.dayNum}</div>
-        <div style="width:120px;"></div>
+        <button class="ghost small court-history-toggle-btn" onclick="toggleCourtHistoryMobile()">📜 السجل</button>
       </div>
       <div class="court-board-area">
         <div class="court-board-wrap">
@@ -4161,8 +4203,11 @@ function courtScreenHtml(){
             </div>
           </div>
         ` : ''}
-        <div class="court-history-panel">
-          <div class="court-history-title">سجل المحكمة</div>
+        <div class="court-history-panel${ui.courtHistoryMobileVisible ? ' mobile-visible' : ''}">
+          <div class="row between" style="align-items:center;margin-bottom:4px;">
+            <div class="court-history-title" style="margin-bottom:0;">سجل المحكمة</div>
+            <button class="ghost small court-history-close-btn" onclick="toggleCourtHistoryMobile()">✕ إغلاق</button>
+          </div>
           ${courtAllHistoryDays().length>0 ? courtAllHistoryDays().map(d=>{
             const entries = courtHistoryForDay(d);
             if(entries.length===0) return '';
@@ -6383,6 +6428,7 @@ function nightStepCardHtml(step, p, i, viaPhilosopher){
       ${cerenovusSecondTargetMessageHtml(step)}
       ${pitHagTargetMessageHtml(step)}
       ${baristaTargetMessageHtml(step)}
+      ${harlotTargetMessageHtml(step)}
       ${baristaTwiceHtml(step, p)}
       ${fangGuConversionMessagesHtml(step)}
       ${isExorcisedDemon ? '' : barberSwapCardHtml(step)}
@@ -6421,6 +6467,23 @@ function cerenovusSecondTargetMessageHtml(step){
 }
 // Barista never learns who or what she chose — only the target does, privately. Mirrors
 // cerenovusTargetMessageHtml's "message to someone other than the acting character" pattern.
+// The target explicitly learns it was the Harlot who picked them — unlike Barista, the wiki's
+// own "How to Run" has the Storyteller show the Harlot token to the chosen player directly.
+function harlotTargetMessageHtml(step){
+  if(step!=='Harlot') return '';
+  const pick = game.infoPicks[keyFor(step)];
+  if(!pick || !pick.target) return '';
+  const target = game.players.find(x=>x.id===pick.target);
+  if(!target) return '';
+  const k3 = `${keyFor(step)}-target-${target.id}`;
+  const draft = `لقد اختارتك ${charBoth('Harlot')} هذه الليلة. إذا وافقت أن تكشف شخصيتك لها، فقد تموتان أنت والعاهرة الليلة. هل توافق؟`;
+  const text3 = game.messageOverrides[k3] !== undefined ? game.messageOverrides[k3] : withHeader(draft);
+  return `
+    <div class="hr" style="margin:10px 0;"></div>
+    <div class="muted" style="font-size:11px;">To ${escapeHtml(target.name)}</div>
+    ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${k3}', this.innerText)">${escapeHtmlBr(text3)}</div>`, `copyStepMessage('${k3}', this)`, target.phone ? `sendStepMessageWA('${target.id}', this)` : null)}
+  `;
+}
 function baristaTargetMessageHtml(step){
   if(step!=='Barista') return '';
   const pick = game.infoPicks[keyFor(step)];
@@ -6850,6 +6913,35 @@ function pickControlsHtmlInner(step){
           ${sortedByRoleType(deadPlayers).map(x=>playerOptionHtml(x, pick.target)).join('')}
         </select>
       </div>
+    `;
+  }
+  if(step==='Harlot'){
+    const k = keyFor(step);
+    const pick = game.infoPicks[k] || {};
+    const alivePlayers = game.players.filter(x=>x.alive);
+    const target = pick.target ? game.players.find(x=>x.id===pick.target) : null;
+    return `
+      <div class="char-strip">
+        <select onchange="setHarlotTarget(this.value)">
+          <option value="">Choose a player...</option>
+          ${sortedByRoleType(alivePlayers).map(x=>playerOptionHtml(x, pick.target)).join('')}
+        </select>
+      </div>
+      ${target ? `
+        <div class="muted" style="font-size:11px;margin-top:8px;">Did ${escapeHtml(target.name)} agree to reveal their character?</div>
+        <div class="row" style="gap:8px;margin-top:4px;">
+          <button class="${pick.agreed===true?'primary':'ghost'} small" onclick="setHarlotAgreed('${k}', true)">Yes</button>
+          <button class="${pick.agreed===false?'primary':'ghost'} small" onclick="setHarlotAgreed('${k}', false)">No</button>
+        </div>
+      ` : ''}
+      ${pick.agreed===true ? `
+        <div class="hr" style="margin:10px 0;"></div>
+        <div class="muted" style="font-size:11px;">🗡️ Should both the Harlot and ${escapeHtml(target?target.name:'')} die tonight?</div>
+        <div class="row" style="gap:8px;margin-top:4px;">
+          <button class="${pick.bothDie===true?'primary':'ghost'} small" onclick="setHarlotBothDie('${k}', true)" ${pick.bothDieResolved?'disabled':''}>Yes, both die</button>
+          <button class="${pick.bothDie===false?'primary':'ghost'} small" onclick="setHarlotBothDie('${k}', false)" ${pick.bothDieResolved?'disabled':''}>No, both survive</button>
+        </div>
+      ` : ''}
     `;
   }
   if(step==='Barista'){
@@ -7484,6 +7576,25 @@ function protectionReasonText(target){
 function isProtectedFromExecution(target){
   return !!(target && game.devilsAdvocateProtectedId === target.id && game.devilsAdvocateProtectedAtNight === game.nightNum);
 }
+// Monk ("safe from the Demon tonight") and Soldier ("cannot be killed by the Demon") are both
+// explicitly Demon-specific per their own ability text — they should NOT block a death from a
+// non-Demon source like the Harlot. Sailor, Tea Lady, Fool, and Innkeeper are all worded
+// generally ("cannot die at night" / "cannot die") with no Demon qualifier, so those do apply.
+function isProtectedFromNonDemonDeath(target){
+  if(!target) return false;
+  if(target.character==='Sailor' && target.alive && !(target.isDrunk || hasMarker(target,'drunk_effect'))) return true;
+  if(isTeaLadyProtected(target)) return true;
+  if(isFoolProtected(target)) return true;
+  if(hasMarker(target,'innkeeper_safe')) return true;
+  return false;
+}
+function nonDemonProtectionReasonText(target){
+  if(target && target.character==='Sailor' && target.alive && !(target.isDrunk || hasMarker(target,'drunk_effect'))) return 'they are the Sailor and cannot die at night while sober';
+  if(isTeaLadyProtected(target)) return "both of Tea Lady's living neighbours are good, so neither can die";
+  if(isFoolProtected(target)) return "they are the Fool, and this is the first time they would have died";
+  if(target && hasMarker(target,'innkeeper_safe')) return "the Innkeeper made them safe tonight";
+  return '';
+}
 function setSailorTarget(targetId){
   checkGoonTargeted(targetId, 'Sailor');
   const k = keyFor('Sailor');
@@ -7588,6 +7699,90 @@ function unskipBoneCollectorTonight(boneCollectorId){
   delete boneCollector.boneCollectorSkippedAtNight;
   saveGame();
   refreshPlay();
+}
+function setHarlotTarget(targetId){
+  checkGoonTargeted(targetId, 'Harlot');
+  const k = keyFor('Harlot');
+  game.infoPicks[k] = game.infoPicks[k] || {};
+  // Changing target mid-decision resets whatever agreed/bothDie state was in progress for the
+  // previous target — those decisions don't carry over to a newly-chosen player.
+  if(game.infoPicks[k].target !== targetId){
+    delete game.infoPicks[k].agreed;
+    delete game.infoPicks[k].bothDie;
+    delete game.infoPicks[k].bothDieResolved;
+  }
+  game.infoPicks[k].target = targetId;
+  saveGame();
+  refreshPlay();
+}
+function setHarlotAgreed(k, agreed){
+  game.infoPicks[k] = game.infoPicks[k] || {};
+  game.infoPicks[k].agreed = agreed;
+  if(!agreed){
+    // No death decision needed if they declined to reveal anything.
+    delete game.infoPicks[k].bothDie;
+    delete game.infoPicks[k].bothDieResolved;
+  }
+  saveGame();
+  refreshPlay();
+}
+function setHarlotBothDie(k, bothDie){
+  const pick = game.infoPicks[k];
+  if(!pick || pick.bothDieResolved) return;
+  pick.bothDie = bothDie;
+  if(bothDie){
+    resolveHarlotBothDie(k);
+  } else {
+    pick.bothDieResolved = true;
+    saveGame();
+    refreshPlay();
+  }
+}
+// Kills whichever of the Harlot/target actually can die, respecting the same general
+// ("cannot die at night") protections a normal death would — but not Monk/Soldier, since
+// those are specifically "safe from the Demon" and this death isn't Demon-sourced. Mirrors
+// the standard night-kill side effects (poison clears, reactive triggers, death sound, log).
+function resolveHarlotBothDie(k){
+  const pick = game.infoPicks[k];
+  if(!pick) return;
+  const harlot = game.players.find(x=>x.character==='Harlot');
+  const target = game.players.find(x=>x.id===pick.target);
+  if(!harlot || !target){ pick.bothDieResolved = true; return; }
+  if(isUnreliable(harlot)){
+    // A poisoned/drunk Harlot's ability doesn't function — not just the information she'd
+    // learn, but the death risk itself. Mirrors how the Assassin's kill is nullified (not
+    // bypassed) when he himself is unreliable, rather than silently letting it through.
+    pick.bothDieResolved = true;
+    logAction(`Harlot chose to risk death with ${target.name} — but was drunk or poisoned, so nothing happened.`);
+    saveGame();
+    refreshPlay();
+    showInfo(`Harlot is drunk or poisoned — her ability doesn't function, so neither she nor ${target.name} dies tonight.`);
+    return;
+  }
+  const results = [];
+  [harlot, target].forEach(person=>{
+    if(!person.alive){ results.push(`${person.name} was already dead.`); return; }
+    if(isProtectedFromNonDemonDeath(person)){
+      const foolSaved = consumeFoolIfApplicable(person);
+      results.push(foolSaved
+        ? `${person.name} didn't die, due to the Fool's ability.`
+        : `${person.name} did not die — ${nonDemonProtectionReasonText(person)}.`);
+      return;
+    }
+    person.preDeathMarkers = [...(person.markers||[])];
+    person.alive = false;
+    person.ghostVoteUsed = false;
+    person.diedAtNight = game.nightNum;
+    if(!noDashiiPoisonedIds().includes(person.id)) person.markers = (person.markers||[]).filter(m=>m!=='poisoned');
+    checkReactiveDeathTrigger(person);
+    results.push(`${person.name} died.`);
+  });
+  playDeathSound();
+  logAction(`Harlot's shared secret with ${target.name}: ${results.join(' ')}`);
+  pick.bothDieResolved = true;
+  saveGame();
+  refreshPlay();
+  showInfo(results.join('\n'));
 }
 function setBaristaTarget(targetId){
   const k = keyFor('Barista');
