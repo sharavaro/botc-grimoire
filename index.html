@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- saved from url=(0064)file:///C:/Users/shara/Downloads/clocktower-storyteller_228.html -->
+<!-- saved from url=(0064)file:///C:/Users/shara/Downloads/clocktower-storyteller_231.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Storyteller's Grimoire</title>
 <link rel="preconnect" href="https://fonts.googleapis.com/">
-<link href="./Storyteller&#39;s Grimoire_files/css2" rel="stylesheet">
+<link href="./index_files/css2" rel="stylesheet">
 <style>
 /* ======================================================================
    DESIGN TOKENS
@@ -36,7 +36,16 @@ body{
   color:var(--parchment);
   font-family:'Spectral', 'Noto Naskh Arabic', serif;
   min-height:100vh;
-  zoom: 1.15;
+}
+/* The 115% zoom makes everything more legible on a spacious desktop screen, where there's
+   plenty of room to spare — but blanket-zooming the ENTIRE page on a narrow mobile viewport
+   eats into already-limited space, causing exactly the cramped/overflowing/wrapped-wrong
+   layout this was built to avoid. Applied only above the same breakpoint used elsewhere for
+   "is this a small screen" (see the Courthouse history panel above). PAGE_ZOOM in the script
+   below reads whichever value is actually in effect here, so drag-and-drop math always stays
+   correctly calibrated regardless of which one applies. */
+@media (min-width: 901px){
+  body{ zoom: 1.15; }
 }
 h1,h2,h3,.display{font-family:'Cinzel', serif;letter-spacing:0.03em;font-weight:600;color:var(--gold-bright);}
 .eyebrow{font-family:'Cinzel', serif;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:var(--mist);}
@@ -769,8 +778,8 @@ const SCRIPTS = {
         {name:'Imp', nameAr:'إمب', ability:'Each night except the first: choose a player, they die. May choose self — a Minion becomes the Imp instead.', abilityAr:'في كل ليلة تقتل لاعبًا، إذا قتلت نفسك فإن أحد أعوانك يصبح هو العفريت الجديد.'},
       ],
     },
-    firstNightOrder: ['Poisoner','Washerwoman','Librarian','Investigator','Chef','Empath','Fortune Teller','Butler','Spy'],
-    otherNightOrder: ['Poisoner','Monk','Scarlet Woman','Imp','Ravenkeeper','Empath','Fortune Teller','Undertaker','Butler','Spy'],
+    firstNightOrder: ['Bureaucrat','Poisoner','Washerwoman','Librarian','Investigator','Chef','Empath','Fortune Teller','Butler','Spy'],
+    otherNightOrder: ['Bureaucrat','Poisoner','Monk','Scarlet Woman','Imp','Ravenkeeper','Empath','Fortune Teller','Undertaker','Butler','Spy'],
   },
   sv: {
     label:'Sects & Violets',
@@ -871,7 +880,13 @@ let CHARACTERS, ALL_CHARS, CHAR_LOOKUP, TYPE_OF, TEAM_OF, FIRST_NIGHT_ORDER, OTH
 // not fixed by TEAM_OF the way Townsfolk/Minion/etc. are. Declared before applyScript's first
 // call below, since that function references it.
 const TRAVELLERS_BY_SCRIPT = {
-  tb: [],
+  tb: [
+    {name:'Scapegoat', nameAr:'كبش الفداء', ability:'If a player of your alignment is about to be executed, you may be executed in their place.', abilityAr:'إذا كان لاعب من نفس انتمائك على وشك الإعدام، يمكن أن تُعدم أنت بدلاً منه.'},
+    {name:'Gunslinger', nameAr:'مسدسي', ability:'Each day, after the 1st vote for execution is tallied, you may choose a player who voted: they die.', abilityAr:'كل يوم، بعد تسجيل أول تصويت للإعدام، يمكنك اختيار لاعب صوّت: يموت.'},
+    {name:'Beggar', nameAr:'المتسوّل', ability:"You must use a vote token to vote. Dead players may choose to give you theirs — if so, you learn that player's alignment. You are sober and healthy.", abilityAr:'يجب أن تستخدم رمز تصويت للتصويت. يمكن للاعبين الموتى منحك رمز تصويتهم، وإن فعلوا فإنك تعرف انتماءهم. أنت دائمًا صاحٍ وسليم.'},
+    {name:'Bureaucrat', nameAr:'البيروقراطي', ability:'Each night, choose a player (not yourself): their vote counts as 3 votes tomorrow.', abilityAr:'كل ليلة، اختر لاعبًا (ليس نفسك): يُحتسب صوته 3 أصوات غدًا.'},
+    {name:'Thief', nameAr:'اللص', ability:'Each night, choose a player (not yourself): their vote counts negatively tomorrow.', abilityAr:'كل ليلة، اختر لاعبًا (ليس نفسك): يُحتسب صوته سلبًا غدًا.'},
+  ],
   sv: [
     {name:'Butcher', nameAr:'الجزار', ability:'Each day, after the 1st execution, you may nominate again.', abilityAr:'كل يوم، بعد أول إعدام، يمكنك أن ترشّح مرة أخرى.'},
     {name:'Bone Collector', nameAr:'جامع العظام', ability:'Once per game, at night (not the first night), choose a dead player: they regain their ability until dusk.', abilityAr:'مرة واحدة في اللعبة، ليلاً (ليست الليلة الأولى)، اختر لاعبًا ميتًا: يستعيد قدرته حتى الغسق.', onceOnly:true},
@@ -1350,6 +1365,13 @@ function isMad(p){ return hasMarker(p,'mad') || hasMarker(p,'mad_barista_twice')
 function hasActiveBoneCollectorGrant(p){
   if(!p || !hasMarker(p,'bone_collector_grant')) return false;
   const granter = game.players.find(x=>x.id===p.boneCollectorGrantedByPlayerId);
+  return !!(granter && granter.alive);
+}
+// Same "live check" pattern as Bone Collector — the triple-vote grant is revoked the instant
+// the granting Bureaucrat dies, checked live here rather than hooked into every death site.
+function hasActiveBureaucratTripleVote(p){
+  if(!p || !hasMarker(p,'bureaucrat_triple_vote')) return false;
+  const granter = game.players.find(x=>x.id===p.bureaucratGrantedByPlayerId);
   return !!(granter && granter.alive);
 }
 // Barista grants aren't revoked if Barista dies — the wiki gives no such rule for her, unlike
@@ -1905,6 +1927,7 @@ function messageFor(step, player){
     case 'Exorcist': return `اختر لاعبًا (غير من اخترته الليلة السابقة): إذا كان هو العفريت, فإنه لن يستيقظ الليلة, ولكنه سيعرفك`;
     case 'Professor': return `اذا كنت تريد استخدام قدرتك هذه الليلة فاختر لاعبا ميتا, اذا كان من القرويين فإنك تعيده للحياة , وإلا رد بكلمة لا.`;
     case 'Bone Collector': return `اذا كنت تريد استخدام قدرتك هذه الليلة فاختر لاعبًا ميتًا لتعيد له قدرته حتى الغسق, وإلا رد بكلمة لا.`;
+    case 'Bureaucrat': return `من تريد أن تعطيه القدرة لمضاعفة أصواته 3 مرات؟ يمكنك اختيار الأموات أيضا ان كان لديهم صوت متبقي.`;
     case 'Harlot': {
       const pick = game.infoPicks[keyFor('Harlot')];
       if(!pick || !pick.target) return '(اختر لاعبًا أدناه لإنشاء هذه الرسالة)';
@@ -3750,6 +3773,14 @@ function extraAbilityBadgeHtml(p){
       </div>
     `;
   }
+  if(hasActiveBureaucratTripleVote(p)){
+    const cd = getMarkerCountdown(p, 'bureaucrat_triple_vote');
+    return `
+      <div class="extra-ability-badge" style="border-color:${TYPE_COLORS.traveller};" title="Votes count as 3 via Bureaucrat — until dusk${cd?` — ${cd} more click${cd===1?'':'s'}`:''}">
+        <span>3️⃣</span>${cd?`<span class="mini-badge-count">${cd}</span>`:''}
+      </div>
+    `;
+  }
   if(hasActiveBaristaSoberGrant(p)){
     const cd = getMarkerCountdown(p, 'barista_sober');
     return `
@@ -3785,7 +3816,17 @@ function dragTokenHtml(p){
   `;
 }
 let tokenDragCtx = null;
-const PAGE_ZOOM = 1.15;
+// Reads whatever zoom level the CSS media query above actually applied — 1.15 on desktop,
+// 1 (unzoomed) on narrow screens — rather than assuming a fixed value, so drag-and-drop
+// pixel math stays correctly calibrated on both.
+const PAGE_ZOOM = (function(){
+  try {
+    const z = parseFloat(getComputedStyle(document.body).zoom);
+    return z > 0 ? z : 1;
+  } catch(e) {
+    return 1;
+  }
+})();
 function startTokenDrag(e, pid){
   e.preventDefault();
   const el = e.currentTarget;
@@ -4300,7 +4341,28 @@ function courtVoteCountColor(voteCount, threshold){
 }
 function courtVoteCount(nom){
   if(!nom || !nom.votes) return 0;
-  return Object.values(nom.votes).filter(v=>v===true).length;
+  if(nom.isExile){
+    // Exile votes are a simple headcount — character abilities never affect exile votes,
+    // so Butler's restriction and Bureaucrat's tripling both explicitly do not apply here.
+    return Object.values(nom.votes).filter(v=>v===true).length;
+  }
+  let count = 0;
+  Object.keys(nom.votes).forEach(pid=>{
+    if(nom.votes[pid]!==true) return;
+    const voter = game.players.find(x=>x.id===pid);
+    if(!voter){ count += 1; return; }
+    // Butler: his vote is nullified entirely unless his chosen master ALSO voted yes on this
+    // exact same nomination. A poisoned/drunk Butler's restriction doesn't apply at all — his
+    // whole ability malfunctions, so he just votes normally like anyone else that day.
+    if(voter.character==='Butler' && !isUnreliable(voter)){
+      const master = game.players.find(x=>hasMarker(x,'butler_master'));
+      if(!master || nom.votes[master.id]!==true) return; // doesn't count at all
+    }
+    // Bureaucrat's chosen target votes as three — checked live, so it correctly stops
+    // applying the instant the granting Bureaucrat dies, even mid-day.
+    count += hasActiveBureaucratTripleVote(voter) ? 3 : 1;
+  });
+  return count;
 }
 // --- Drag-to-nominate ---
 let courtDragFromId = null;
@@ -6392,7 +6454,7 @@ function nightStepCardHtml(step, p, i, viaPhilosopher){
   // dropdown — the storyteller sends the ask first, then records the answer. Result-style cards
   // (message reports back what was picked) correctly stay dropdown-first, since the message
   // can't exist meaningfully until a pick is made.
-  const MESSAGE_FIRST_STEPS = ['Poisoner','Monk','Butler','Witch','Cerenovus','Pit-Hag',"Devil's Advocate",'Gambler','Exorcist','Sailor','Courtier','Assassin','Professor','Bone Collector','Imp','Fang Gu','No Dashii','Vigormortis','Vortox'];
+  const MESSAGE_FIRST_STEPS = ['Poisoner','Monk','Butler','Witch','Cerenovus','Pit-Hag',"Devil's Advocate",'Gambler','Exorcist','Sailor','Courtier','Assassin','Professor','Bone Collector','Bureaucrat','Imp','Fang Gu','No Dashii','Vigormortis','Vortox'];
   const isMessageFirst = !isDual && MESSAGE_FIRST_STEPS.includes(step);
   const resultBoxHtml = (!isExorcisedDemon && step!=='Barista') ? `
         <div class="muted" style="font-size:11px;margin-top:6px;">${isDual ? (step==='Fortune Teller' ? '2 — Send the result once you\'ve entered their picks above' : '2 — Result (fills in once you pick their target above)') : ''}</div>
@@ -6944,6 +7006,22 @@ function pickControlsHtmlInner(step){
       ` : ''}
     `;
   }
+  if(step==='Bureaucrat'){
+    const k = keyFor(step);
+    const pick = game.infoPicks[k] || {};
+    const bureaucratPlayer = game.players.find(x=>x.character==='Bureaucrat');
+    const eligible = game.players.filter(x=>
+      (!bureaucratPlayer || x.id!==bureaucratPlayer.id) && (x.alive || !x.ghostVoteUsed)
+    );
+    return `
+      <div class="char-strip">
+        <select onchange="setBureaucratTarget(this.value)">
+          <option value="">Choose a player...</option>
+          ${sortedByRoleType(eligible).map(x=>playerOptionHtml(x, pick.target)).join('')}
+        </select>
+      </div>
+    `;
+  }
   if(step==='Barista'){
     const k = keyFor(step);
     const pick = game.infoPicks[k] || {};
@@ -7115,7 +7193,7 @@ function pickControlsHtmlInner(step){
       <div class="char-strip">
         <select onchange="toggleMarkerAndRefreshKeepOpen(this.value,'butler_master')">
           <option value="">Choose master...</option>
-          ${sortedByRoleType(game.players.filter(x=>x.alive && (!butlerPlayer||x.id!==butlerPlayer.id))).map(x=>playerOptionHtml(x, master?master.id:null)).join('')}
+          ${sortedByRoleType(game.players.filter(x=>!butlerPlayer||x.id!==butlerPlayer.id)).map(x=>playerOptionHtml(x, master?master.id:null)).join('')}
         </select>
       </div>
     `;
@@ -7783,6 +7861,41 @@ function resolveHarlotBothDie(k){
   saveGame();
   refreshPlay();
   showInfo(results.join('\n'));
+}
+// Grants the triple-vote effect, clearing whatever this same Bureaucrat pick previously
+// granted first — so changing your mind about the target never leaves a stale grant sitting
+// on the old player. A poisoned/drunk Bureaucrat's grant doesn't apply at all (her whole
+// ability malfunctions), matching how every other "grant an effect" Traveller in this app
+// already handles reliability.
+function setBureaucratTarget(targetId){
+  const k = keyFor('Bureaucrat');
+  game.infoPicks[k] = game.infoPicks[k] || {};
+  const pick = game.infoPicks[k];
+  if(pick.grantedPlayerId){
+    const prev = game.players.find(x=>x.id===pick.grantedPlayerId);
+    if(prev){
+      prev.markers = (prev.markers||[]).filter(m=>m!=='bureaucrat_triple_vote');
+      if(prev.markerExpiry) delete prev.markerExpiry.bureaucrat_triple_vote;
+      delete prev.bureaucratGrantedByPlayerId;
+    }
+  }
+  pick.target = targetId;
+  pick.grantedPlayerId = null;
+  if(!targetId){ saveGame(); refreshPlay(); return; }
+  const bureaucrat = game.players.find(x=>x.character==='Bureaucrat');
+  const target = game.players.find(x=>x.id===targetId);
+  if(!target || !bureaucrat || isUnreliable(bureaucrat)){ saveGame(); refreshPlay(); return; }
+  target.markers = target.markers || [];
+  if(!target.markers.includes('bureaucrat_triple_vote')) target.markers.push('bureaucrat_triple_vote');
+  // Expires 2 clicks from now — the next dusk — reusing the same generic expiry sweep
+  // already used for Bone Collector/Barista/Butler's master.
+  target.markerExpiry = target.markerExpiry || {};
+  target.markerExpiry.bureaucrat_triple_vote = game.totalAdvanceClicks + 2;
+  target.bureaucratGrantedByPlayerId = bureaucrat.id;
+  pick.grantedPlayerId = target.id;
+  logAction(`Bureaucrat gave ${target.name} triple votes tomorrow.`);
+  saveGame();
+  refreshPlay();
 }
 function setBaristaTarget(targetId){
   const k = keyFor('Barista');
