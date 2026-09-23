@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- saved from url=(0064)file:///C:/Users/shara/Downloads/clocktower-storyteller_242.html -->
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
+<html lang="en">
+<head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Storyteller's Grimoire</title>
-<link rel="preconnect" href="https://fonts.googleapis.com/">
-<link href="./index_files/css2" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Naskh+Arabic:wght@500;600&display=swap" rel="stylesheet">
 <style>
 /* ======================================================================
    DESIGN TOKENS
@@ -553,242 +553,7 @@ bdi{unicode-bidi:isolate;}
 </style>
 </head>
 <body>
-<div id="app">
-    <div class="topbar">
-      <div class="brand">🕯️ Storyteller's Grimoire</div>
-      <div class="navlinks">
-        <button class="ghost small" onclick="exportBackup()" title="Download everything — player names, phone numbers, custom icons, and the current game — as one portable file">💾 Backup</button>
-        <button class="ghost small" onclick="triggerTopbarImportBackup()" title="Restore names, icons, and game state from a backup file made on another device">📥 Restore</button>
-        <input type="file" id="topbar-backup-import-input" accept="application/json" style="display:none;" onchange="handleImportBackupFile(this)">
-        
-        
-        
-        
-        <button class="ghost small" onclick="openTelegramSettings()" title="Telegram integration settings">💬 Telegram</button>
-        
-        
-        <button class="ghost small" onclick="confirmReset()">New game</button>
-        
-      </div>
-    </div>
-  
-  <div class="panel">
-    <h2 style="margin-top:0;">Who's playing tonight?</h2>
-    <p class="muted">Add each player's name — English or Arabic both work. Add their phone number too if you want one-tap WhatsApp sending later.</p>
-    <div class="row" style="margin-top:12px;flex-wrap:nowrap;">
-      <input id="name-input" dir="auto" placeholder="Player name..." style="width:140px;flex:0 0 140px;min-width:0;margin-right:10px;" onkeydown="if(event.key===&#39;Enter&#39;) document.getElementById(&#39;phone-input&#39;).focus();">
-      <input id="country-code-input" value="+965" style="width:60px;flex:0 0 60px;text-align:center;padding-left:6px;padding-right:6px;">
-      <div style="position:relative;flex:0 0 100px;width:100px;">
-        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;"><svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg></span>
-        <input id="phone-input" type="tel" style="width:100%;padding-left:28px;box-sizing:border-box;" onkeydown="if(event.key===&#39;Enter&#39;) addPlayerName();">
-      </div>
-      <button class="primary" onclick="addPlayerName()" style="flex-shrink:0;">Add</button>
-    </div>
-    
-    <div class="hr"></div>
-    <div class="row between">
-      <div class="eyebrow">Your regulars</div>
-      <button class="ghost small" onclick="addAllRoster()">Add everyone</button>
-    </div>
-    <div id="roster-chips" class="row" style="margin-top:8px;gap:8px;">
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>عمر</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>بوحمو</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>عزيز عمر</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>بوعلي</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>الصندي</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>فهد</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;cursor:pointer;" onclick="quickAddFromRoster(&#39;جراح&#39;)">
-      <bdi>جراح</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;cursor:pointer;" onclick="quickAddFromRoster(&#39;سعود&#39;)">
-      <bdi>سعود</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>بوقاسم</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>شملان</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>بوعزوز</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>مشاري</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;cursor:pointer;" onclick="quickAddFromRoster(&#39;العطوان&#39;)">
-      <bdi>العطوان</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;cursor:pointer;" onclick="quickAddFromRoster(&#39;قوقلز&#39;)">
-      <bdi>قوقلز</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;cursor:pointer;" onclick="quickAddFromRoster(&#39;حمد&#39;)">
-      <bdi>حمد</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;cursor:pointer;" onclick="quickAddFromRoster(&#39;ضاري&#39;)">
-      <bdi>ضاري</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;cursor:pointer;" onclick="quickAddFromRoster(&#39;علي رائد&#39;)">
-      <bdi>علي رائد</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>سالم</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;cursor:pointer;" onclick="quickAddFromRoster(&#39;فواز&#39;)">
-      <bdi>فواز</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  
-    <span class="tag" style="font-size:12px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;opacity:0.4;">
-      <bdi>حامد</bdi> <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:-2px;margin-right:2px;"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.05 4a8.94 8.94 0 0 0-7.75 13.4L3 21l3.7-1.28a8.9 8.9 0 0 0 4.5 1.2h0a8.94 8.94 0 0 0 8.94-8.94 8.87 8.87 0 0 0-2.54-6.34ZM12.05 19.5h0a7.4 7.4 0 0 1-3.78-1.03l-.27-.16-2.8.96.94-2.73-.18-.28a7.44 7.44 0 1 1 13.8-3.9 7.4 7.4 0 0 1-7.71 7.14Zm4.08-5.56c-.22-.11-1.3-.64-1.5-.72-.2-.07-.35-.11-.5.11-.15.22-.57.72-.7.86-.13.15-.26.16-.48.05a6.1 6.1 0 0 1-1.8-1.11 6.75 6.75 0 0 1-1.24-1.55c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.07-.15.04-.28-.02-.39-.07-.11-.5-1.2-.68-1.65-.18-.43-.36-.37-.5-.38h-.43c-.15 0-.39.06-.6.28-.2.22-.78.76-.78 1.86s.8 2.16.91 2.31c.11.15 1.57 2.4 3.8 3.36.53.23.94.37 1.26.47.53.17 1.01.15 1.39.09.42-.06 1.3-.53 1.48-1.04.18-.5.18-.94.13-1.03-.05-.09-.2-.15-.42-.26Z"></path></svg>
-      
-    </span>
-  <button class="ghost small" onclick="toggleRosterEditMode()" style="font-size:12px;padding:5px 10px;">✏️ Edit</button></div>
-    
-    <div class="hr"></div>
-    <div id="name-list" class="stack"><div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;">
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">1</span>
-      <bdi style="flex:1;min-width:40px;">الصندي</bdi>
-      <input value="+96599899242" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-jyhyws&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-jyhyws&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">2</span>
-      <bdi style="flex:1;min-width:40px;">بوعلي</bdi>
-      <input value="+96590069997" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-w2fqd7&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-w2fqd7&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">3</span>
-      <bdi style="flex:1;min-width:40px;">بوقاسم</bdi>
-      <input value="+96596666485" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-852qak&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-852qak&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">4</span>
-      <bdi style="flex:1;min-width:40px;">بوعزوز</bdi>
-      <input value="+96566951991" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-secyrw&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-secyrw&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">5</span>
-      <bdi style="flex:1;min-width:40px;">مشاري</bdi>
-      <input value="+96598934899" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-jwc52z&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-jwc52z&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">6</span>
-      <bdi style="flex:1;min-width:40px;">سالم</bdi>
-      <input value="+96590950878" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-h58pdu&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-h58pdu&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">7</span>
-      <bdi style="flex:1;min-width:40px;">عمر</bdi>
-      <input value="+96552225112" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-7mczvj&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-7mczvj&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">8</span>
-      <bdi style="flex:1;min-width:40px;">بوحمو</bdi>
-      <input value="+96567737771" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-k822xs&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-k822xs&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">9</span>
-      <bdi style="flex:1;min-width:40px;">شملان</bdi>
-      <input value="+96566952424" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-frrxjf&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-frrxjf&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">10</span>
-      <bdi style="flex:1;min-width:40px;">فهد</bdi>
-      <input value="+96555891959" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-mj8jdw&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-mj8jdw&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">11</span>
-      <bdi style="flex:1;min-width:40px;">حامد</bdi>
-      <input value="+96550788699" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-vqdgwb&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-vqdgwb&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  
-    <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
-      <span class="seat-num">12</span>
-      <bdi style="flex:1;min-width:40px;">عزيز عمر</bdi>
-      <input value="+96550656501" placeholder="Number" style="max-width:95px;padding:6px 8px;" onchange="setPlayerPhone(&#39;p-ex49zd&#39;, this.value)">
-      <button class="ghost small" onclick="removePlayerName(&#39;p-ex49zd&#39;)" style="padding:4px 8px;">✕</button>
-    </div>
-  </div></div>
-    <div class="hr"></div>
-    <div class="row between">
-      <span class="muted">12 players added</span>
-      <div class="row">
-        <button class="ghost small" onclick="resetAllPlayers()">Reset players</button>
-        <button class="primary" onclick="pageTurnTransition(()=&gt;go(&#39;tokens&#39;))">Continue to token setup ›</button>
-      </div>
-    </div>
-    
-  </div>
-</div>
+<div id="app"></div>
 
 <script>
 /* ==========================================================================
@@ -913,7 +678,7 @@ const SCRIPTS = {
       ],
     },
     firstNightOrder: ['Sailor','Courtier','Godfather','Devil\'s Advocate','Pukka','Grandmother','Chambermaid'],
-    otherNightOrder: ['Sailor','Courtier','Innkeeper','Gambler','Devil\'s Advocate','Exorcist','Zombuul','Pukka','Shabaloth','Po','Assassin','Godfather','Professor','Moonchild','Chambermaid'],
+    otherNightOrder: ['Sailor','Courtier','Innkeeper','Gambler','Devil\'s Advocate','Exorcist','Zombuul','Pukka','Shabaloth','Po','Assassin','Godfather','Professor','Gossip','Moonchild','Chambermaid'],
   },
 };
 // Characters whose in-play presence adjusts the Townsfolk/Outsider setup counts (Baron, Fang Gu, Vigormortis).
@@ -1015,6 +780,7 @@ const MARKERS = [
   {id:'drunk_effect', label:'Drunk (effect)', icon:'🍺', scripts:['tb','sv','bmr']},
   {id:'evil_twin_counterpart', label:"Evil Twin's Counterpart", icon:'👥', color:'#ff2e35', scripts:['sv']},
   {id:'grandchild', label:'Grandchild', icon:'👶', color:'#7fd4e8', scripts:['bmr']},
+  {id:'devils_advocate_protected', label:"Devil's Advocate protection", icon:'🛡️', color:'#8a4fd4', scripts:['bmr']},
   {id:'pukka_poison', label:'Poisoned by Pukka (dies next night)', iconSvg:'<svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:-3px;"><line x1="10.5" y1="2" x2="10.5" y2="9" stroke="#a8e6b0" stroke-width="1.6" stroke-linecap="round"/><line x1="13.5" y1="2" x2="13.5" y2="9" stroke="#a8e6b0" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="15" r="7.5" fill="#4caf6a" stroke="#a8e6b0" stroke-width="1.6"/></svg>', color:'#7fb069', scripts:['bmr']},
   {id:'pukka_pending_revival', label:'Killed by Pukka (revives next night)', icon:'🌙', color:'#7f8fc9', scripts:['bmr']},
 ];
@@ -1042,12 +808,14 @@ function markersForPlayer(p){
   const mayorInPlay = game.players.some(x=>x.character==='Mayor');
   const grandmotherInPlay = game.players.some(x=>x.character==='Grandmother');
   const pukkaInPlay = game.players.some(x=>x.character==='Pukka');
+  const devilsAdvocateInPlay = game.players.some(x=>x.character==="Devil's Advocate");
   return markersForScript(game.script).filter(m=>{
     if(m.id==='evil_twin_counterpart' && !evilTwinInPlay) return false;
     if(m.id==='protected' && !monkInPlay) return false;
     if(m.id==='mayor_bounce' && !mayorInPlay) return false;
     if(m.id==='grandchild' && !grandmotherInPlay) return false;
     if((m.id==='pukka_poison' || m.id==='pukka_pending_revival') && !pukkaInPlay) return false;
+    if(m.id==='devils_advocate_protected' && !devilsAdvocateInPlay) return false;
     return true;
   });
 }
@@ -2014,6 +1782,7 @@ function messageFor(step, player){
     case 'Witch': return `اختر لاعبًا: إذا رشّح أحدًا غدًا، يموت. (إذا بقي 3 لاعبين فقط أحياء، تفقد هذه القدرة).`;
     case 'Cerenovus': return `اختر لاعبًا وشخصية خيرة، يجب أن يكون اللاعب بها مجنونا بها(mad) في اليوم التالي، وإلا فقد يُعدم.`;
     case 'Pit-Hag': return `اختر لاعبًا وشخصية غير موجودة في اللعبة ليصبحها.`;
+    case 'Gossip': return `إذا كان تصريح Gossip اليوم صحيحًا، اختر لاعبًا ليموت، وإلا رد بكلمة لا.`;
     case 'Fang Gu': return `اختر لاعبًا لتقتله الليلة.`;
     case 'No Dashii': return `اختر لاعبًا لتقتله الليلة.`;
     case 'Vigormortis': return `اختر لاعبًا لتقتله الليلة.`;
@@ -3374,6 +3143,12 @@ async function translateAndCopyBar(btn){
   }
   btn.disabled = false;
 }
+// Travellers sit outside the standard Townsfolk/Outsider/Minion/Demon setup table entirely —
+// adding or removing one should never shift what this table says. Every setup-chart lookup
+// must count only non-Traveller players.
+function nonTravellerPlayerCount(){
+  return game.players.filter(p=>!(p.character && TYPE_OF[p.character]==='traveller')).length;
+}
 function effectiveSetupChart(n){
   let chart = SETUP_CHART[n] || SETUP_CHART[n<5?5:15];
   if(!game.atheistMode) return chart;
@@ -3381,7 +3156,7 @@ function effectiveSetupChart(n){
   return [t+m+d, o, 0, 0];
 }
 function roleCountPillsHtml(){
-  const n = game.players.length;
+  const n = nonTravellerPlayerCount();
   const chart = effectiveSetupChart(n);
   return `
     <div class="row role-count-row" style="gap:8px;flex-wrap:wrap;margin:6px 0 14px;">
@@ -3396,7 +3171,7 @@ function roleCountPillsHtml(){
 }
 
 screens['tokens'] = () => {
-  const n = game.players.length;
+  const n = nonTravellerPlayerCount();
   const chart = effectiveSetupChart(n);
   const chosen = !!game.scriptConfirmed;
   return `
@@ -3571,7 +3346,7 @@ function assignFromManualPool(){
   finalizeAssignment(pool);
 }
 function autoAssignEverything(){
-  const n = game.players.length;
+  const n = nonTravellerPlayerCount();
   let [t,o,m,d] = effectiveSetupChart(n);
   let minions = shuffle(CHARACTERS.minion.map(c=>c.name)).slice(0,m);
   let demons = shuffle(CHARACTERS.demon.map(c=>c.name)).slice(0,d);
@@ -4218,8 +3993,11 @@ function courtLeadingExecutionIds(){
   // on its own merit against the threshold, not against an already-settled earlier tally.
   const qualifying = courtHistoryForToday().filter(h=>{
     if(!h.exceedsThreshold || h.isExile) return false;
-    const nomineePlayer = game.players.find(x=>x.id===h.nomineeId);
-    return !nomineePlayer || nomineePlayer.alive;
+    // A nominee who died from an earlier resolution TODAY specifically shouldn't be
+    // double-counted for a later nomination (e.g. Butcher's second chance). Someone who was
+    // already dead before today even began (including Zombuul's genuine second-death case)
+    // is a different, now-valid scenario and should still correctly qualify.
+    return !(game.diedFromResolutionTodayIds || []).includes(h.nomineeId);
   });
   if(qualifying.length===0) return [];
   const maxVotes = Math.max(...qualifying.map(h=>h.voteCount));
@@ -4575,7 +4353,7 @@ function courtDragEnd(e){
   const toId = tokenEl ? tokenEl.dataset.pid : null;
   if(!toId || toId===fromId) return;
   const nominee = game.players.find(x=>x.id===toId);
-  if(!nominee || !nominee.alive) return; // can't nominate the dead
+  if(!nominee) return;
   const nominatorForButcherCheck = game.players.find(x=>x.id===fromId);
   // Dead players may nominate for exile, but only a Traveller — targeting anyone else while
   // dead should silently do nothing, since dead players still can't call for a normal execution.
@@ -4734,6 +4512,7 @@ function closeCourtLockConfirm(){
   refreshCourt();
 }
 function lockCourtResultsToGrimoire(){
+  ui.courtShowLockConfirm = false;
   if(game.pendingExecutionId===null){
     const leaders = courtLeadingExecutionIds();
     game.pendingExecutionId = leaders.length===1 ? leaders[0] : null;
@@ -4835,8 +4614,34 @@ function applyExileDeath(nominee, voteCount, threshold){
   // Travellers never go through normal execution, but per the rules they still remain in the
   // game as a dead token (not removed) — same as any other death, just triggered by exile
   // instead of a night-kill or execution. They keep their seat and gain a ghost vote.
+  // Per the wiki (Matron example): a good-aligned player currently protected -- by the Sailor,
+  // Devil's Advocate, or Tea Lady -- correctly remains alive if exiled, exactly as they would
+  // for a normal execution. These checks mirror generateExecutionAnnouncement's own sequence.
+  if(nominee.character==='Sailor' && nominee.alive && !(nominee.isDrunk || hasMarker(nominee,'drunk_effect'))){
+    game.court.publicMessage = `${nominee.name} تم نفيه من اللعبة، لكنه لم يمت`;
+    logAction(`${nominee.name} (Traveller) was exiled but survives — they are the Sailor and cannot die while sober.`);
+    showInfo(`${nominee.name} is the Sailor and cannot die while sober — they survive the exile.`);
+    return;
+  }
+  if(isProtectedFromExecution(nominee)){
+    consumeFoolIfApplicable(nominee);
+    game.court.publicMessage = `${nominee.name} تم نفيه من اللعبة، لكنه لم يمت`;
+    logAction(`${nominee.name} (Traveller) was exiled but survives — protected by the Devil's Advocate.`);
+    showInfo(`${nominee.name} is protected by the Devil's Advocate — they survive the exile.`);
+    return;
+  }
+  if(isTeaLadyProtected(nominee)){
+    consumeFoolIfApplicable(nominee);
+    game.court.publicMessage = `${nominee.name} تم نفيه من اللعبة، لكنه لم يمت`;
+    logAction(`${nominee.name} (Traveller) was exiled but survives — ${protectionReasonText(nominee)}.`);
+    showInfo(`${nominee.name} does not die — ${protectionReasonText(nominee)}.`);
+    return;
+  }
+  if(!interceptZombuulFirstDeath(nominee)) return;
   nominee.alive = false;
   nominee.ghostVoteUsed = false;
+  game.diedFromResolutionTodayIds = game.diedFromResolutionTodayIds || [];
+  if(!game.diedFromResolutionTodayIds.includes(nominee.id)) game.diedFromResolutionTodayIds.push(nominee.id);
   if(game.subphase==='day') game.dayHasDeath = true;
   if(!noDashiiPoisonedIds().includes(nominee.id)) nominee.markers = (nominee.markers||[]).filter(m=>m!=='poisoned');
   playDeathSound();
@@ -5136,7 +4941,6 @@ function checkGoonTargeted(targetId, actorStep){
   render();
 }
 function confirmShabalothRevive(targetId){
-  const thenGossip = ui.modal && ui.modal.thenGossip;
   closeModal();
   if(targetId){
     const target = game.players.find(x=>x.id===targetId);
@@ -5154,16 +4958,9 @@ function confirmShabalothRevive(targetId){
       refreshPlay();
     }
   }
-  if(thenGossip){
-    showInfo('The Gossip made a correct statement today — a player must die.');
-  }
 }
 function skipShabalothRevive(){
-  const thenGossip = ui.modal && ui.modal.thenGossip;
   closeModal();
-  if(thenGossip){
-    showInfo('The Gossip made a correct statement today — a player must die.');
-  }
 }
 function confirmGoonTargeted(){
   const goonId = ui.modal && ui.modal.goonId;
@@ -5796,6 +5593,8 @@ function resetAbilityUsageOnSwap(p){
   delete p.reactiveCardActive;
   delete p.artistUsedAtDay;
   delete p.poSkippedAtNight;
+  delete p.poCharged;
+  delete p.poChargedUsedAtNight;
   delete p.barberSwapPending;
   delete p.barberSwapAtNight;
   p.markers = (p.markers||[]).filter(m=>m!=='ability_used' && m!=='seamstress_used');
@@ -5854,6 +5653,27 @@ function playDeathSound(){
     deathAudioEl.play().catch(()=>{}); // ignore autoplay-policy rejections
   } catch(e){ /* non-fatal if audio isn't available */ }
 }
+// Intercepts a death about to be applied to Zombuul specifically, implementing her "die twice"
+// mechanic. Returns true if the caller should let a NORMAL death proceed (not Zombuul, or she's
+// drunk/poisoned so this is genuinely real regardless), or false if her fake first death was
+// fully handled right here and the caller should not apply anything further.
+function interceptZombuulFirstDeath(p){
+  if(!p || p.character!=='Zombuul' || p.zombuulFakeDeathUsed) return true;
+  if(isUnreliable(p)) return true; // her "secretly live on" protection doesn't function while unreliable
+  p.zombuulFakeDeathUsed = true;
+  p.alive = false;
+  p.ghostVoteUsed = false;
+  p.actsWhileDead = true;
+  playDeathSound();
+  if(game.subphase==='day') game.dayHasDeath = true;
+  if(game.subphase==='night') p.diedAtNight = game.nightNum;
+  if(!noDashiiPoisonedIds().includes(p.id)) p.markers = (p.markers||[]).filter(m=>m!=='poisoned');
+  game.diedFromResolutionTodayIds = game.diedFromResolutionTodayIds || [];
+  if(!game.diedFromResolutionTodayIds.includes(p.id)) game.diedFromResolutionTodayIds.push(p.id);
+  logAction(`${p.name} (Zombuul) appears to have died — secretly, they remain the Demon and continue to act.`);
+  showInfo(`${p.name} appears to die, but secretly remains the Demon — they continue to wake and act at night.`);
+  return false;
+}
 function toggleAlive(pid){
   const p = game.players.find(x=>x.id===pid);
   if(!p) return;
@@ -5862,6 +5682,10 @@ function toggleAlive(pid){
     const foolSaved = consumeFoolIfApplicable(p);
     closeModal();
     showInfo(foolSaved ? "The fool didn't die tonight due to their ability." : `${p.name} cannot be marked dead right now — ${protectionReasonText(p)}.`);
+    return;
+  }
+  if(wasAlive && !interceptZombuulFirstDeath(p)){
+    saveGame(); closeModal();
     return;
   }
   p.alive = !p.alive;
@@ -5920,7 +5744,7 @@ function computeNightSteps(){
         if(step==='Godfather' && game.nightNum!==1 && game.lastExecutedWasOutsiderAtDay !== game.dayNum) return false;
         if(step==='Assassin' && game.nightNum===1) return false;
         if(step==='Scarlet Woman' && !game.players.some(x=>x.character && TYPE_OF[x.character]==='demon' && !x.alive)) return false;
-        if(BMR_DEAD_EXCLUDED_CHARS.includes(step) && !holder.alive) return false;
+        if(BMR_DEAD_EXCLUDED_CHARS.includes(step) && !holder.alive && !holder.actsWhileDead) return false;
         if(step==='Undertaker' && !(game.executedByDay && game.executedByDay[game.dayNum])) return false;
         // Flowergirl/Town Crier just need to be alive at their own point in the wake order —
         // unlike Ravenkeeper (whose ability specifically triggers BY dying), dying earlier the
@@ -5936,7 +5760,15 @@ function computeNightSteps(){
         if(TYPE_OF[step]==='demon' && isDemonExorcisedTonight(holder)) return false;
         if(holder.alive) return true;
         if(holder.actsWhileDead) return true;
-        if(holder.diedAtNight === game.nightNum) return true;
+        // Ravenkeeper's ability specifically triggers BY dying at night -- she needs her card
+        // exactly the night she dies, and never again after. Every other character should NOT
+        // fall through here just because they happened to die earlier the same night (e.g.
+        // Dreamer, killed by the Demon before her own turn, should correctly be skipped).
+        if(step==='Ravenkeeper' && holder.diedAtNight === game.nightNum) return true;
+        // Fang Gu specifically: the OLD Fang Gu who just died converting an Outsider tonight
+        // still needs her card shown, purely to display the conversion messages to both her
+        // and the new Fang Gu -- not a real turn, just the reveal.
+        if(step==='Fang Gu' && game.fangGuConversion && game.fangGuConversion.fangGuId===holder.id && game.fangGuConversion.nightNum===game.nightNum) return true;
         return false;
       });
     }
@@ -6063,7 +5895,7 @@ function characterRevealText(p){
     const demon = game.players.find(x=>x.character && TYPE_OF[x.character]==='demon');
     text += `\n\nالـ Demon هو: ${demon ? demon.name : '؟'}.`;
   }
-  const n = game.players.length;
+  const n = nonTravellerPlayerCount();
   const chart = SETUP_CHART[n] || SETUP_CHART[n<5?5:15];
   text += `\n\nعدد اللاعبين ${n}\nالقرويون: ${chart[0]} | الغرباء: ${chart[1]} | الأعوان: ${chart[2]} | العفاريت: ${chart[3]}\nTownsfolk: ${chart[0]} | Outsider: ${chart[1]} | Minion: ${chart[2]} | Demon: ${chart[3]}`;
   return text;
@@ -6138,7 +5970,7 @@ function resolveStepRows(step){
     if(step==='Godfather' && game.nightNum!==1 && game.lastExecutedWasOutsiderAtDay !== game.dayNum) return false;
     if(step==='Assassin' && game.nightNum===1) return false;
     if(step==='Scarlet Woman' && !game.players.some(x=>x.character && TYPE_OF[x.character]==='demon' && !x.alive)) return false;
-    if(BMR_DEAD_EXCLUDED_CHARS.includes(step) && !holder.alive) return false;
+    if(BMR_DEAD_EXCLUDED_CHARS.includes(step) && !holder.alive && !holder.actsWhileDead) return false;
     if(step==='Undertaker' && !(game.executedByDay && game.executedByDay[game.dayNum])) return false;
     // Same fix as computeNightSteps above — keep these two duplicated gating functions in sync.
     if((step==='Flowergirl' || step==='Town Crier') && !holder.alive) return false;
@@ -6146,7 +5978,8 @@ function resolveStepRows(step){
     if(TYPE_OF[step]==='demon' && isDemonExorcisedTonight(holder)) return false;
     if(holder.alive) return true;
     if(holder.actsWhileDead) return true;
-    if(holder.diedAtNight === game.nightNum) return true;
+    if(step==='Ravenkeeper' && holder.diedAtNight === game.nightNum) return true;
+    if(step==='Fang Gu' && game.fangGuConversion && game.fangGuConversion.fangGuId===holder.id && game.fangGuConversion.nightNum===game.nightNum) return true;
     return false;
   });
   let rows = [...realPlayers];
@@ -6196,7 +6029,7 @@ function flowergirlTownCrierNightCardHtml(step, i, isLastCard){
   const shownAnswer = (holder && isUnreliable(holder)) ? !dayFlagOn : dayFlagOn;
   let answerDraft = step==='Flowergirl'
     ? (shownAnswer ? 'نعم, لقد صوت العفريت هذا اليوم.' : 'لا, لم يصوت العفريت هذا اليوم.')
-    : (shownAnswer ? 'نعم, تم ترشيح أحد الأتباع هذا اليوم.' : 'لا, لم يتم ترشيح أي من الأتباع هذا اليوم.');
+    : (shownAnswer ? 'نعم, تم رشح أحد الأتباع هذا اليوم.' : 'لا, لم يرشح أي من الأتباع هذا اليوم.');
   const todaysHistory = courtHistoryForDay(game.dayNum).filter(h=>!h.isExile);
   if(step==='Town Crier'){
     const nominators = [...new Set(todaysHistory.map(h=>h.nominatorName).filter(Boolean))];
@@ -6255,7 +6088,8 @@ function setDayFlagFromNight(key, overrideKeyToClear){
 }
 function isRowDone(step, p){
   const k = `${keyFor(step)}-${p.id}`;
-  const scPick = step==='Snake Charmer' ? game.infoPicks[keyFor(step)] : null;
+  const scKey = (step==='Snake Charmer' && p.extraAbilityChar==='Snake Charmer') ? `${keyFor(step)}-${p.id}` : keyFor(step);
+  const scPick = step==='Snake Charmer' ? game.infoPicks[scKey] : null;
   if(step==='Assassin' && p.assassinSkippedAtNight === game.nightNum) return true;
   if(step==='Courtier' && p.courtierSkippedAtNight === game.nightNum) return true;
   if(step==='Professor' && p.professorSkippedAtNight === game.nightNum) return true;
@@ -7219,13 +7053,16 @@ function pickControlsHtmlInner(step){
   if(step==="Devil's Advocate"){
     const k = keyFor(step);
     const pick = game.infoPicks[k] || {};
+    const selectedId = pick.pendingTarget !== undefined ? pick.pendingTarget : pick.target;
     const eligible = game.players.filter(x=>x.alive && x.id!==game.devilsAdvocateLastTargetId);
+    const needsConfirm = !!(pick.pendingTarget && pick.pendingTarget !== pick.target);
     return `
       <div class="char-strip">
-        <select onchange="setDevilsAdvocateTarget(this.value)">
+        <select onchange="setDevilsAdvocatePendingTarget('${k}', this.value)">
           <option value="">Protect who (from execution tomorrow)...</option>
-          ${sortedByRoleType(eligible).map(x=>playerOptionHtml(x, pick.target)).join('')}
+          ${sortedByRoleType(eligible).map(x=>playerOptionHtml(x, selectedId)).join('')}
         </select>
+        ${needsConfirm ? `<button class="primary small" onclick="confirmDevilsAdvocateTarget('${k}')">✅ Confirm</button>` : ''}
       </div>
     `;
   }
@@ -7233,14 +7070,28 @@ function pickControlsHtmlInner(step){
     const sailor = game.players.find(x=>x.character==='Sailor');
     const k = keyFor(step);
     const pick = game.infoPicks[k] || {};
+    const selectedId = pick.pendingTarget !== undefined ? pick.pendingTarget : pick.target;
     const eligible = game.players.filter(x=>x.alive && (!sailor || x.id!==sailor.id));
+    const target = selectedId ? game.players.find(x=>x.id===selectedId) : null;
+    const selDrunk = pick.pendingDrunkId !== undefined ? pick.pendingDrunkId : pick.drunkId;
+    const needsConfirm = !!(selDrunk && (selectedId !== pick.target || selDrunk !== pick.drunkId));
     return `
       <div class="char-strip">
-        <select onchange="setSailorTarget(this.value)">
+        <select onchange="setSailorPendingTarget('${k}', this.value)">
           <option value="">Choose player...</option>
-          ${sortedByRoleType(eligible).map(x=>playerOptionHtml(x, pick.target)).join('')}
+          ${sortedByRoleType(eligible).map(x=>playerOptionHtml(x, selectedId)).join('')}
         </select>
       </div>
+      ${target && sailor ? `
+        <div class="row" style="margin-top:8px;">
+          <select onchange="setSailorPendingDrunk('${k}', this.value)">
+            <option value="">Who becomes drunk...</option>
+            <option value="${sailor.id}" ${selDrunk===sailor.id?'selected':''}>${escapeHtml(sailor.name)} (herself)</option>
+            <option value="${target.id}" ${selDrunk===target.id?'selected':''}>${escapeHtml(target.name)}</option>
+          </select>
+          ${needsConfirm ? `<button class="primary small" onclick="confirmSailorTarget('${k}')">✅ Confirm</button>` : ''}
+        </div>
+      ` : ''}
     `;
   }
   if(step==='Courtier'){
@@ -7334,23 +7185,28 @@ function pickControlsHtmlInner(step){
     const k = keyFor(step);
     const pick = game.infoPicks[k] || {};
     const eligible = game.players;
+    const selP1 = pick.pendingP1 !== undefined ? pick.pendingP1 : pick.p1;
+    const selP2 = pick.pendingP2 !== undefined ? pick.pendingP2 : pick.p2;
+    const selDrunk = pick.pendingDrunk !== undefined ? pick.pendingDrunk : pick.drunk;
+    const needsConfirm = !!(selP1 && selP2 && selDrunk && (selP1!==pick.p1 || selP2!==pick.p2 || selDrunk!==pick.drunk));
     return `
       <div class="char-strip">
-        <select onchange="setInnkeeperTarget('${k}','p1',this.value)">
+        <select onchange="setInnkeeperPendingTarget('${k}','p1',this.value)">
           <option value="">Player A...</option>
-          ${sortedByRoleType(eligible.filter(x=>x.id!==pick.p2)).map(x=>playerOptionHtml(x, pick.p1)).join('')}
+          ${sortedByRoleType(eligible.filter(x=>x.id!==selP2)).map(x=>playerOptionHtml(x, selP1)).join('')}
         </select>
-        <select onchange="setInnkeeperTarget('${k}','p2',this.value)">
+        <select onchange="setInnkeeperPendingTarget('${k}','p2',this.value)">
           <option value="">Player B...</option>
-          ${sortedByRoleType(eligible.filter(x=>x.id!==pick.p1)).map(x=>playerOptionHtml(x, pick.p2)).join('')}
+          ${sortedByRoleType(eligible.filter(x=>x.id!==selP1)).map(x=>playerOptionHtml(x, selP2)).join('')}
         </select>
       </div>
-      ${pick.p1 && pick.p2 ? `
+      ${selP1 && selP2 ? `
         <div class="row" style="margin-top:8px;">
-          <select onchange="setInnkeeperTarget('${k}','drunk',this.value)">
+          <select onchange="setInnkeeperPendingTarget('${k}','drunk',this.value)">
             <option value="">Who becomes drunk...</option>
-            ${[game.players.find(x=>x.id===pick.p1), game.players.find(x=>x.id===pick.p2)].filter(Boolean).map(x=>playerOptionHtml(x, pick.drunk)).join('')}
+            ${[game.players.find(x=>x.id===selP1), game.players.find(x=>x.id===selP2)].filter(Boolean).map(x=>playerOptionHtml(x, selDrunk)).join('')}
           </select>
+          ${needsConfirm ? `<button class="primary small" onclick="confirmInnkeeperTarget('${k}')">✅ Confirm</button>` : ''}
         </div>
       ` : ''}
     `;
@@ -7358,13 +7214,16 @@ function pickControlsHtmlInner(step){
   if(step==='Exorcist'){
     const k = keyFor(step);
     const pick = game.infoPicks[k] || {};
+    const selectedId = pick.pendingTarget !== undefined ? pick.pendingTarget : pick.target;
     const eligible = game.players.filter(x=>x.id!==game.exorcistLastTargetId);
+    const needsConfirm = !!(pick.pendingTarget && pick.pendingTarget !== pick.target);
     return `
       <div class="char-strip">
-        <select onchange="setExorcistTarget(this.value)">
+        <select onchange="setExorcistPendingTarget('${k}', this.value)">
           <option value="">Choose player...</option>
-          ${sortedByRoleType(eligible).map(x=>playerOptionHtml(x, pick.target)).join('')}
+          ${sortedByRoleType(eligible).map(x=>playerOptionHtml(x, selectedId)).join('')}
         </select>
+        ${needsConfirm ? `<button class="primary small" onclick="confirmExorcistTarget('${k}')">✅ Confirm</button>` : ''}
       </div>
     `;
   }
@@ -7395,6 +7254,26 @@ function pickControlsHtmlInner(step){
           <option value="">Choose a dead player...</option>
           ${sortedByRoleType(deadPlayers).map(x=>playerOptionHtml(x, pick.target)).join('')}
         </select>
+      </div>
+    `;
+  }
+  if(step==='Gossip'){
+    const gossip = game.players.find(x=>x.character==='Gossip' && x.alive);
+    if(!gossip) return '';
+    const k = keyFor(step);
+    const pick = game.infoPicks[k] || {};
+    const selectedId = pick.pendingTarget !== undefined ? pick.pendingTarget : pick.target;
+    const eligible = game.players.filter(x=>x.alive);
+    const needsConfirm = !!(pick.pendingTarget && pick.pendingTarget !== pick.target);
+    if(pick.skipped) return `<p class="muted" style="font-size:12px;">Gossip's statement was not true today — no effect tonight.</p>`;
+    return `
+      <div class="char-strip">
+        <select onchange="setGossipPendingTarget('${k}', this.value)">
+          <option value="">Kill who (statement was true today)...</option>
+          ${sortedByRoleType(eligible).map(x=>playerOptionHtml(x, selectedId)).join('')}
+        </select>
+        ${needsConfirm ? `<button class="primary small" onclick="confirmGossipTarget('${k}')">✅ Confirm</button>` : ''}
+        <button class="ghost small" onclick="setGossipSkip('${k}')">لا — statement wasn't true</button>
       </div>
     `;
   }
@@ -7520,13 +7399,16 @@ function pickControlsHtmlInner(step){
     const godfather = game.players.find(x=>x.character==='Godfather');
     const k = `${keyFor(step)}-kill`;
     const pick = game.infoPicks[k] || {};
+    const selectedId = pick.pendingTarget !== undefined ? pick.pendingTarget : pick.target;
     const alivePlayers = game.players.filter(x=>(x.alive || x.id===pick.target) && (!godfather || x.id!==godfather.id));
+    const needsConfirm = !!(pick.pendingTarget && pick.pendingTarget !== pick.target);
     return `
       <div class="char-strip">
-        <select onchange="killDemonTarget('${k}', this.value)">
+        <select onchange="setDemonPendingKillTarget('${k}', this.value)">
           <option value="">Kill who...</option>
-          ${sortedByRoleType(alivePlayers).map(x=>playerOptionHtml(x, pick.target)).join('')}
+          ${sortedByRoleType(alivePlayers).map(x=>playerOptionHtml(x, selectedId)).join('')}
         </select>
+        ${needsConfirm ? `<button class="primary small" onclick="killDemonTarget('${k}', game.infoPicks['${k}'].pendingTarget)">✅ Confirm</button>` : ''}
       </div>
     `;
   }
@@ -7761,13 +7643,16 @@ function pickControlsHtmlInner(step){
     const demonPlayer = game.players.find(x=>x.character==='Zombuul');
     const k = `${keyFor(step)}-kill`;
     const pick = game.infoPicks[k] || {};
+    const selectedId = pick.pendingTarget !== undefined ? pick.pendingTarget : pick.target;
     const alivePlayers = game.players.filter(x=>(x.alive || x.id===pick.target) && (!demonPlayer || x.id!==demonPlayer.id));
+    const needsConfirm = !!(pick.pendingTarget && pick.pendingTarget !== pick.target);
     return `
       <div class="char-strip">
-        <select onchange="killDemonTarget('${k}', this.value)">
+        <select onchange="setDemonPendingKillTarget('${k}', this.value)">
           <option value="">Kill who...</option>
-          ${sortedByRoleType(alivePlayers).map(x=>playerOptionHtml(x, pick.target)).join('')}
+          ${sortedByRoleType(alivePlayers).map(x=>playerOptionHtml(x, selectedId)).join('')}
         </select>
+        ${needsConfirm ? `<button class="primary small" onclick="killDemonTarget('${k}', game.infoPicks['${k}'].pendingTarget)">✅ Confirm</button>` : ''}
       </div>
     `;
   }
@@ -7775,13 +7660,16 @@ function pickControlsHtmlInner(step){
     const demonPlayer = game.players.find(x=>x.character==='Pukka');
     const k = `${keyFor(step)}-poison`;
     const pick = game.infoPicks[k] || {};
+    const selectedId = pick.pendingTarget !== undefined ? pick.pendingTarget : pick.target;
     const alivePlayers = game.players.filter(x=>(x.alive || x.id===pick.target) && (!demonPlayer || x.id!==demonPlayer.id));
+    const needsConfirm = !!(pick.pendingTarget && pick.pendingTarget !== pick.target);
     return `
       <div class="char-strip">
-        <select onchange="setPukkaPoisonTarget('${k}', this.value)">
+        <select onchange="setPukkaPendingTarget('${k}', this.value)">
           <option value="">Poison who...</option>
-          ${sortedByRoleType(alivePlayers).map(x=>playerOptionHtml(x, pick.target)).join('')}
+          ${sortedByRoleType(alivePlayers).map(x=>playerOptionHtml(x, selectedId)).join('')}
         </select>
+        ${needsConfirm ? `<button class="primary small" onclick="setPukkaPoisonTarget('${k}', game.infoPicks['${k}'].pendingTarget)">✅ Confirm</button>` : ''}
       </div>
     `;
   }
@@ -7789,17 +7677,23 @@ function pickControlsHtmlInner(step){
     const demonPlayer = game.players.find(x=>x.character==='Shabaloth');
     const k = keyFor(step);
     const pick = game.infoPicks[k] || {};
-    const alivePlayers = game.players.filter(x=>(x.alive || x.id===pick.p1 || x.id===pick.p2) && (!demonPlayer || x.id!==demonPlayer.id));
+    const selP1 = pick.pendingP1 !== undefined ? pick.pendingP1 : pick.p1;
+    const selP2 = pick.pendingP2 !== undefined ? pick.pendingP2 : pick.p2;
+    // Per the wiki, she can target dead players too -- this doesn't kill them again, but sets
+    // them up as a valid candidate for regurgitation the following night.
+    const eligiblePlayers = game.players.filter(x=>!demonPlayer || x.id!==demonPlayer.id);
+    const needsConfirm = !!(selP1 && selP2 && (selP1!==pick.p1 || selP2!==pick.p2));
     return `
       <div class="char-strip">
-        <select onchange="setShabalothTarget('${k}','p1',this.value)">
+        <select onchange="setShabalothPendingTarget('${k}','p1',this.value)">
           <option value="">Kill who (1)...</option>
-          ${sortedByRoleType(alivePlayers.filter(x=>x.id!==pick.p2)).map(x=>playerOptionHtml(x, pick.p1)).join('')}
+          ${sortedByRoleType(eligiblePlayers.filter(x=>x.id!==selP2)).map(x=>playerOptionHtml(x, selP1)).join('')}
         </select>
-        <select onchange="setShabalothTarget('${k}','p2',this.value)">
+        <select onchange="setShabalothPendingTarget('${k}','p2',this.value)">
           <option value="">Kill who (2)...</option>
-          ${sortedByRoleType(alivePlayers.filter(x=>x.id!==pick.p1)).map(x=>playerOptionHtml(x, pick.p2)).join('')}
+          ${sortedByRoleType(eligiblePlayers.filter(x=>x.id!==selP1)).map(x=>playerOptionHtml(x, selP2)).join('')}
         </select>
+        ${needsConfirm ? `<button class="primary small" onclick="confirmShabalothTarget('${k}')">✅ Confirm</button>` : ''}
       </div>
     `;
   }
@@ -7821,24 +7715,35 @@ function pickControlsHtmlInner(step){
     const demonPlayer = game.players.find(x=>x.character==='Po');
     const k = keyFor(step);
     const pick = game.infoPicks[k] || {};
-    const charged = demonPlayer && demonPlayer.poSkippedAtNight === game.nightNum - 1;
+    // Tracks "was her last actual turn a skip" via a persistent flag rather than comparing to
+    // nightNum-1 directly -- an Exorcist-blocked night in between never touches this flag,
+    // since she gets no card at all that night, so it correctly survives untouched.
+    const charged = demonPlayer && demonPlayer.poCharged;
     const alivePlayers = game.players.filter(x=>(x.alive || x.id===pick.p1 || x.id===pick.p2 || x.id===pick.p3) && (!demonPlayer || x.id!==demonPlayer.id));
     if(charged){
-      const chosen = [pick.p1, pick.p2, pick.p3].filter(Boolean);
+      const chosen = [pick.pendingP1||pick.p1, pick.pendingP2||pick.p2, pick.pendingP3||pick.p3].filter(Boolean);
+      const selP1 = pick.pendingP1!==undefined ? pick.pendingP1 : pick.p1;
+      const selP2 = pick.pendingP2!==undefined ? pick.pendingP2 : pick.p2;
+      const selP3 = pick.pendingP3!==undefined ? pick.pendingP3 : pick.p3;
+      const needsConfirm = !!(selP1 && selP2 && selP3 && (selP1!==pick.p1 || selP2!==pick.p2 || selP3!==pick.p3));
       return `
         <div class="char-strip">
-          <select onchange="setPoTarget('${k}','p1',this.value)"><option value="">Kill who (1)...</option>${sortedByRoleType(alivePlayers.filter(x=>!chosen.includes(x.id)||x.id===pick.p1)).map(x=>playerOptionHtml(x, pick.p1)).join('')}</select>
-          <select onchange="setPoTarget('${k}','p2',this.value)"><option value="">Kill who (2)...</option>${sortedByRoleType(alivePlayers.filter(x=>!chosen.includes(x.id)||x.id===pick.p2)).map(x=>playerOptionHtml(x, pick.p2)).join('')}</select>
-          <select onchange="setPoTarget('${k}','p3',this.value)"><option value="">Kill who (3)...</option>${sortedByRoleType(alivePlayers.filter(x=>!chosen.includes(x.id)||x.id===pick.p3)).map(x=>playerOptionHtml(x, pick.p3)).join('')}</select>
+          <select onchange="setPoPendingTarget('${k}','p1',this.value)"><option value="">Kill who (1)...</option>${sortedByRoleType(alivePlayers.filter(x=>!chosen.includes(x.id)||x.id===selP1)).map(x=>playerOptionHtml(x, selP1)).join('')}</select>
+          <select onchange="setPoPendingTarget('${k}','p2',this.value)"><option value="">Kill who (2)...</option>${sortedByRoleType(alivePlayers.filter(x=>!chosen.includes(x.id)||x.id===selP2)).map(x=>playerOptionHtml(x, selP2)).join('')}</select>
+          <select onchange="setPoPendingTarget('${k}','p3',this.value)"><option value="">Kill who (3)...</option>${sortedByRoleType(alivePlayers.filter(x=>!chosen.includes(x.id)||x.id===selP3)).map(x=>playerOptionHtml(x, selP3)).join('')}</select>
+          ${needsConfirm ? `<button class="primary small" onclick="confirmPoCharged('${k}')">✅ Confirm</button>` : ''}
         </div>
       `;
     }
+    const selP1 = pick.pendingP1!==undefined ? pick.pendingP1 : pick.p1;
+    const needsConfirm = !!(selP1 && selP1 !== pick.p1);
     return `
       <div class="char-strip">
-        <select onchange="setPoTarget('${k}','p1',this.value)">
+        <select onchange="setPoPendingTarget('${k}','p1',this.value)">
           <option value="">Kill who...</option>
-          ${sortedByRoleType(alivePlayers).map(x=>playerOptionHtml(x, pick.p1)).join('')}
+          ${sortedByRoleType(alivePlayers).map(x=>playerOptionHtml(x, selP1)).join('')}
         </select>
+        ${needsConfirm ? `<button class="primary small" onclick="setPoTarget('${k}','p1',game.infoPicks['${k}'].pendingP1)">✅ Confirm</button>` : ''}
         <button class="ghost small" onclick="setPoSkip('${demonPlayer?demonPlayer.id:''}')">لا — skip to charge up</button>
       </div>
     `;
@@ -7977,19 +7882,26 @@ function setMoonchildTarget(k, targetId){
 // were their first night again, immediately, even though it's actually a later night.
 // If a Minion dies by execution and the Minstrel is in play, alive, and currently reliable,
 // every other player becomes drunk through tonight and tomorrow, sober again at dusk after that.
-function checkMinstrelTrigger(){
+function checkMinstrelTrigger(executedPlayer, wasAliveBeforeExecution){
+  // Per the wiki: an already-dead Minion "executed" doesn't trigger this (can't die again),
+  // and a protected Minion that didn't actually die doesn't trigger it either -- only a
+  // genuine alive-to-dead transition just now counts.
+  if(!wasAliveBeforeExecution || (executedPlayer && executedPlayer.alive)) return;
   const minstrel = game.players.find(p=>p.character==='Minstrel' && p.alive);
   if(!minstrel || isUnreliable(minstrel)) return;
   const expiresAtClick = game.totalAdvanceClicks + 3;
   game.players.forEach(p=>{
     if(p.id===minstrel.id) return;
+    // Travellers are explicitly excluded per the wiki's own wording ("all other players
+    // except Travellers").
+    if(p.character && TYPE_OF[p.character]==='traveller') return;
     p.markers = p.markers || [];
     if(!p.markers.includes('drunk_effect')) p.markers.push('drunk_effect');
     // Never shorten an existing longer-running temporary effect this player already has.
     p.markerExpiry = p.markerExpiry || {};
     p.markerExpiry.drunk_effect = Math.max(p.markerExpiry.drunk_effect||0, expiresAtClick);
   });
-  logAction('Minstrel triggered — everyone except the Minstrel is drunk through tonight and tomorrow.');
+  logAction('Minstrel triggered — everyone except the Minstrel (and any Travellers) is drunk through tonight and tomorrow.');
   showInfo('A Minion died by execution — the Minstrel makes everyone else drunk until dusk tomorrow.');
 }
 function handleResurrection(player, silent){
@@ -8110,8 +8022,13 @@ function confirmPacifistDeath(targetId, textField){
   checkSpyRecluseReminder([p.id], 'Undertaker', false);
   if(executedChar && TYPE_OF[executedChar]==='outsider') game.lastExecutedWasOutsiderAtDay = game.dayNum;
   game[textField] = withHeader(`${p.name} تم إعدامه ومات.`);
+  const wasAliveBeforeExecution1 = p.alive;
   toggleAlive(targetId);
-  if(executedChar && TYPE_OF[executedChar]==='minion') checkMinstrelTrigger();
+  if(executedChar && TYPE_OF[executedChar]==='minion') checkMinstrelTrigger(p, wasAliveBeforeExecution1);
+  if(wasAliveBeforeExecution1 && !p.alive){
+    game.diedFromResolutionTodayIds = game.diedFromResolutionTodayIds || [];
+    if(!game.diedFromResolutionTodayIds.includes(p.id)) game.diedFromResolutionTodayIds.push(p.id);
+  }
   if(executedChar==='Saint'){
     showInfo('The Saint has been executed by the town — the game ends now and Evil wins.');
   }
@@ -8168,6 +8085,9 @@ function isTeaLadyProtected(target){
   if(!target || !target.alive) return false;
   const teaLady = game.players.find(p=>p.character==='Tea Lady' && p.alive);
   if(!teaLady || teaLady.id===target.id) return false;
+  // If the Tea Lady herself is poisoned or drunk, her protection fails entirely — the
+  // wiki is explicit on this: "the Tea Lady is poisoned, so she does not protect her neighbours."
+  if(isUnreliable(teaLady)) return false;
   const neighbors = livingNeighbors(teaLady);
   if(neighbors.length<2) return false;
   if(!neighbors.every(n=>!isEvil(n))) return false;
@@ -8183,6 +8103,7 @@ function consumeFoolIfApplicable(target){
   if(!target || target.character!=='Fool') return false;
   if(hasMarker(target,'protected')) return false;
   if(isTeaLadyProtected(target)) return false;
+  if(hasMarker(target,'innkeeper_safe')) return false;
   if(isFoolProtected(target)){
     target.markers = target.markers || [];
     if(!target.markers.includes('ability_used')) target.markers.push('ability_used');
@@ -8235,34 +8156,48 @@ function nonDemonProtectionReasonText(target){
   if(isFoolProtected(target)) return "they are the Fool, and this is the first time they would have died";
   return '';
 }
-function setSailorTarget(targetId){
-  checkGoonTargeted(targetId, 'Sailor');
-  const k = keyFor('Sailor');
+function setSailorPendingTarget(k, targetId){
   game.infoPicks[k] = game.infoPicks[k] || {};
-  // Revert whoever was previously made drunk by this pick, if the selection changes.
-  const prevDrunkId = game.infoPicks[k].drunkId;
-  if(prevDrunkId && prevDrunkId !== targetId){
-    const prev = game.players.find(x=>x.id===prevDrunkId);
+  game.infoPicks[k].pendingTarget = targetId || null;
+  // Changing the target invalidates any pending drunk-choice from a previous target.
+  game.infoPicks[k].pendingDrunkId = null;
+  saveGame();
+  refreshPlay();
+}
+function setSailorPendingDrunk(k, drunkId){
+  game.infoPicks[k] = game.infoPicks[k] || {};
+  game.infoPicks[k].pendingDrunkId = drunkId || null;
+  saveGame();
+  refreshPlay();
+}
+function confirmSailorTarget(k){
+  const pick = game.infoPicks[k];
+  if(!pick || !pick.pendingTarget || !pick.pendingDrunkId) return;
+  checkGoonTargeted(pick.pendingTarget, 'Sailor');
+  // Revert whoever was previously made drunk by this pick, if retargeting.
+  if(pick.drunkId){
+    const prev = game.players.find(x=>x.id===pick.drunkId);
     if(prev && prev.sailorDrunkUntilNight !== undefined){
       prev.markers = (prev.markers||[]).filter(m=>m!=='drunk_effect');
       delete prev.sailorDrunkUntilNight;
+      if(prev.markerExpiry) delete prev.markerExpiry.drunk_effect;
     }
   }
-  game.infoPicks[k].target = targetId;
-  if(targetId){
-    const sailor = game.players.find(x=>x.character==='Sailor');
-    const target = game.players.find(x=>x.id===targetId);
-    const drunkOne = Math.random()<0.5 ? sailor : target;
-    game.infoPicks[k].drunkId = drunkOne ? drunkOne.id : null;
-    if(drunkOne){
-      drunkOne.markers = drunkOne.markers || [];
-      if(!drunkOne.markers.includes('drunk_effect')) drunkOne.markers.push('drunk_effect');
-      drunkOne.sailorDrunkUntilNight = game.nightNum + 1;
-      drunkOne.markerExpiry = drunkOne.markerExpiry || {};
-      drunkOne.markerExpiry.drunk_effect = game.totalAdvanceClicks + 2;
-    }
-    logAction(`Sailor chose ${target ? target.name : '؟'} — ${drunkOne ? drunkOne.name : '؟'} became drunk.`);
+  pick.target = pick.pendingTarget;
+  pick.drunkId = pick.pendingDrunkId;
+  const target = game.players.find(x=>x.id===pick.target);
+  // Per the wiki's own worked examples, this is explicitly a Storyteller decision, not
+  // random — the Storyteller has already chosen who becomes drunk via the second dropdown.
+  const drunkOne = game.players.find(x=>x.id===pick.drunkId);
+  if(drunkOne){
+    checkGoonTargeted(drunkOne.id, 'Sailor');
+    drunkOne.markers = drunkOne.markers || [];
+    if(!drunkOne.markers.includes('drunk_effect')) drunkOne.markers.push('drunk_effect');
+    drunkOne.sailorDrunkUntilNight = game.nightNum + 1;
+    drunkOne.markerExpiry = drunkOne.markerExpiry || {};
+    drunkOne.markerExpiry.drunk_effect = game.totalAdvanceClicks + 2;
   }
+  logAction(`Sailor chose ${target ? target.name : '؟'} — ${drunkOne ? drunkOne.name : '؟'} became drunk.`);
   saveGame();
   refreshPlay();
 }
@@ -8296,6 +8231,45 @@ function setProfessorTarget(targetId){
       }
     }
   }
+  saveGame();
+  refreshPlay();
+}
+function setGossipPendingTarget(k, targetId){
+  game.infoPicks[k] = game.infoPicks[k] || {};
+  game.infoPicks[k].pendingTarget = targetId || null;
+  game.infoPicks[k].skipped = false;
+  saveGame();
+  refreshPlay();
+}
+function confirmGossipTarget(k){
+  const pick = game.infoPicks[k];
+  if(!pick || !pick.pendingTarget) return;
+  pick.target = pick.pendingTarget;
+  const target = game.players.find(x=>x.id===pick.target);
+  if(!target) return;
+  if(isProtectedFromDeath(target)){
+    const foolSaved = consumeFoolIfApplicable(target);
+    saveGame();
+    refreshPlay();
+    showInfo(foolSaved ? "The fool didn't die tonight due to their ability." : `${target.name} did not die — ${protectionReasonText(target)}.`);
+    return;
+  }
+  target.alive = false;
+  target.ghostVoteUsed = false;
+  target.diedAtNight = game.nightNum;
+  if(!noDashiiPoisonedIds().includes(target.id)) target.markers = (target.markers||[]).filter(m=>m!=='poisoned');
+  playDeathSound();
+  logAction(`Gossip's statement was true — ${target.name} dies.`);
+  saveGame();
+  refreshPlay();
+  checkMayorKillWarning(target);
+  checkReactiveDeathTrigger(target, false);
+  checkGrandmotherDeathLink(target);
+}
+function setGossipSkip(k){
+  game.infoPicks[k] = game.infoPicks[k] || {};
+  game.infoPicks[k].skipped = true;
+  game.infoPicks[k].pendingTarget = null;
   saveGame();
   refreshPlay();
 }
@@ -8593,46 +8567,75 @@ function setGamblerGuess(k, field, val){
   saveGame();
   refreshPlay();
 }
-function setInnkeeperTarget(k, field, val){
+function setInnkeeperPendingTarget(k, field, val){
   game.infoPicks[k] = game.infoPicks[k] || {};
-  const prevP1 = game.infoPicks[k].p1;
-  const prevP2 = game.infoPicks[k].p2;
-  [prevP1, prevP2].filter(Boolean).forEach(id=>{
-    const p = game.players.find(x=>x.id===id);
-    if(p) p.markers = (p.markers||[]).filter(m=>m!=='innkeeper_safe');
-  });
-  game.infoPicks[k][field] = val;
+  const pendingField = 'pending' + field.charAt(0).toUpperCase() + field.slice(1);
+  game.infoPicks[k][pendingField] = val || null;
+  saveGame();
+  refreshPlay();
+}
+function confirmInnkeeperTarget(k){
   const pick = game.infoPicks[k];
-  if(field==='p1' || field==='p2') checkGoonTargeted(val, 'Innkeeper');
-  const p1 = pick.p1 ? game.players.find(x=>x.id===pick.p1) : null;
-  const p2 = pick.p2 ? game.players.find(x=>x.id===pick.p2) : null;
-  const innkeeper = game.players.find(x=>x.character==='Innkeeper');
-  if(pick.drunk){
-    const drunkTarget = game.players.find(x=>x.id===pick.drunk);
-    if(drunkTarget){
-      checkGoonTargeted(drunkTarget.id, 'Innkeeper');
-      drunkTarget.markers = drunkTarget.markers || [];
-      if(!drunkTarget.markers.includes('drunk_effect')) drunkTarget.markers.push('drunk_effect');
-      drunkTarget.markerExpiry = drunkTarget.markerExpiry || {};
-      drunkTarget.markerExpiry.drunk_effect = Math.max(drunkTarget.markerExpiry.drunk_effect||0, game.totalAdvanceClicks + 2);
+  if(!pick || !pick.pendingP1 || !pick.pendingP2 || !pick.pendingDrunk) return;
+  // Clear whoever was previously (already-confirmed) protected, if retargeting.
+  [pick.p1, pick.p2].filter(Boolean).forEach(id=>{
+    const p = game.players.find(x=>x.id===id);
+    if(p){
+      p.markers = (p.markers||[]).filter(m=>m!=='innkeeper_safe');
+      if(p.markerExpiry) delete p.markerExpiry.innkeeper_safe;
     }
+  });
+  pick.p1 = pick.pendingP1;
+  pick.p2 = pick.pendingP2;
+  pick.drunk = pick.pendingDrunk;
+  checkGoonTargeted(pick.p1, 'Innkeeper');
+  checkGoonTargeted(pick.p2, 'Innkeeper');
+  const p1 = game.players.find(x=>x.id===pick.p1);
+  const p2 = game.players.find(x=>x.id===pick.p2);
+  const innkeeper = game.players.find(x=>x.character==='Innkeeper');
+  // If the Innkeeper herself is poisoned or drunk, her whole ability fails entirely — no
+  // protection, no drunk designation, matching the universal droison rule.
+  if(innkeeper && isUnreliable(innkeeper)){
+    logAction(`Innkeeper chose ${p1?p1.name:'?'} and ${p2?p2.name:'?'}, but is drunk or poisoned herself — the ability has no effect.`);
+    saveGame();
+    refreshPlay();
+    return;
+  }
+  const drunkTarget = game.players.find(x=>x.id===pick.drunk);
+  if(drunkTarget){
+    checkGoonTargeted(drunkTarget.id, 'Innkeeper');
+    drunkTarget.markers = drunkTarget.markers || [];
+    if(!drunkTarget.markers.includes('drunk_effect')) drunkTarget.markers.push('drunk_effect');
+    drunkTarget.markerExpiry = drunkTarget.markerExpiry || {};
+    drunkTarget.markerExpiry.drunk_effect = Math.max(drunkTarget.markerExpiry.drunk_effect||0, game.totalAdvanceClicks + 2);
   }
   // If the Innkeeper herself is the one designated drunk, her whole ability malfunctions —
   // neither of her two picks actually gets the protection.
   const innkeeperIsDrunkPick = innkeeper && pick.drunk === innkeeper.id;
-  if(p1 && p2 && pick.drunk && !innkeeperIsDrunkPick){
+  if(p1 && p2 && !innkeeperIsDrunkPick){
     [p1, p2].forEach(p=>{
       p.markers = p.markers || [];
       if(!p.markers.includes('innkeeper_safe')) p.markers.push('innkeeper_safe');
       p.markerExpiry = p.markerExpiry || {};
       p.markerExpiry.innkeeper_safe = Math.max(p.markerExpiry.innkeeper_safe||0, game.totalAdvanceClicks + 1);
     });
-    logAction(`Innkeeper protected ${p1.name} and ${p2.name} — drunk: ${game.players.find(x=>x.id===pick.drunk)?.name}.`);
-  } else if(p1 && p2 && pick.drunk && innkeeperIsDrunkPick){
+    logAction(`Innkeeper protected ${p1.name} and ${p2.name} — drunk: ${drunkTarget?drunkTarget.name:'?'}.`);
+  } else if(p1 && p2 && innkeeperIsDrunkPick){
     logAction(`Innkeeper chose ${p1.name} and ${p2.name}, but is drunk herself — neither is actually protected.`);
   }
   saveGame();
   refreshPlay();
+}
+function setExorcistPendingTarget(k, targetId){
+  game.infoPicks[k] = game.infoPicks[k] || {};
+  game.infoPicks[k].pendingTarget = targetId || null;
+  saveGame();
+  refreshPlay();
+}
+function confirmExorcistTarget(k){
+  const pick = game.infoPicks[k];
+  if(!pick || !pick.pendingTarget) return;
+  setExorcistTarget(pick.pendingTarget);
 }
 function setExorcistTarget(targetId){
   checkGoonTargeted(targetId, 'Exorcist');
@@ -8665,14 +8668,33 @@ function setExorcistTarget(targetId){
 function isDemonExorcisedTonight(demonPlayer){
   return !!(demonPlayer && game.exorcistBlockedDemonId===demonPlayer.id && game.exorcistBlockedAtNight===game.nightNum);
 }
-function setDevilsAdvocateTarget(targetId){
-  checkGoonTargeted(targetId, "Devil's Advocate");
-  const k = keyFor("Devil's Advocate");
+function setDevilsAdvocatePendingTarget(k, targetId){
   game.infoPicks[k] = game.infoPicks[k] || {};
-  game.infoPicks[k].target = targetId;
-  if(targetId){
-    game.devilsAdvocateProtectedId = targetId;
-    game.devilsAdvocateProtectedAtNight = game.nightNum;
+  game.infoPicks[k].pendingTarget = targetId || null;
+  saveGame();
+  refreshPlay();
+}
+function confirmDevilsAdvocateTarget(k){
+  const pick = game.infoPicks[k];
+  if(!pick || !pick.pendingTarget) return;
+  checkGoonTargeted(pick.pendingTarget, "Devil's Advocate");
+  if(pick.target && pick.target !== pick.pendingTarget){
+    const prev = game.players.find(x=>x.id===pick.target);
+    if(prev){
+      prev.markers = (prev.markers||[]).filter(m=>m!=='devils_advocate_protected');
+      if(prev.markerExpiry) delete prev.markerExpiry.devils_advocate_protected;
+    }
+  }
+  pick.target = pick.pendingTarget;
+  game.devilsAdvocateProtectedId = pick.pendingTarget;
+  game.devilsAdvocateProtectedAtNight = game.nightNum;
+  const target = game.players.find(x=>x.id===pick.pendingTarget);
+  if(target){
+    target.markers = target.markers || [];
+    if(!target.markers.includes('devils_advocate_protected')) target.markers.push('devils_advocate_protected');
+    // Expires 2 clicks from now (through tomorrow's day) -- a fresh pick is made every night.
+    target.markerExpiry = target.markerExpiry || {};
+    target.markerExpiry.devils_advocate_protected = game.totalAdvanceClicks + 2;
   }
   saveGame();
   refreshPlay();
@@ -9218,6 +9240,12 @@ function confirmPoisonerTarget(k){
   saveGame();
   refreshPlay();
 }
+function setPukkaPendingTarget(k, targetId){
+  game.infoPicks[k] = game.infoPicks[k] || {};
+  game.infoPicks[k].pendingTarget = targetId || null;
+  saveGame();
+  refreshPlay();
+}
 function setPukkaPoisonTarget(k, targetId){
   checkGoonTargeted(targetId, 'Pukka');
   game.infoPicks[k] = game.infoPicks[k] || {};
@@ -9250,37 +9278,57 @@ function setPukkaPoisonTarget(k, targetId){
   refreshPlay();
 }
 // BMR Shabaloth: kills both chosen targets once both slots are filled.
-function setShabalothTarget(k, field, targetId){
+function setShabalothPendingTarget(k, field, targetId){
   game.infoPicks[k] = game.infoPicks[k] || {};
-  game.infoPicks[k][field] = targetId;
+  const pendingField = 'pending' + field.charAt(0).toUpperCase() + field.slice(1);
+  game.infoPicks[k][pendingField] = targetId || null;
+  saveGame();
+  refreshPlay();
+}
+function confirmShabalothTarget(k){
   const pick = game.infoPicks[k];
+  if(!pick || !pick.pendingP1 || !pick.pendingP2) return;
+  pick.p1 = pick.pendingP1;
+  pick.p2 = pick.pendingP2;
   const killedTargets = [];
   const protectedTargets = [];
+  const attackedDeadTargets = [];
   [pick.p1, pick.p2].filter(Boolean).forEach(id=>{
     const target = game.players.find(x=>x.id===id);
-    if(target && target.alive){
-      if(isProtectedFromDeath(target)){
-        const foolSaved = consumeFoolIfApplicable(target);
-        protectedTargets.push({target, foolSaved});
-        return;
-      }
-      target.alive = false;
-      target.ghostVoteUsed = false;
-      target.diedAtNight = game.nightNum;
-      if(!noDashiiPoisonedIds().includes(target.id)) target.markers = (target.markers||[]).filter(m=>m!=='poisoned');
-      playDeathSound();
-      killedTargets.push(target);
+    if(!target) return;
+    if(!target.alive){
+      // Already dead -- no death to apply, but per the wiki this still counts as "attacked"
+      // for regurgitation purposes the following night.
+      attackedDeadTargets.push(target);
+      return;
     }
+    if(isProtectedFromDeath(target)){
+      const foolSaved = consumeFoolIfApplicable(target);
+      protectedTargets.push({target, foolSaved});
+      return;
+    }
+    target.alive = false;
+    target.ghostVoteUsed = false;
+    target.diedAtNight = game.nightNum;
+    if(!noDashiiPoisonedIds().includes(target.id)) target.markers = (target.markers||[]).filter(m=>m!=='poisoned');
+    playDeathSound();
+    killedTargets.push(target);
   });
   saveGame();
   refreshPlay();
   killedTargets.forEach(checkMayorKillWarning);
-  killedTargets.forEach(checkReactiveDeathTrigger);
+  killedTargets.forEach(t => checkReactiveDeathTrigger(t, true));
   killedTargets.forEach(checkGrandmotherDeathLink);
-  if(killedTargets.length>0){
+  const allAttackedIds = [...killedTargets, ...attackedDeadTargets].map(t=>t.id);
+  if(allAttackedIds.length>0){
     game.shabalothKillsByNight = game.shabalothKillsByNight || {};
-    game.shabalothKillsByNight[game.nightNum] = [...(game.shabalothKillsByNight[game.nightNum]||[]), ...killedTargets.map(t=>t.id)];
+    game.shabalothKillsByNight[game.nightNum] = [...(game.shabalothKillsByNight[game.nightNum]||[]), ...allAttackedIds];
+  }
+  if(killedTargets.length>0){
     logAction(`Shabaloth chose to kill ${killedTargets.map(t=>t.name).join(' and ')}.`);
+  }
+  if(attackedDeadTargets.length>0){
+    logAction(`Shabaloth also attacked ${attackedDeadTargets.map(t=>t.name).join(' and ')}, already dead — no further effect, but now a valid regurgitation candidate.`);
   }
   if(protectedTargets.length>0){
     showInfo(protectedTargets.map(pt=>pt.foolSaved ? `${pt.target.name}: The fool didn't die tonight due to their ability.` : `${pt.target.name} did not die.`).join(' '));
@@ -9291,6 +9339,8 @@ function setShabalothTarget(k, field, targetId){
 function setPoTarget(k, field, targetId){
   game.infoPicks[k] = game.infoPicks[k] || {};
   game.infoPicks[k][field] = targetId;
+  const po = game.players.find(x=>x.character==='Po');
+  if(po && po.poCharged) po.poChargedUsedAtNight = game.nightNum;
   if(targetId){
     const target = game.players.find(x=>x.id===targetId);
     if(target && target.alive){
@@ -9321,10 +9371,24 @@ function setPoTarget(k, field, targetId){
 function setPoSkip(poId){
   const po = game.players.find(x=>x.id===poId);
   if(!po) return;
-  po.poSkippedAtNight = game.nightNum;
+  po.poCharged = true;
   logAction(`Po chose not to kill anyone tonight (charging up).`);
   saveGame();
   refreshPlay();
+}
+function setPoPendingTarget(k, field, targetId){
+  game.infoPicks[k] = game.infoPicks[k] || {};
+  const pendingField = 'pending' + field.charAt(0).toUpperCase() + field.slice(1);
+  game.infoPicks[k][pendingField] = targetId || null;
+  saveGame();
+  refreshPlay();
+}
+function confirmPoCharged(k){
+  const pick = game.infoPicks[k];
+  if(!pick || !pick.pendingP1 || !pick.pendingP2 || !pick.pendingP3) return;
+  setPoTarget(k, 'p1', pick.pendingP1);
+  setPoTarget(k, 'p2', pick.pendingP2);
+  setPoTarget(k, 'p3', pick.pendingP3);
 }
 // Generic version of the Scarlet Woman conversion — works for any minion becoming the new demon.
 function convertToNewDemon(playerId, demonCharacterName, viaSelfKill){
@@ -9660,7 +9724,7 @@ function executionCardHtml(showAdvanceButton){
       <div class="row" style="margin-top:10px;">
         <select class="exec-select">
           <option value="">Who was executed (optional)...</option>
-          ${sortedByRoleType(game.players.filter(p=>p.alive)).map(p=>{
+          ${sortedByRoleType(game.players).map(p=>{
             const histEntry = courtHistoryForToday().find(h=>h.nomineeId===p.id);
             const color = playerOptionColor(p);
             const style = color ? ` style="color:${color};"` : '';
@@ -9683,7 +9747,7 @@ function executionCardHtml(showAdvanceButton){
       <div class="row" style="margin-top:6px;">
         <select class="exec-select-butcher">
           <option value="">Who was executed (optional)...</option>
-          ${sortedByRoleType(game.players.filter(p=>p.alive)).map(p=>{
+          ${sortedByRoleType(game.players).map(p=>{
             const histEntry = courtHistoryForToday().find(h=>h.nomineeId===p.id && h.isButcherExtra);
             const color = playerOptionColor(p);
             const style = color ? ` style="color:${color};"` : '';
@@ -9788,13 +9852,14 @@ function svJugglerHtml(isLastCard){
       }).join('<br>')}
     </div>
   ` : '';
+  const currentGuess = guesses[nextIdx] || {playerId:'', char:''};
   const currentRowHtml = nextIdx<5 ? `
     <div class="row" style="flex-wrap:nowrap;">
       <select style="flex:1;width:auto;min-width:0;" onchange="setJugglerGuess(${nextIdx}, 'playerId', this.value)">
         <option value="">Player...</option>
-        ${sortedByRoleType(game.players.filter(x=>x.id!==juggler.id)).map(x=>playerOptionHtml(x, null)).join('')}
+        ${sortedByRoleType(game.players.filter(x=>x.id!==juggler.id)).map(x=>playerOptionHtml(x, currentGuess.playerId)).join('')}
       </select>
-      <select style="flex:1;width:auto;min-width:0;" onchange="setJugglerGuess(${nextIdx}, 'char', this.value)">${charOptions(null)}</select>
+      <select style="flex:1;width:auto;min-width:0;" onchange="setJugglerGuess(${nextIdx}, 'char', this.value)">${charOptions(currentGuess.char)}</select>
     </div>
   ` : `<p class="muted">All 5 guesses entered.</p>`;
   return `
@@ -9819,17 +9884,6 @@ function svDayFlagsHtml(){
 }
 function svVoteFlagOverlayHtml(){
   if(game.subphase!=='day') return '';
-  if(game.script==='bmr'){
-    const hasGossip = game.players.some(p=>p.character==='Gossip' && p.alive);
-    if(!hasGossip) return '';
-    const flags = game.dayFlags[game.dayNum] || {};
-    const gossipToggle = `
-      <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--mist);">
-        <input type="checkbox" style="width:auto;" ${flags.gossipCorrect?'checked':''} onchange="setDayFlag('gossipCorrect', this.checked)">
-        Gossip's statement was correct today
-      </label>`;
-    return `<div class="vote-flag vote-flag-single">${gossipToggle}</div>`;
-  }
   if(game.script!=='sv') return '';
   const hasFG = game.players.some(p=>p.character==='Flowergirl');
   const hasTC = game.players.some(p=>p.character==='Town Crier');
@@ -10124,6 +10178,30 @@ function generateExecutionAnnouncement(btn, selectClass, textField){
   if(!pid){ game[textField] = ''; saveGame(); refreshPlay(); return; }
   const p = game.players.find(x=>x.id===pid);
   const executedChar = p.isDrunk ? p.drunkCover : p.character;
+  // A player who was already dead before this nomination even started (not from an earlier
+  // resolution today) is a genuinely different case now that any player can be nominated.
+  // toggleAlive() would incorrectly revive them, since it only ever flips the current state --
+  // so this needs its own explicit branch rather than falling through to the normal path.
+  if(!p.alive){
+    // Zombuul specifically, with her fake-death flag already set, is the one case where a
+    // "dead" nominee's execution genuinely means something -- this is her real, second death.
+    if(p.character==='Zombuul' && p.zombuulFakeDeathUsed){
+      p.actsWhileDead = false;
+      game.court.publicMessage = `${p.name} تم اعدامه — هذه المرة مات فعلا`;
+      game[textField] = withHeader(`${p.name} تم إعدامه من قبل البلدة — ماتت الزمبول فعلاً هذه المرة.`);
+      logAction(`${p.name} (Zombuul) has died for real this time — this was her second death.`);
+      showInfo(`${p.name} (Zombuul) has genuinely died this time. Per the rules, good wins now.`);
+      saveGame();
+      refreshPlay();
+      return;
+    }
+    game.court.publicMessage = `${p.name} تم اعدامه، لكنه كان ميتا بالفعل`;
+    game[textField] = withHeader(`${p.name} تم إعدامه من قبل البلدة، لكنه كان ميتًا بالفعل.`);
+    logAction(`${p.name} was nominated and exceeded threshold while already dead — no further effect.`);
+    saveGame();
+    refreshPlay();
+    return;
+  }
   if(p.character==='Sailor' && !(p.isDrunk || hasMarker(p,'drunk_effect'))){
     game[textField] = withHeader(`${p.name} تم إعدامه من قبل البلدة، لكنه لم يمت.`);
     saveGame();
@@ -10156,7 +10234,7 @@ function generateExecutionAnnouncement(btn, selectClass, textField){
     return;
   }
   const pacifist = game.players.find(x=>x.character==='Pacifist' && x.alive);
-  if(pacifist && !isEvil(p)){
+  if(pacifist && !isUnreliable(pacifist) && !isEvil(p)){
     ui.modal = {type:'pacifistChoice', targetId: pid, textField};
     render();
     return;
@@ -10171,8 +10249,13 @@ function generateExecutionAnnouncement(btn, selectClass, textField){
   checkSpyRecluseReminder([p.id], 'Undertaker', false);
   if(executedChar && TYPE_OF[executedChar]==='outsider') game.lastExecutedWasOutsiderAtDay = game.dayNum;
   game[textField] = withHeader(`${p.name} تم إعدامه ومات.`);
+  const wasAliveBeforeExecution2 = p.alive;
   toggleAlive(pid);
-  if(executedChar && TYPE_OF[executedChar]==='minion') checkMinstrelTrigger();
+  if(executedChar && TYPE_OF[executedChar]==='minion') checkMinstrelTrigger(p, wasAliveBeforeExecution2);
+  if(wasAliveBeforeExecution2 && !p.alive){
+    game.diedFromResolutionTodayIds = game.diedFromResolutionTodayIds || [];
+    if(!game.diedFromResolutionTodayIds.includes(p.id)) game.diedFromResolutionTodayIds.push(p.id);
+  }
   if(executedChar==='Saint'){
     showInfo('The Saint has been executed by the town — the game ends now and Evil wins.');
   }
@@ -10180,6 +10263,7 @@ function generateExecutionAnnouncement(btn, selectClass, textField){
 function advanceToDay(){
   game.totalAdvanceClicks = (game.totalAdvanceClicks||0) + 1;
   game.subphase='day'; game.dayNum+=1; game.dayHasDeath=false;
+  game.diedFromResolutionTodayIds = [];
   game.execAnnouncementText = '';
   game.butcherExecAnnouncementText = '';
   game.players.forEach(p=>{ p.markers = (p.markers||[]).filter(m=>m!=='protected' && m!=='innkeeper_safe'); });
@@ -10212,19 +10296,11 @@ function advanceToNight(){
   if(exorcistPick && exorcistPick.target) game.exorcistLastTargetId = exorcistPick.target;
   const daPick = game.infoPicks[keyFor("Devil's Advocate")];
   if(daPick && daPick.target) game.devilsAdvocateLastTargetId = daPick.target;
-  let gossipTriggered = false;
   let shabalothReviveCandidates = [];
   if(game.script==='bmr' && game.shabalothKillsByNight && game.shabalothKillsByNight[game.nightNum]){
     shabalothReviveCandidates = game.shabalothKillsByNight[game.nightNum]
       .map(id=>game.players.find(p=>p.id===id))
       .filter(p=>p && !p.alive); // still dead — only offer genuine candidates
-  }
-  if(game.script==='bmr'){
-    const gossip = game.players.find(p=>p.character==='Gossip' && p.alive);
-    const flags = game.dayFlags[game.dayNum] || {};
-    if(gossip && flags.gossipCorrect && !isUnreliable(gossip)){
-      gossipTriggered = true;
-    }
   }
   game.players.forEach(p=>{
     if(p.goonDrunkUntilNight !== undefined){
@@ -10261,6 +10337,14 @@ function advanceToNight(){
     }
   }
   game.subphase='night'; game.nightNum+=1; resolvePukkaOvernight();
+  // If Po genuinely used her charged 3-kill turn on the night we just left, clear the flag now.
+  // An Exorcist-blocked night never sets poChargedUsedAtNight, so the flag correctly survives
+  // untouched through any number of blocked nights until she actually gets a real turn.
+  game.players.forEach(p=>{
+    if(p.character==='Po' && p.poCharged && p.poChargedUsedAtNight === game.nightNum - 1){
+      p.poCharged = false;
+    }
+  });
   if(game.moonchildPendingKillId){
     const target = game.players.find(x=>x.id===game.moonchildPendingKillId);
     if(target && target.alive){
@@ -10273,10 +10357,8 @@ function advanceToNight(){
   }
   saveGame(); go('play');
   if(shabalothReviveCandidates.length>0){
-    ui.modal = {type:'shabalothRevive', candidateIds: shabalothReviveCandidates.map(p=>p.id), thenGossip: gossipTriggered};
+    ui.modal = {type:'shabalothRevive', candidateIds: shabalothReviveCandidates.map(p=>p.id)};
     render();
-  } else if(gossipTriggered){
-    showInfo('The Gossip made a correct statement today — a player must die.');
   }
 }
 function goBackPhase(){
@@ -10346,7 +10428,6 @@ function summaryHtml(){
     renderModal();
   }
 })();
-</script><div id="modal-host"></div>
-
-
-</body></html>
+</script>
+</body>
+</html>
