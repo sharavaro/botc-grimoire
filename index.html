@@ -855,7 +855,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.20';
+const APP_BUILD = '2026.10.20.2';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1074,8 +1074,21 @@ async function loadGame(){
     const parsed = JSON.parse(res.value);
     // Merge onto fresh defaults so any fields added since this game was saved (e.g. a new
     // tracking dict) exist safely instead of crashing when accessed.
-    return {...freshGame(), ...parsed};
+    return migrateSavedGame({...freshGame(), ...parsed});
   }catch(e){ return null; }
+}
+// Brings games saved by older builds up to the current data shapes, so a changed format can
+// never crash the restore. Juggler guesses used to be keyed by day ({1:[...]}); now a flat array.
+function migrateSavedGame(g){
+  if(!Array.isArray(g.jugglerGuesses)){
+    const old = g.jugglerGuesses;
+    let flat = [];
+    if(old && typeof old==='object'){
+      Object.keys(old).sort().forEach(k=>{ if(Array.isArray(old[k])) flat = flat.concat(old[k]); });
+    }
+    g.jugglerGuesses = flat.filter(x=>x && typeof x==='object').slice(0,5);
+  }
+  return g;
 }
 async function clearGame(){
   try{ await storageDelete('active-game'); }catch(e){}
