@@ -128,7 +128,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.12';
+const PLAYER_BUILD = '2026.10.28.15';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -429,12 +429,12 @@ function sortedSeats(){
   return seats.sort((a,b)=>((a.seat??999)-(b.seat??999)) || String(a.name).localeCompare(String(b.name)));
 }
 function mySeat(){ return S.pid && S.pub && S.pub.seats ? S.pub.seats[appKey(S.pid)] : null; }
-// The Storyteller is always drawn at the top as a fixed reference point; seats run clockwise from them.
+// The Storyteller is always drawn at the bottom as a fixed reference point; seats run clockwise from them.
 function seatPos(i, n, radius){
-  const ang = ((i+1)/(n+1))*2*Math.PI - Math.PI/2;
+  const ang = ((i+1)/(n+1))*2*Math.PI + Math.PI/2;
   return {x: 50 + radius*Math.cos(ang), y: 50 + radius*Math.sin(ang)};
 }
-function hostMarkHtml(radius){ return `<div class="host-mark" style="left:50%;top:${50-radius}%;"><div class="av">🎭</div><div class="nm">الراوي</div></div>`; }
+function hostMarkHtml(radius){ return `<div class="host-mark" style="left:50%;top:${50+radius}%;"><div class="av">🎭</div><div class="nm">الراوي</div></div>`; }
 
 /* ---------- choosing your seat (once) ---------- */
 function seatOrder(){
@@ -476,7 +476,7 @@ function seatPickerCard(){
   }).join('');
   return `<div class="card qcard">
     <h3 style="font-size:17px;">🪑 اختر مقعدك</h3>
-    <p class="muted" style="margin:4px 0 0;">الراوي في الأعلى. اختر الرقم الذي يطابق مكان جلوسك بالنسبة للراوي. لا يمكنك تغييره بعد الاختيار.</p>
+    <p class="muted" style="margin:4px 0 0;">الراوي في الأسفل. اختر الرقم الذي يطابق مكان جلوسك بالنسبة للراوي. لا يمكنك تغييره بعد الاختيار.</p>
     <div class="circle" style="margin-top:4px;">${hostMarkHtml(radius)}${slots}
       <div class="center-info"><div class="stat">${S.seatPending!==null ? 'جارٍ الحجز…' : 'اضغط على رقم'}</div></div>
     </div>

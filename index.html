@@ -863,7 +863,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.14';
+const APP_BUILD = '2026.10.28.15';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -2300,9 +2300,9 @@ function positionTokens(){
       });
     } else {
       const r = rect.width/2 - 58;
-      // Seat positions leave the top slot for the Storyteller, exactly like the players' phones.
+      // Seat positions leave the bottom slot for the Storyteller, exactly like the players' phones.
       tokens.forEach((t,i)=>{
-        const angle = ((i+1)/(n+1))*2*Math.PI - Math.PI/2;
+        const angle = ((i+1)/(n+1))*2*Math.PI + Math.PI/2;
         const x = 50 + (r/rect.width*100)*Math.cos(angle);
         const y = 50 + (r/rect.height*100)*Math.sin(angle);
         t.style.left = x+'%'; t.style.top = y+'%';
@@ -2311,7 +2311,7 @@ function positionTokens(){
       if(gaps.length){
         gaps.forEach(g=>{
           const i = parseInt(g.dataset.insertAfter,10);
-          const angle = ((i+1.5)/(n+1))*2*Math.PI - Math.PI/2;
+          const angle = ((i+1.5)/(n+1))*2*Math.PI + Math.PI/2;
           const x = 50 + (r/rect.width*100)*Math.cos(angle);
           const y = 50 + (r/rect.height*100)*Math.sin(angle);
           g.style.left = x+'%'; g.style.top = y+'%';
@@ -2345,7 +2345,7 @@ function stPlaceHostMark(wrap, layout, rect){
     mark.style.left = '50%'; mark.style.top = '92%'; // the open end of the U, between the last and first seats
   } else {
     const r = rect.width/2 - 58;
-    mark.style.left = '50%'; mark.style.top = (50 - (r/rect.height*100))+'%';
+    mark.style.left = '50%'; mark.style.top = (50 + (r/rect.height*100))+'%';
   }
 }
 // Distributes seats along an inverted-U path: up the left side, across the top, down the right side —
@@ -3982,7 +3982,7 @@ function courtScreenHtml(){
   const nom = game.court.nomination;
   const aliveCount = game.players.filter(p=>p.alive).length;
   const positions = seated.map((p,i)=>{
-    const angle = ((i+1)/(n+1))*2*Math.PI - Math.PI/2; // top slot is the Storyteller's
+    const angle = ((i+1)/(n+1))*2*Math.PI + Math.PI/2; // bottom slot is the Storyteller's
     return {p, x: 50+42*Math.cos(angle), y: 50+42*Math.sin(angle)};
   });
   return `
@@ -3996,7 +3996,7 @@ function courtScreenHtml(){
         <div class="court-board-wrap">
           ${nom && nom.isExile ? `<div class="court-exile-smoke"></div>` : ''}
           <svg id="court-nom-line-svg" class="court-line-svg"></svg>
-          <div class="st-host-mark" style="left:50%;top:8%;"><div class="st-av">🎭</div><div class="st-nm">الراوي</div></div>
+          <div class="st-host-mark" style="left:50%;top:92%;"><div class="st-av">🎭</div><div class="st-nm">الراوي</div></div>
           ${positions.map(({p,x,y})=>courtTokenHtml(p,x,y)).join('')}
           ${nom && nom.nomineeId==='__STORYTELLER__' ? `
             <div class="court-token court-storyteller-token court-token-nominee" style="left:50%;top:50%;" data-pid="__STORYTELLER__">
