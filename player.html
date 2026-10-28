@@ -145,7 +145,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.19';
+const PLAYER_BUILD = '2026.10.28.22';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -406,42 +406,76 @@ function pendingQuestions(){
   return Object.values(inbox).filter(m=>m.kind==='question' && !m.answeredNames && !S.qSent[m.qid]).sort((a,b)=>(a.at||0)-(b.at||0));
 }
 function findQuestion(qid){ return Object.values((S.priv && S.priv.inbox) || {}).find(m=>m.kind==='question' && m.qid===qid); }
+function qN(q){ return (q && typeof q.n==='number') ? q.n : 1; } // 0 = character only (e.g. Philosopher, Courtier)
+function qReady(q){
+  const sel = S.qSel[q.qid] || [];
+  return sel.length===qN(q) && (!q.charOptions || !!(S.qChar||{})[q.qid]);
+}
 function qPick(qid, pid){
   const q = findQuestion(qid); if(!q || S.qSent[qid]) return;
+  const n = qN(q);
   const sel = (S.qSel[qid] || []).slice();
   const i = sel.indexOf(pid);
   if(i>=0) sel.splice(i,1);
-  else if(sel.length < (q.n||1)) sel.push(pid);
-  else if((q.n||1)===1) sel.splice(0,1,pid);
+  else if(sel.length < n) sel.push(pid);
+  else if(n===1) sel.splice(0,1,pid);
   S.qSel[qid] = sel; render();
 }
-async function qSubmit(qid){
-  const q = findQuestion(qid); const sel = S.qSel[qid] || [];
-  if(!q || sel.length!==(q.n||1)) return;
+function qPickChar(qid, idx){
+  const q = findQuestion(qid); if(!q || S.qSent[qid] || !q.charOptions) return;
+  const c = q.charOptions[idx]; if(!c) return;
+  S.qChar = S.qChar || {};
+  S.qChar[qid] = S.qChar[qid]===c.name ? null : c.name;
+  render();
+}
+async function qSend(qid, payload){
   try{
-    await NET.set(R(`answers/${S.uid}/${qid}`), {picks: sel, at: Date.now()});
-    S.qSent[qid] = {picks: sel, at: Date.now()};
+    await NET.set(R(`answers/${S.uid}/${qid}`), Object.assign({at: Date.now()}, payload));
+    S.qSent[qid] = Object.assign({at: Date.now()}, payload);
     lsSet('qsent_'+S.room, S.qSent);
     showBanner('✓ تم إرسال اختيارك');
   }catch(e){ showErr('تعذّر الإرسال', e, 'answers'); }
   render();
 }
+async function qSubmit(qid){
+  const q = findQuestion(qid);
+  if(!q || !qReady(q)) return;
+  const payload = {picks: S.qSel[qid] || []};
+  if(q.charOptions) payload.char = S.qChar[qid];
+  await qSend(qid, payload);
+}
+async function qSkip(qid){
+  const q = findQuestion(qid);
+  if(!q || !q.skip) return;
+  await qSend(qid, {picks: [], skip: true});
+}
 function optionName(q, pid){ const o = (q.options||[]).find(x=>x.pid===pid); return o ? o.name : ''; }
+function charLabel(q, name){ const c = (q.charOptions||[]).find(x=>x.name===name); return c ? (c.nameAr || c.name) : name; }
 function questionCardHtml(q){
   const sel = S.qSel[q.qid] || [];
   const sent = S.qSent[q.qid];
-  const n = q.n || 1;
+  const n = qN(q);
   if(q.answeredNames || sent){
-    const names = q.answeredNames || (sent.picks||[]).map(pid=>optionName(q,pid));
+    const names = q.answeredNames || (sent.skip ? ['لا أحد'] : (sent.picks||[]).map(pid=>optionName(q,pid)).concat(sent.char ? [charLabel(q, sent.char)] : []));
     return `<div class="card msg"><div class="lbl"><span>${esc(q.label||'')}</span><span>اختيارك</span></div><div class="msgtext">${fmt(q.text)}</div>
       <div class="qdone">${q.answeredNames ? '✓ استلم الراوي اختيارك' : '✓ تم الإرسال'}: <b>${names.map(x=>`<bdi>${esc(x)}</bdi>`).join(' و ')}</b></div></div>`;
   }
+  const chosenChar = (S.qChar||{})[q.qid] || null;
+  const players = n>0 ? `
+    <div class="muted" style="margin-top:6px;">${n===1 ? 'اختر لاعبًا واحدًا' : `اختر ${n} لاعبين`} (${sel.length}/${n})</div>
+    <div class="namegrid">${(q.options||[]).map(o=>`<button class="${sel.includes(o.pid)?'sel':''} ${o.dead?'deadopt':''}" onclick="qPick('${esc(q.qid)}','${esc(o.pid)}')"><bdi>${esc(o.name)}</bdi>${o.dead?' <span style="font-size:11px;">⚰️</span>':''}</button>`).join('')}</div>` : '';
+  const chars = q.charOptions ? `
+    <div class="muted" style="margin-top:10px;">اختر شخصية ${chosenChar ? `— <b style="color:var(--gold-bright);">${esc(charLabel(q, chosenChar))}</b>` : ''}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">${q.charOptions.map((c,i)=>`<button class="${chosenChar===c.name?'sel':''}" style="display:flex;align-items:center;gap:6px;padding:6px 8px;text-align:start;${chosenChar===c.name?'background:var(--gold);color:#1a1405;border-color:var(--gold-bright);':''}" onclick="qPickChar('${esc(q.qid)}',${i})">
+        <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:#e9dfc4;overflow:hidden;display:flex;align-items:center;justify-content:center;">${iconHtml(c.name,'')}</span>
+        <span style="line-height:1.2;"><span style="color:${chosenChar===c.name?'#1a1405':(TYPE_COLORS[c.type]||'inherit')};font-size:13px;">${esc(c.nameAr||c.name)}</span><br><span class="en" style="font-size:10px;opacity:.75;">${esc(c.name)}</span></span>
+      </button>`).join('')}</div>` : '';
   return `<div class="card qcard">
     <div class="lbl" style="font-size:12px;color:var(--gold);margin-bottom:6px;">❓ ${esc(q.label||'')}</div>
     <div class="msgtext">${fmt(q.text)}</div>
-    <div class="muted" style="margin-top:6px;">${n===1 ? 'اختر لاعبًا واحدًا' : `اختر ${n} لاعبين`} (${sel.length}/${n})</div>
-    <div class="namegrid">${(q.options||[]).map(o=>`<button class="${sel.includes(o.pid)?'sel':''} ${o.dead?'deadopt':''}" onclick="qPick('${esc(q.qid)}','${esc(o.pid)}')"><bdi>${esc(o.name)}</bdi>${o.dead?' <span style="font-size:11px;">⚰️</span>':''}</button>`).join('')}</div>
-    <button class="primary" style="width:100%;margin-top:12px;" ${sel.length===n?'':'disabled'} onclick="qSubmit('${esc(q.qid)}')">إرسال الاختيار</button>
+    ${players}${chars}
+    <button class="primary" style="width:100%;margin-top:12px;" ${qReady(q)?'':'disabled'} onclick="qSubmit('${esc(q.qid)}')">إرسال الاختيار</button>
+    ${q.skip ? `<button class="ghost" style="width:100%;margin-top:8px;" onclick="qSkip('${esc(q.qid)}')">لا أحد / ليس الليلة</button>` : ''}
   </div>`;
 }
 

@@ -863,7 +863,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.21';
+const APP_BUILD = '2026.10.28.22';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -6519,9 +6519,11 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
   const MESSAGE_FIRST_STEPS = ['Poisoner','Monk','Butler','Witch','Cerenovus','Pit-Hag',"Devil's Advocate",'Gambler','Exorcist','Sailor','Courtier','Assassin','Professor','Bone Collector','Bureaucrat','Imp','Fang Gu','No Dashii','Vigormortis','Vortox','Zombuul','Pukka','Shabaloth','Po','Gossip','Lunatic'];
   const isMessageFirst = !isDual && MESSAGE_FIRST_STEPS.includes(step);
   // Phone choices: the card's own "ask" message is the question — one send button does both.
-  const appSpec = appChoiceSpec(step);
-  const appAskOnResultBox = !!appSpec && (!isDual || becameDemonTonight);
-  const appAskOnAskBox = !!appSpec && isDual && !becameDemonTonight;
+  const appSpec = appChoiceSpec(step, p);
+  // Where the choice is asked: the "ask" box on two-message cards, otherwise the card's only box.
+  // (A Godfather's kill night and a just-became-the-Demon night put the choice in the second box.)
+  const appAskOnResultBox = !!appSpec && (!isDual || becameDemonTonight || godfatherKillCondition);
+  const appAskOnAskBox = !!appSpec && isDual && !becameDemonTonight && !godfatherKillCondition;
   const appAskSend = `appAskChoiceFromBox('${step.replace(/'/g,"\\'")}', '${p.id}', this)`;
   // Fortune Teller and Ravenkeeper: the result has no meaning at all until the relevant pick(s)
   // are made, so hide the whole box rather than show an empty placeholder.
@@ -10732,73 +10734,136 @@ async function appSendAllRoles(){
    — exactly as if the Storyteller had picked it from the dropdown. The Storyteller still
    confirms on the card as usual. */
 let appCurrentActor = null;
+// Helpers for the choice table below.
+const appAliveNotSelf = a=>game.players.filter(x=>x.alive && x.id!==a.id);
+const appAnyNotSelf = a=>game.players.filter(x=>x.id!==a.id);
+const appGoodChars = ()=>[...CHARACTERS.townsfolk, ...CHARACTERS.outsider].map(c=>c.name);
+const appAllChars = ()=>[...CHARACTERS.townsfolk, ...CHARACTERS.outsider, ...CHARACTERS.minion, ...CHARACTERS.demon].map(c=>c.name);
+const appDemonKill = (step, fn)=>({ n:1, key:()=>`${keyFor(step)}-kill`, eligible:a=>appAliveNotSelf(a), apply:(k,ids)=>fn(k, ids[0]), ask:'اختر لاعبًا ليموت الليلة.' });
+/* For each character who CHOOSES at night: how many players (n), which players or characters the
+   card allows (never filtered by hidden information — e.g. the Pit-Hag may name any character),
+   and how the answer reaches the card:
+   - default: it fills the card's pending dropdown, exactly like picking it yourself; you still Confirm.
+   - manual:true — the card's handler acts immediately (kills, swaps, uses the ability), so the phone's
+     answer is only SHOWN on the card with an "Apply" button; nothing happens until you press it.
+   - skip:true — the player may also choose nobody / not tonight. */
 const APP_PHONE_CHOICES = {
   tb: {
     'Poisoner': { n:1, key:()=>`${keyFor('Poisoner')}-target`,
       eligible:a=>game.players.filter(x=>x.alive), // any living player, per the rules (the dropdown's good-only list is just a Storyteller shortcut)
-      picked:k=>{ const p=game.infoPicks[k]||{}; return p.target ? [p.target] : null; },
-      apply:(k,ids)=>setPoisonerTarget(k, ids[0]),
-      ask:'اختر لاعبًا لتسميمه الليلة.' },
-    'Monk': { n:1, key:()=>keyFor('Monk'),
-      eligible:a=>game.players.filter(x=>x.id!==a.id),
-      picked:k=>{ const p=game.infoPicks[k]||{}; return p.pendingTarget ? [p.pendingTarget] : (p.confirmedTarget ? [p.confirmedTarget] : null); },
-      apply:(k,ids)=>setMonkPendingTarget(k, ids[0]),
-      ask:'اختر لاعبًا (ليس أنت) لحمايته من العفريت الليلة.' },
-    'Fortune Teller': { n:2, key:()=>`ft-${game.nightNum}`,
-      eligible:a=>game.players.slice(),
-      picked:k=>{ const p=game.ftPicks[game.nightNum]||{}; return (p.p1 && p.p2) ? [p.p1, p.p2] : null; },
-      apply:(k,ids)=>{ setFtPick('p1', ids[0]); setFtPick('p2', ids[1]); },
-      ask:'اختر لاعبين اثنين: ستعرف إذا كان أحدهما هو العفريت.' },
-    'Butler': { n:1, key:()=>keyFor('Butler'),
-      eligible:a=>game.players.filter(x=>x.id!==a.id),
-      picked:k=>{ const p=game.infoPicks[k]||{}; return p.pendingTarget ? [p.pendingTarget] : (p.confirmedTarget ? [p.confirmedTarget] : null); },
-      apply:(k,ids)=>setButlerPendingTarget(k, ids[0]),
-      ask:'اختر سيدك (لاعب ليس أنت): غدًا يمكنك التصويت فقط إذا صوّت سيدك أيضًا.' },
-    'Imp': { n:1, key:()=>`${keyFor('Imp')}-kill`,
-      eligible:a=>game.players.filter(x=>x.alive),
-      picked:k=>{ const p=game.infoPicks[k]||{}; return p.pendingTarget ? [p.pendingTarget] : (p.target ? [p.target] : null); },
-      apply:(k,ids)=>setDemonPendingKillTarget(k, ids[0]),
-      ask:'اختر لاعبًا ليموت الليلة.', selfLabel:'أنت (تموت ويصبح أحد أعوانك العفريت)' },
-    'Ravenkeeper': { n:1, key:()=>keyFor('Ravenkeeper'),
-      eligible:a=>game.players.slice(),
-      picked:k=>{ const p=game.infoPicks[k]||{}; return p.target ? [p.target] : null; },
-      apply:(k,ids)=>{ checkGoonTargeted(ids[0],'Ravenkeeper'); setInfoPick(k,'target',ids[0]); },
-      ask:'لقد مِتَّ الليلة. اختر لاعبًا لتعرف شخصيته.' },
-    'Bureaucrat': { n:1, key:()=>keyFor('Bureaucrat'),
-      eligible:a=>game.players.filter(x=>x.id!==a.id && (x.alive || !x.ghostVoteUsed)),
-      picked:k=>{ const p=game.infoPicks[k]||{}; return p.target ? [p.target] : null; },
-      apply:(k,ids)=>setBureaucratTarget(ids[0]),
-      ask:'اختر لاعبًا (ليس أنت): صوته يُحسب بثلاثة أصوات غدًا.' },
-    'Thief': { n:1, key:()=>keyFor('Thief'),
-      eligible:a=>game.players.filter(x=>x.id!==a.id && (x.alive || !x.ghostVoteUsed)),
-      picked:k=>{ const p=game.infoPicks[k]||{}; return p.target ? [p.target] : null; },
-      apply:(k,ids)=>setThiefTarget(ids[0]),
-      ask:'اختر لاعبًا (ليس أنت): صوته يُحسب سلبيًا غدًا.' },
+      apply:(k,ids)=>setPoisonerTarget(k, ids[0]), ask:'اختر لاعبًا لتسميمه الليلة.' },
+    'Monk': { n:1, key:()=>keyFor('Monk'), eligible:a=>appAnyNotSelf(a),
+      apply:(k,ids)=>setMonkPendingTarget(k, ids[0]), ask:'اختر لاعبًا (ليس أنت) لحمايته من العفريت الليلة.' },
+    'Fortune Teller': { n:2, key:()=>`ft-${game.nightNum}`, eligible:a=>game.players.slice(),
+      apply:(k,ids)=>{ setFtPick('p1', ids[0]); setFtPick('p2', ids[1]); }, ask:'اختر لاعبين اثنين: ستعرف إذا كان أحدهما هو العفريت.' },
+    'Butler': { n:1, key:()=>keyFor('Butler'), eligible:a=>appAnyNotSelf(a),
+      apply:(k,ids)=>setButlerPendingTarget(k, ids[0]), ask:'اختر سيدك (لاعب ليس أنت): غدًا يمكنك التصويت فقط إذا صوّت سيدك أيضًا.' },
+    'Imp': { n:1, key:()=>`${keyFor('Imp')}-kill`, eligible:a=>game.players.filter(x=>x.alive),
+      apply:(k,ids)=>setDemonPendingKillTarget(k, ids[0]), ask:'اختر لاعبًا ليموت الليلة.', selfLabel:'أنت (تموت ويصبح أحد أعوانك العفريت)' },
+    'Ravenkeeper': { n:1, key:()=>keyFor('Ravenkeeper'), eligible:a=>game.players.slice(),
+      apply:(k,ids)=>{ checkGoonTargeted(ids[0],'Ravenkeeper'); setInfoPick(k,'target',ids[0]); }, ask:'لقد مِتَّ الليلة. اختر لاعبًا لتعرف شخصيته.' },
+    'Bureaucrat': { n:1, key:()=>keyFor('Bureaucrat'), eligible:a=>game.players.filter(x=>x.id!==a.id && (x.alive || !x.ghostVoteUsed)),
+      apply:(k,ids)=>setBureaucratTarget(ids[0]), ask:'اختر لاعبًا (ليس أنت): صوته يُحسب بثلاثة أصوات غدًا.' },
+    'Thief': { n:1, key:()=>keyFor('Thief'), eligible:a=>game.players.filter(x=>x.id!==a.id && (x.alive || !x.ghostVoteUsed)),
+      apply:(k,ids)=>setThiefTarget(ids[0]), ask:'اختر لاعبًا (ليس أنت): صوته يُحسب سلبيًا غدًا.' },
+  },
+  sv: {
+    'Philosopher': { n:0, chars:appGoodChars, skip:true, manual:true, key:()=>keyFor('Philosopher'), eligible:a=>[],
+      apply:(k,ids,ch)=>choosePhilosopherAbility(ch), ask:'اختر شخصية خيّرة لتحصل على قدرتها، أو لا أحد.' },
+    'Snake Charmer': { n:1, key:a=>(a && a.extraAbilityChar==='Snake Charmer') ? `${keyFor('Snake Charmer')}-${a.id}` : keyFor('Snake Charmer'),
+      eligible:a=>appAliveNotSelf(a), apply:(k,ids)=>setSnakeCharmerTarget(k, ids[0]), ask:'اختر لاعبًا حيًا: إذا كان العفريت، تتبادلان الشخصية والفريق.' },
+    'Witch': { n:1, key:()=>keyFor('Witch'), eligible:a=>game.players.slice(),
+      apply:(k,ids)=>setWitchPendingTarget(k, ids[0]), ask:'اختر لاعبًا: إذا رشّح غدًا يموت.' },
+    'Cerenovus': { n:1, chars:appGoodChars, key:()=>keyFor('Cerenovus'), eligible:a=>game.players.slice(),
+      apply:(k,ids,ch)=>{ setCerenovusPendingTarget(k, ids[0]); setCerenovusPendingChar(k, ch); }, ask:'اختر لاعبًا وشخصية خيّرة: يجب أن يتظاهر غدًا بأنه تلك الشخصية وإلا قد يُعدم.' },
+    // Any character on the script — offering only "not in play" ones would tell the Pit-Hag what IS in play.
+    'Pit-Hag': { n:1, chars:appAllChars, key:()=>keyFor('Pit-Hag'), eligible:a=>game.players.slice(),
+      apply:(k,ids,ch)=>{ setPitHagPendingTarget(k,'p1',ids[0]); if(!game.players.some(x=>x.character===ch)) setPitHagPendingTarget(k,'char',ch); },
+      ask:'اختر لاعبًا وشخصية: يصبح تلك الشخصية (إذا لم تكن في اللعبة).' },
+    'Dreamer': { n:1, key:()=>keyFor('Dreamer'), eligible:a=>game.players.filter(x=>x.id!==a.id && !(x.character && TYPE_OF[x.character]==='traveller')),
+      apply:(k,ids)=>setInfoPick(k,'p1',ids[0]), ask:'اختر لاعبًا (ليس أنت ولا مسافرًا): ستعرف شخصية خيّرة وشخصية شريرة، إحداهما صحيحة.' },
+    'Seamstress': { n:2, skip:true, key:()=>keyFor('Seamstress'), eligible:a=>appAnyNotSelf(a),
+      apply:(k,ids)=>{ setInfoPick(k,'p1',ids[0]); setInfoPick(k,'p2',ids[1]); }, ask:'مرة واحدة في اللعبة: اختر لاعبين (ليس أنت) لتعرف إن كانا من نفس الفريق، أو لا أحد.' },
+    'Fang Gu': appDemonKill('Fang Gu', (k,id)=>setFangGuPendingTarget(k,id)),
+    'Vigormortis': appDemonKill('Vigormortis', (k,id)=>setVigormortisPendingTarget(k,id)),
+    'No Dashii': appDemonKill('No Dashii', (k,id)=>setDemonPendingKillTarget(k,id)),
+    'Vortox': appDemonKill('Vortox', (k,id)=>setDemonPendingKillTarget(k,id)),
+    'Bone Collector': { n:1, skip:true, manual:true, key:()=>keyFor('Bone Collector'), eligible:a=>game.players.filter(x=>!x.alive),
+      apply:(k,ids)=>setBoneCollectorTarget(ids[0]), ask:'مرة واحدة في اللعبة: اختر لاعبًا ميتًا ليستعيد قدرته حتى الغسق، أو لا أحد.' },
+  },
+  bmr: {
+    'Sailor': { n:1, key:()=>keyFor('Sailor'), eligible:a=>appAliveNotSelf(a),
+      apply:(k,ids)=>setSailorPendingTarget(k, ids[0]), ask:'اختر لاعبًا حيًا: أحدكما يصبح مخمورًا حتى الغسق.' },
+    'Chambermaid': { n:2, key:()=>keyFor('Chambermaid'), eligible:a=>appAliveNotSelf(a),
+      apply:(k,ids)=>{ setChambermaidPick(k,'p1',ids[0]); setChambermaidPick(k,'p2',ids[1]); }, ask:'اختر لاعبين حيين (ليس أنت): ستعرف كم منهما استيقظ هذه الليلة بسبب قدرته.' },
+    'Exorcist': { n:1, key:()=>keyFor('Exorcist'), eligible:a=>game.players.filter(x=>x.id!==game.exorcistLastTargetId),
+      apply:(k,ids)=>setExorcistPendingTarget(k, ids[0]), ask:'اختر لاعبًا (غير اختيار الليلة السابقة).' },
+    'Innkeeper': { n:2, key:()=>keyFor('Innkeeper'), eligible:a=>game.players.slice(),
+      apply:(k,ids)=>{ setInnkeeperPendingTarget(k,'p1',ids[0]); setInnkeeperPendingTarget(k,'p2',ids[1]); }, ask:'اختر لاعبين: لا يمكن أن يموتا الليلة، لكن أحدهما يصبح مخمورًا حتى الغسق.' },
+    'Gambler': { n:1, chars:appAllChars, manual:true, key:()=>keyFor('Gambler'), eligible:a=>game.players.slice(),
+      apply:(k,ids,ch)=>{ setGamblerGuess(k,'player',ids[0]); setGamblerGuess(k,'char',ch); }, ask:'اختر لاعبًا وخمّن شخصيته: إذا أخطأت تموت.' },
+    'Courtier': { n:0, chars:appAllChars, skip:true, manual:true, key:()=>keyFor('Courtier'), eligible:a=>[],
+      apply:(k,ids,ch)=>setCourtierTarget(ch), ask:'مرة واحدة في اللعبة: اختر شخصية تصبح مخمورة لثلاث ليالٍ وثلاثة أيام، أو لا أحد.' },
+    'Professor': { n:1, skip:true, manual:true, key:()=>keyFor('Professor'), eligible:a=>game.players.filter(x=>!x.alive),
+      apply:(k,ids)=>setProfessorTarget(ids[0]), ask:'مرة واحدة في اللعبة: اختر لاعبًا ميتًا لإعادته للحياة إن كان من القرويين، أو لا أحد.' },
+    'Godfather': Object.assign(appDemonKill('Godfather', (k,id)=>setDemonPendingKillTarget(k,id)), {
+      when:a=>game.nightNum!==1 && game.lastExecutedWasOutsiderAtDay===game.dayNum, ask:'أُعدم أحد الغرباء اليوم: اختر لاعبًا ليموت الليلة.' }),
+    "Devil's Advocate": { n:1, key:()=>keyFor("Devil's Advocate"), eligible:a=>game.players.filter(x=>x.alive && x.id!==game.devilsAdvocateLastTargetId),
+      apply:(k,ids)=>setDevilsAdvocatePendingTarget(k, ids[0]), ask:'اختر لاعبًا حيًا (غير من اخترته الليلة السابقة): إذا أُعدم غدًا، فلن يموت.' },
+    'Assassin': { n:1, skip:true, manual:true, key:()=>keyFor('Assassin'), eligible:a=>appAnyNotSelf(a),
+      apply:(k,ids)=>assassinKillTarget(ids[0]), ask:'مرة واحدة في اللعبة: اختر لاعبًا ليموت مهما كانت حمايته، أو لا أحد الليلة.' },
+    'Zombuul': appDemonKill('Zombuul', (k,id)=>setDemonPendingKillTarget(k,id)),
+    'Pukka': { n:1, key:()=>`${keyFor('Pukka')}-poison`, eligible:a=>appAliveNotSelf(a),
+      apply:(k,ids)=>setPukkaPendingTarget(k, ids[0]), ask:'اختر لاعبًا: يصبح مسمومًا، ويموت المسموم السابق.' },
+    'Shabaloth': { n:2, key:()=>keyFor('Shabaloth'), eligible:a=>appAnyNotSelf(a),
+      apply:(k,ids)=>{ setShabalothPendingTarget(k,'p1',ids[0]); setShabalothPendingTarget(k,'p2',ids[1]); }, ask:'اختر لاعبين: يموتان الليلة.' },
+    // Po: one player, or nobody (to charge up) — three players the night after charging.
+    'Po': { n:a=>(a && a.poCharged) ? 3 : 1, skip:a=>!(a && a.poCharged), key:()=>keyFor('Po'), eligible:a=>appAliveNotSelf(a),
+      apply:(k,ids)=>{ setPoPendingTarget(k,'p1',ids[0]); if(ids[1]) setPoPendingTarget(k,'p2',ids[1]); if(ids[2]) setPoPendingTarget(k,'p3',ids[2]); },
+      onSkip:(k,a)=>setPoSkip(a.id),
+      ask:a=>(a && a.poCharged) ? 'اختر ثلاثة لاعبين: يموتون الليلة.' : 'اختر لاعبًا ليموت، أو لا أحد لتجمع قوتك (ثلاثة الليلة القادمة).' },
+    // The Lunatic thinks he is the Demon: same question as that Demon would get. Fake picks only.
+    'Lunatic': { n:a=>(a && a.drunkCover==='Shabaloth') ? 2 : 1, skip:a=>!!(a && a.drunkCover==='Po'),
+      key:()=>`lunatic-fake-${game.nightNum}`, eligible:a=>game.players.filter(x=>x.alive),
+      apply:(k,ids)=>{ setLunaticFakePick(k,'p1',ids[0]); if(ids[1]) setLunaticFakePick(k,'p2',ids[1]); },
+      onSkip:(k)=>setLunaticFakeSkip(k),
+      ask:a=>(a && a.drunkCover==='Shabaloth') ? 'اختر لاعبين: يموتان الليلة.' : 'اختر لاعبًا ليموت الليلة.' },
   },
 };
-function appChoiceSpec(step){
+function appSpecVal(v, actor){ return typeof v==='function' ? v(actor) : v; }
+// Returns the choice spec for this step and actor, or null if the phone shouldn't be asked.
+function appChoiceSpec(step, actor){
   const bucket = APP_PHONE_CHOICES[game.script||'tb'];
-  return bucket ? bucket[step] || null : null;
+  const spec = bucket ? bucket[step] || null : null;
+  if(!spec) return null;
+  if(spec.when && actor && !spec.when(actor)) return null;
+  return spec;
 }
-// Question ids are random, so nothing about the character ever appears in them.
 function appNewQid(){ return 'q'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 function appFindQuestion(step, actor){
   const all = Object.values(game.appQuestions||{}).filter(q=>q.step===step && q.actorId===actor.id && q.night===game.nightNum && !q.superseded);
   return all.sort((a,b)=>b.at-a.at)[0] || null;
 }
+function appAnswerText(q){
+  if(q.answer && q.answer.skip) return 'nobody (skip)';
+  const names = (q.answer && q.answer.picks || []).map(id=>{ const x=game.players.find(p=>p.id===id); return x ? escapeHtml(x.name) : '?'; });
+  if(q.answer && q.answer.char) names.push(`<i>${escapeHtml(q.answer.char)}</i>`);
+  return names.join(' + ');
+}
 function appPhoneAskStripHtml(step){
   const actor = appCurrentActor;
   if(!actor || !game || game.phase!=='play' || game.subphase!=='night') return '';
-  const spec = appChoiceSpec(step);
+  const spec = appChoiceSpec(step, actor);
   if(!spec) return '';
   game.appQuestions = game.appQuestions || {};
   const q = appFindQuestion(step, actor);
   const name = escapeHtml(actor.name);
-  let body;
   // Status only: asking happens through the message's own 📱 send button.
+  let body;
   if(q && q.answer){
-    const names = q.answer.map(id=>{ const x=game.players.find(p=>p.id===id); return x ? escapeHtml(x.name) : '?'; }).join(' + ');
-    body = `<span style="color:#6fc58a;">📱 ${name} chose: <b>${names}</b></span>`;
+    const applyBtn = q.manual && !q.applied && !q.answer.skip ? ` <button class="primary small" onclick="appApplyStoredAnswer('${q.qid}')">✅ Apply</button>` : '';
+    const note = q.note ? ` <span class="muted" style="font-size:11px;">(${escapeHtml(q.note)})</span>` : '';
+    body = `<span style="color:#6fc58a;">📱 ${name} chose: <b>${appAnswerText(q)}</b></span>${note}${applyBtn}`;
   } else if(q){
     body = `<span class="muted">⏳ Waiting for ${name}'s answer on their phone… (press 📱 again to re-ask)</span>`;
   } else {
@@ -10813,7 +10878,7 @@ function appAskChoiceFromBox(step, actorId, btn){
 }
 async function appAskChoice(step, actorId, promptText, btn){
   const actor = game.players.find(p=>p.id===actorId);
-  const spec = appChoiceSpec(step);
+  const spec = appChoiceSpec(step, actor);
   if(!actor || !spec) return;
   game.appQuestions = game.appQuestions || {};
   const prev = appFindQuestion(step, actor);
@@ -10826,32 +10891,50 @@ async function appAskChoice(step, actorId, promptText, btn){
     if(uidOf && NET && appState.attached){ try{ await NET.remove(appRoomPath(`private/${uidOf}/inbox/${oldId}`)); }catch(e){} }
   }
   const qid = appNewQid();
+  const n = appSpecVal(spec.n, actor);
   const options = spec.eligible(actor).map(x=>({pid:x.id, name: x.id===actor.id ? (spec.selfLabel||'أنت') : x.name, dead: x.alive===false}));
-  game.appQuestions[qid] = { qid, step, actorId, key: spec.key(), night: game.nightNum, n: spec.n, at: Date.now(), answer: null };
+  const charOptions = spec.chars ? spec.chars().map(c=>{ const i = CHAR_LOOKUP[c]; return {name:c, nameAr: i ? (i.nameAr||'') : '', type: TYPE_OF[c]||''}; }) : null;
+  const skip = !!appSpecVal(spec.skip, actor);
+  game.appQuestions[qid] = { qid, step, actorId, key: spec.key(actor), night: game.nightNum, n, at: Date.now(), answer: null, manual: !!spec.manual };
   const msg = { id: 'q_'+qid, qid, kind:'question', at: Date.now(), label:`ليلة ${game.nightNum}`,
-    text: (promptText && String(promptText).trim()) || spec.ask, n: spec.n, options };
+    text: (promptText && String(promptText).trim()) || appSpecVal(spec.ask, actor), n, options, skip };
+  if(charOptions) msg.charOptions = charOptions;
   const status = await appDeliver(actorId, msg, null);
   appSendFeedback(btn, status, actor);
   if(route==='play') refreshPlay(); else render();
   if(status==='queued') showInfo(`${actor.name} hasn't joined on their phone yet — the question will reach them the moment they join.`);
 }
 // An answer arrived from a phone: check it against the same rules the card uses, then feed it
-// into the card exactly like a dropdown pick.
+// into the card exactly like a dropdown pick (or hold it for "Apply" when the handler acts at once).
 function appApplyAnswer(pid, qid, ans){
   game.appQuestions = game.appQuestions || {};
   const q = game.appQuestions[qid];
   if(!q || q.actorId!==pid || q.answer || q.superseded) return false;
   if(q.night!==game.nightNum || game.subphase!=='night') return false; // a stale answer from an earlier night
   const actor = game.players.find(p=>p.id===pid);
-  const spec = appChoiceSpec(q.step);
+  const spec = appChoiceSpec(q.step, actor);
   if(!actor || !spec) return false;
+  const isSkip = !!(ans && ans.skip);
   const picks = Array.isArray(ans && ans.picks) ? ans.picks.map(String) : [];
-  const allowed = new Set(spec.eligible(actor).map(x=>x.id));
-  if(picks.length!==spec.n || new Set(picks).size!==picks.length || !picks.every(id=>allowed.has(id))) return false;
-  q.answer = picks; q.answeredAt = Date.now();
-  try{ spec.apply(spec.key(), picks); }catch(e){ console.warn('apply answer', e); }
-  const names = picks.map(id=>{ const x=game.players.find(p=>p.id===id); return x ? x.name : '?'; });
-  logAction(`📱 ${actor.name} (${q.step}) chose on their phone: ${names.join(', ')}.`);
+  const ch = ans && ans.char ? String(ans.char) : null;
+  if(isSkip){
+    if(!appSpecVal(spec.skip, actor)) return false;
+  } else {
+    const allowed = new Set(spec.eligible(actor).map(x=>x.id));
+    const n = appSpecVal(spec.n, actor);
+    if(picks.length!==n || new Set(picks).size!==picks.length || !picks.every(id=>allowed.has(id))) return false;
+    if(spec.chars && (!ch || !spec.chars().includes(ch))) return false;
+    if(!spec.chars && ch) return false;
+  }
+  q.answer = {picks, char: ch, skip: isSkip}; q.answeredAt = Date.now();
+  if(q.step==='Pit-Hag' && ch && game.players.some(x=>x.character===ch)) q.note = 'that character is already in play — nothing happens';
+  if(isSkip){
+    if(spec.onSkip){ try{ spec.onSkip(q.key, actor); }catch(e){ console.warn('skip', e); } }
+  } else if(!spec.manual){
+    try{ spec.apply(q.key, picks, ch); }catch(e){ console.warn('apply answer', e); }
+  }
+  const names = isSkip ? ['لا أحد'] : picks.map(id=>{ const x=game.players.find(p=>p.id===id); return x ? x.name : '?'; }).concat(ch ? [(CHAR_LOOKUP[ch] && CHAR_LOOKUP[ch].nameAr) || ch] : []);
+  logAction(`📱 ${actor.name} (${q.step}) chose on their phone: ${isSkip ? 'nobody' : names.join(', ')}.`);
   const msgId = 'q_'+qid;
   if(game.appInbox && game.appInbox[pid] && game.appInbox[pid][msgId]) game.appInbox[pid][msgId].answeredNames = names;
   const uidOf = appState.claims[appKey(pid)];
@@ -10859,6 +10942,18 @@ function appApplyAnswer(pid, qid, ans){
   saveGame();
   if(route==='play') refreshPlay(); else render();
   return true;
+}
+// "Apply" for answers whose card handler acts immediately (the Storyteller stays in control).
+function appApplyStoredAnswer(qid){
+  const q = (game.appQuestions||{})[qid];
+  if(!q || !q.answer || q.applied || q.answer.skip) return;
+  const actor = game.players.find(p=>p.id===q.actorId);
+  const spec = appChoiceSpec(q.step, actor);
+  if(!spec) return;
+  q.applied = true;
+  try{ spec.apply(q.key, q.answer.picks, q.answer.char); }catch(e){ console.warn('apply', e); }
+  saveGame();
+  if(route==='play') refreshPlay(); else render();
 }
 function appOnAnswers(val){
   val = val || {};
