@@ -602,8 +602,8 @@ const SCRIPTS = {
         {name:'Imp', nameAr:'إمب', ability:'Each night except the first: choose a player, they die. May choose self — a Minion becomes the Imp instead.', abilityAr:'في كل ليلة تقتل لاعبًا، إذا قتلت نفسك فإن أحد أعوانك يصبح هو العفريت الجديد.'},
       ],
     },
-    firstNightOrder: ['Bureaucrat','Poisoner','Washerwoman','Librarian','Investigator','Chef','Empath','Fortune Teller','Butler','Spy'],
-    otherNightOrder: ['Bureaucrat','Poisoner','Monk','Scarlet Woman','Imp','Ravenkeeper','Empath','Fortune Teller','Undertaker','Butler','Spy'],
+    firstNightOrder: ['Bureaucrat','Thief','Poisoner','Washerwoman','Librarian','Investigator','Chef','Empath','Fortune Teller','Butler','Spy'],
+    otherNightOrder: ['Bureaucrat','Thief','Poisoner','Monk','Scarlet Woman','Imp','Ravenkeeper','Empath','Fortune Teller','Undertaker','Butler','Spy'],
   },
   sv: {
     label:'Sects & Violets',
@@ -859,7 +859,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.2';
+const APP_BUILD = '2026.10.28.4';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -6376,6 +6376,7 @@ function pickSummaryText(step, p){
   return parts.join(' + ');
 }
 function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation, isLastCard){
+  appCurrentActor = p; // lets the card's pickers offer "ask on phone" to this exact player
   const k = `${keyFor(step)}-${p.id}`;
   const done = !!game.nightChecks[k];
   // Snake Charmer's pick storage needs to be genuinely separate for the Philosopher's own card
@@ -6692,7 +6693,7 @@ function copyAndCollapseReveal(key, pid, btn){
   }, 400);
 }
 function pickControlsHtml(step){
-  return pickControlsHtmlInner(step);
+  return pickControlsHtmlInner(step) + appPhoneAskStripHtml(step);
 }
 function pickControlsHtmlInner(step){
   const alive = game.players; // allow picking any player, dead or alive, storyteller's call
@@ -7389,7 +7390,7 @@ function pickControlsHtmlInner(step){
       <div class="char-strip">
         <select onchange="setPoisonerTarget('${k}', this.value)">
           <option value="">Poison who...</option>
-          ${sortedByRoleType(game.players.filter(x=>x.alive && !isEvil(x))).map(x=>playerOptionHtml(x, pick.target)).join('')}
+          ${sortedByRoleType(game.players.filter(x=>(x.alive && !isEvil(x)) || x.id===pick.target)).map(x=>playerOptionHtml(x, pick.target)).join('')}
         </select>
         ${needsConfirm ? `<button class="primary small" onclick="confirmPoisonerTarget('${k}')">✅ Confirm</button>` : ''}
       </div>
@@ -10471,6 +10472,7 @@ async function appResetForNewGame(){
   await NET.remove(appRoomPath('private'));
   await NET.remove(appRoomPath('reads'));
   await NET.remove(appRoomPath('presence'));
+  await NET.remove(appRoomPath('answers'));
   appState.claims = {}; appState.presence = {}; appState.reads = {};
   appState.gameId = gid; appState.lastPublicJson = null;
   appSaveRoomRecord();
@@ -10494,7 +10496,7 @@ async function appStartRoom(){
       if(owner === NET.uid){
         // An old room of this same grimoire: safe to reuse after clearing what's left in it.
         appState.code = tryCode;
-        for(const sub of ['public','script','icons','claims','private','reads','presence']){ try{ await NET.remove(appRoomPath(sub)); }catch(e){} }
+        for(const sub of ['public','script','icons','claims','private','reads','presence','answers']){ try{ await NET.remove(appRoomPath(sub)); }catch(e){} }
         code = tryCode;
       } else if(!owner){
         try{ await NET.set(`rooms/${tryCode}/owner`, NET.uid); code = tryCode; }catch(e){ /* someone took it first: try another */ }
@@ -10517,6 +10519,7 @@ async function appAttach(){
   appState.unsubs.push(NET.on(appRoomPath('claims'), val=>appOnClaims(val||{})));
   appState.unsubs.push(NET.on(appRoomPath('presence'), val=>{ appState.presence = val||{}; appRefreshPanel(); }));
   appState.unsubs.push(NET.on(appRoomPath('reads'), val=>{ appState.reads = val||{}; appRefreshPanel(); }));
+  appState.unsubs.push(NET.on(appRoomPath('answers'), val=>appOnAnswers(val)));
   if(NET.onConnected) appState.unsubs.push(NET.onConnected(ok=>{ appState.online = ok; appRefreshPanel(); }));
   else appState.online = true;
   appState.lastPublicJson = null; appState.lastScriptKey = null;
@@ -10535,6 +10538,12 @@ async function appResumeRoom(){
     await appConnect();
     const owner = await NET.get(`rooms/${rec.code}/owner`);
     if(owner !== NET.uid){ storageDelete('app-room'); return; }
+    if(!/^[0-9]{4}$/.test(rec.code)){
+      // A room from before 4-digit codes: retire it so the next room gets a short code.
+      appState.code = rec.code;
+      await appCloseRoom();
+      return;
+    }
     appState.code = rec.code; appState.gameId = rec.gameId || null;
     await appAttach();
   }catch(e){ appState.error = e && e.message==='not-configured' ? 'not-configured' : (e && e.message || String(e)); }
@@ -10543,7 +10552,7 @@ async function appResumeRoom(){
 async function appCloseRoom(){
   if(!appState.code) return;
   try{
-    for(const sub of ['public','script','icons','claims','private','reads','presence','meta']) await NET.remove(appRoomPath(sub));
+    for(const sub of ['public','script','icons','claims','private','reads','presence','answers','meta']) await NET.remove(appRoomPath(sub));
   }catch(e){}
   appDetach();
   appState.code = null; appState.claims = {}; appState.presence = {}; appState.reads = {};
@@ -10635,6 +10644,145 @@ async function appSendAllRoles(){
   targets.forEach(p=>{ ui.collapsedReveals[p.id] = true; });
   render();
   showInfo(queued ? `Roles sent: ${sent} delivered, ${queued} waiting for players who haven't joined yet (they'll get theirs the moment they join).` : `All ${sent} roles delivered to phones.`);
+}
+
+
+/* ---- Tap-to-choose answers (Trouble Brewing) ----
+   For each TB character who CHOOSES players at night: how many players, which players the
+   card allows (mirrors the card's own dropdown), and the card handler the answer feeds into
+   — exactly as if the Storyteller had picked it from the dropdown. The Storyteller still
+   confirms on the card as usual. */
+let appCurrentActor = null;
+const APP_PHONE_CHOICES = {
+  tb: {
+    'Poisoner': { n:1, key:()=>`${keyFor('Poisoner')}-target`,
+      eligible:a=>game.players.filter(x=>x.alive), // any living player, per the rules (the dropdown's good-only list is just a Storyteller shortcut)
+      picked:k=>{ const p=game.infoPicks[k]||{}; return p.target ? [p.target] : null; },
+      apply:(k,ids)=>setPoisonerTarget(k, ids[0]),
+      ask:'اختر لاعبًا لتسميمه الليلة.' },
+    'Monk': { n:1, key:()=>keyFor('Monk'),
+      eligible:a=>game.players.filter(x=>x.id!==a.id),
+      picked:k=>{ const p=game.infoPicks[k]||{}; return p.pendingTarget ? [p.pendingTarget] : (p.confirmedTarget ? [p.confirmedTarget] : null); },
+      apply:(k,ids)=>setMonkPendingTarget(k, ids[0]),
+      ask:'اختر لاعبًا (ليس أنت) لحمايته من العفريت الليلة.' },
+    'Fortune Teller': { n:2, key:()=>`ft-${game.nightNum}`,
+      eligible:a=>game.players.slice(),
+      picked:k=>{ const p=game.ftPicks[game.nightNum]||{}; return (p.p1 && p.p2) ? [p.p1, p.p2] : null; },
+      apply:(k,ids)=>{ setFtPick('p1', ids[0]); setFtPick('p2', ids[1]); },
+      ask:'اختر لاعبين اثنين: ستعرف إذا كان أحدهما هو العفريت.' },
+    'Butler': { n:1, key:()=>keyFor('Butler'),
+      eligible:a=>game.players.filter(x=>x.id!==a.id),
+      picked:k=>{ const p=game.infoPicks[k]||{}; return p.pendingTarget ? [p.pendingTarget] : (p.confirmedTarget ? [p.confirmedTarget] : null); },
+      apply:(k,ids)=>setButlerPendingTarget(k, ids[0]),
+      ask:'اختر سيدك (لاعب ليس أنت): غدًا يمكنك التصويت فقط إذا صوّت سيدك أيضًا.' },
+    'Imp': { n:1, key:()=>`${keyFor('Imp')}-kill`,
+      eligible:a=>game.players.filter(x=>x.alive),
+      picked:k=>{ const p=game.infoPicks[k]||{}; return p.pendingTarget ? [p.pendingTarget] : (p.target ? [p.target] : null); },
+      apply:(k,ids)=>setDemonPendingKillTarget(k, ids[0]),
+      ask:'اختر لاعبًا ليموت الليلة.', selfLabel:'أنت (تموت ويصبح أحد أعوانك العفريت)' },
+    'Ravenkeeper': { n:1, key:()=>keyFor('Ravenkeeper'),
+      eligible:a=>game.players.slice(),
+      picked:k=>{ const p=game.infoPicks[k]||{}; return p.target ? [p.target] : null; },
+      apply:(k,ids)=>{ checkGoonTargeted(ids[0],'Ravenkeeper'); setInfoPick(k,'target',ids[0]); },
+      ask:'لقد مِتَّ الليلة. اختر لاعبًا لتعرف شخصيته.' },
+    'Bureaucrat': { n:1, key:()=>keyFor('Bureaucrat'),
+      eligible:a=>game.players.filter(x=>x.id!==a.id && (x.alive || !x.ghostVoteUsed)),
+      picked:k=>{ const p=game.infoPicks[k]||{}; return p.target ? [p.target] : null; },
+      apply:(k,ids)=>setBureaucratTarget(ids[0]),
+      ask:'اختر لاعبًا (ليس أنت): صوته يُحسب بثلاثة أصوات غدًا.' },
+    'Thief': { n:1, key:()=>keyFor('Thief'),
+      eligible:a=>game.players.filter(x=>x.id!==a.id && (x.alive || !x.ghostVoteUsed)),
+      picked:k=>{ const p=game.infoPicks[k]||{}; return p.target ? [p.target] : null; },
+      apply:(k,ids)=>setThiefTarget(ids[0]),
+      ask:'اختر لاعبًا (ليس أنت): صوته يُحسب سلبيًا غدًا.' },
+  },
+};
+function appChoiceSpec(step){
+  const bucket = APP_PHONE_CHOICES[game.script||'tb'];
+  return bucket ? bucket[step] || null : null;
+}
+// Question ids are random, so nothing about the character ever appears in them.
+function appNewQid(){ return 'q'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function appFindQuestion(step, actor){
+  const all = Object.values(game.appQuestions||{}).filter(q=>q.step===step && q.actorId===actor.id && q.night===game.nightNum && !q.superseded);
+  return all.sort((a,b)=>b.at-a.at)[0] || null;
+}
+function appPhoneAskStripHtml(step){
+  const actor = appCurrentActor;
+  if(!actor || !game || game.phase!=='play' || game.subphase!=='night') return '';
+  const spec = appChoiceSpec(step);
+  if(!spec) return '';
+  game.appQuestions = game.appQuestions || {};
+  const q = appFindQuestion(step, actor);
+  const name = escapeHtml(actor.name);
+  let body;
+  if(q && q.answer){
+    const names = q.answer.map(id=>{ const x=game.players.find(p=>p.id===id); return x ? escapeHtml(x.name) : '?'; }).join(' + ');
+    body = `<span style="color:#6fc58a;">📱 ${name} chose: <b>${names}</b></span> <button class="ghost small" onclick="appAskChoice('${step.replace(/'/g,"\\'")}', '${actor.id}')">Ask again</button>`;
+  } else if(q){
+    body = `<span class="muted">⏳ Waiting for ${name}'s answer on their phone…</span> <button class="ghost small" onclick="appAskChoice('${step.replace(/'/g,"\\'")}', '${actor.id}')">Ask again</button>`;
+  } else {
+    body = `<button class="ghost small" onclick="appAskChoice('${step.replace(/'/g,"\\'")}', '${actor.id}')" style="border-color:var(--gold);">📱 Ask ${name} to choose on their phone</button>`;
+  }
+  return `<div class="app-ask-strip" style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${body}</div>`;
+}
+async function appAskChoice(step, actorId){
+  const actor = game.players.find(p=>p.id===actorId);
+  const spec = appChoiceSpec(step);
+  if(!actor || !spec) return;
+  game.appQuestions = game.appQuestions || {};
+  const prev = appFindQuestion(step, actor);
+  if(prev){
+    // Re-asking replaces the earlier question everywhere, so the phone never shows two of them.
+    prev.superseded = true;
+    const oldId = 'q_'+prev.qid;
+    if(game.appInbox && game.appInbox[actorId]) delete game.appInbox[actorId][oldId];
+    const uidOf = appState.claims[appKey(actorId)];
+    if(uidOf && NET && appState.attached){ try{ await NET.remove(appRoomPath(`private/${uidOf}/inbox/${oldId}`)); }catch(e){} }
+  }
+  const qid = appNewQid();
+  const options = spec.eligible(actor).map(x=>({pid:x.id, name: x.id===actor.id ? (spec.selfLabel||'أنت') : x.name, dead: x.alive===false}));
+  game.appQuestions[qid] = { qid, step, actorId, key: spec.key(), night: game.nightNum, n: spec.n, at: Date.now(), answer: null };
+  const msg = { id: 'q_'+qid, qid, kind:'question', at: Date.now(), label:`ليلة ${game.nightNum}`,
+    text: spec.ask, n: spec.n, options };
+  const status = await appDeliver(actorId, msg, null);
+  render();
+  if(status==='queued') showInfo(`${actor.name} hasn't joined on their phone yet — the question will reach them the moment they join.`);
+}
+// An answer arrived from a phone: check it against the same rules the card uses, then feed it
+// into the card exactly like a dropdown pick.
+function appApplyAnswer(pid, qid, ans){
+  game.appQuestions = game.appQuestions || {};
+  const q = game.appQuestions[qid];
+  if(!q || q.actorId!==pid || q.answer || q.superseded) return false;
+  if(q.night!==game.nightNum || game.subphase!=='night') return false; // a stale answer from an earlier night
+  const actor = game.players.find(p=>p.id===pid);
+  const spec = appChoiceSpec(q.step);
+  if(!actor || !spec) return false;
+  const picks = Array.isArray(ans && ans.picks) ? ans.picks.map(String) : [];
+  const allowed = new Set(spec.eligible(actor).map(x=>x.id));
+  if(picks.length!==spec.n || new Set(picks).size!==picks.length || !picks.every(id=>allowed.has(id))) return false;
+  q.answer = picks; q.answeredAt = Date.now();
+  try{ spec.apply(spec.key(), picks); }catch(e){ console.warn('apply answer', e); }
+  const names = picks.map(id=>{ const x=game.players.find(p=>p.id===id); return x ? x.name : '?'; });
+  logAction(`📱 ${actor.name} (${q.step}) chose on their phone: ${names.join(', ')}.`);
+  const msgId = 'q_'+qid;
+  if(game.appInbox && game.appInbox[pid] && game.appInbox[pid][msgId]) game.appInbox[pid][msgId].answeredNames = names;
+  const uidOf = appState.claims[appKey(pid)];
+  if(uidOf && NET) NET.set(appRoomPath(`private/${uidOf}/inbox/${msgId}/answeredNames`), names).catch(()=>{});
+  saveGame();
+  if(route==='play') refreshPlay(); else render();
+  return true;
+}
+function appOnAnswers(val){
+  val = val || {};
+  for(const uidOf of Object.keys(val)){
+    const pidKey = Object.keys(appState.claims).find(k=>appState.claims[k]===uidOf);
+    if(!pidKey) continue;
+    const p = game.players.find(x=>appKey(x.id)===pidKey);
+    if(!p) continue;
+    for(const qid of Object.keys(val[uidOf]||{})) appApplyAnswer(p.id, qid, val[uidOf][qid]);
+  }
 }
 
 // ---- Storyteller panel ----

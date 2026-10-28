@@ -99,6 +99,10 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
 .modal{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;z-index:30;padding:20px;}
 .modal .card{max-width:380px;width:100%;text-align:center;}
 .err{color:#ff9a8f;}
+.qcard{border:2px solid var(--gold-bright);box-shadow:0 0 22px #e6c65c33;}
+.qcard .namegrid button.sel{background:var(--gold);color:#1a1405;border-color:var(--gold-bright);font-weight:700;}
+.qcard .namegrid button.deadopt{opacity:.75;}
+.qdone{color:#8fd6a4;font-size:14px;margin-top:8px;}
 </style>
 </head>
 <body>
@@ -111,7 +115,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.2';
+const PLAYER_BUILD = '2026.10.28.4';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -133,6 +137,7 @@ const S = {
   pub:null, script:null, icons:{}, priv:null,
   tab:'role', roleShown:false, refTab:'chars', showEnglish:false,
   seenMsgs:{}, reads:{}, banner:null, confirmPid:null, unsubs:[], privUnsub:null,
+  qSel:{}, qSent:{},
 };
 
 /* ---------- storage helpers (per-device memory of which room/name this phone is) ---------- */
@@ -276,14 +281,17 @@ function onPrivate(v){
   const fresh = Object.keys(inbox).filter(id=>!prevInbox[id]);
   if(!firstLoad && fresh.length){
     const isRole = fresh.some(id=>inbox[id].kind==='role');
-    showBanner(isRole ? '🎭 وصلك دورك' : '✉️ رسالة جديدة من الراوي');
+    const isQuestion = fresh.some(id=>inbox[id].kind==='question');
+    showBanner(isQuestion ? '❓ الراوي يطلب اختيارك الآن' : (isRole ? '🎭 وصلك دورك' : '✉️ رسالة جديدة من الراوي'));
+    // A re-asked question starts fresh.
+    fresh.forEach(id=>{ if(inbox[id].kind==='question'){ delete S.qSent[inbox[id].qid]; delete S.qSel[inbox[id].qid]; } });
     try{ navigator.vibrate && navigator.vibrate([180,80,180]); }catch(e){}
     if(isRole){ S.tab = 'role'; S.roleShown = false; }
   }
   if(S.tab==='inbox') markAllRead();
   render();
 }
-function loadReads(){ S.reads = lsGet('reads_'+S.room) || {}; }
+function loadReads(){ S.reads = lsGet('reads_'+S.room) || {}; S.qSent = lsGet('qsent_'+S.room) || {}; }
 function unreadIds(){
   const inbox = (S.priv && S.priv.inbox) || {};
   return Object.keys(inbox).filter(id=>!S.reads[id]);
@@ -307,6 +315,51 @@ function setRefTab(t){ S.refTab = t; render(); }
 function toggleEnglish(){ S.showEnglish = !S.showEnglish; render(); }
 function showBanner(text){ S.banner = text; render(); clearTimeout(showBanner._t); showBanner._t = setTimeout(()=>{ S.banner = null; render(); }, 3500); }
 function switchName(){ lsDel('join'); if(S.pid){ leaveSeat(); } render(); }
+
+/* ---------- answering the Storyteller's questions ---------- */
+function pendingQuestions(){
+  const inbox = (S.priv && S.priv.inbox) || {};
+  return Object.values(inbox).filter(m=>m.kind==='question' && !m.answeredNames && !S.qSent[m.qid]).sort((a,b)=>(a.at||0)-(b.at||0));
+}
+function findQuestion(qid){ return Object.values((S.priv && S.priv.inbox) || {}).find(m=>m.kind==='question' && m.qid===qid); }
+function qPick(qid, pid){
+  const q = findQuestion(qid); if(!q || S.qSent[qid]) return;
+  const sel = (S.qSel[qid] || []).slice();
+  const i = sel.indexOf(pid);
+  if(i>=0) sel.splice(i,1);
+  else if(sel.length < (q.n||1)) sel.push(pid);
+  else if((q.n||1)===1) sel.splice(0,1,pid);
+  S.qSel[qid] = sel; render();
+}
+async function qSubmit(qid){
+  const q = findQuestion(qid); const sel = S.qSel[qid] || [];
+  if(!q || sel.length!==(q.n||1)) return;
+  try{
+    await NET.set(R(`answers/${S.uid}/${qid}`), {picks: sel, at: Date.now()});
+    S.qSent[qid] = {picks: sel, at: Date.now()};
+    lsSet('qsent_'+S.room, S.qSent);
+    showBanner('✓ تم إرسال اختيارك');
+  }catch(e){ showBanner('تعذّر الإرسال، حاول مرة أخرى'); }
+  render();
+}
+function optionName(q, pid){ const o = (q.options||[]).find(x=>x.pid===pid); return o ? o.name : ''; }
+function questionCardHtml(q){
+  const sel = S.qSel[q.qid] || [];
+  const sent = S.qSent[q.qid];
+  const n = q.n || 1;
+  if(q.answeredNames || sent){
+    const names = q.answeredNames || (sent.picks||[]).map(pid=>optionName(q,pid));
+    return `<div class="card msg"><div class="lbl"><span>${esc(q.label||'')}</span><span>اختيارك</span></div><div class="msgtext">${fmt(q.text)}</div>
+      <div class="qdone">${q.answeredNames ? '✓ استلم الراوي اختيارك' : '✓ تم الإرسال'}: <b>${names.map(x=>`<bdi>${esc(x)}</bdi>`).join(' و ')}</b></div></div>`;
+  }
+  return `<div class="card qcard">
+    <div class="lbl" style="font-size:12px;color:var(--gold);margin-bottom:6px;">❓ ${esc(q.label||'')}</div>
+    <div class="msgtext">${fmt(q.text)}</div>
+    <div class="muted" style="margin-top:6px;">${n===1 ? 'اختر لاعبًا واحدًا' : `اختر ${n} لاعبين`} (${sel.length}/${n})</div>
+    <div class="namegrid">${(q.options||[]).map(o=>`<button class="${sel.includes(o.pid)?'sel':''} ${o.dead?'deadopt':''}" onclick="qPick('${esc(q.qid)}','${esc(o.pid)}')"><bdi>${esc(o.name)}</bdi>${o.dead?' <span style="font-size:11px;">⚰️</span>':''}</button>`).join('')}</div>
+    <button class="primary" style="width:100%;margin-top:12px;" ${sel.length===n?'':'disabled'} onclick="qSubmit('${esc(q.qid)}')">إرسال الاختيار</button>
+  </div>`;
+}
 
 /* ---------- formatting ---------- */
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -387,6 +440,7 @@ function inboxTab(){
   if(!ids.length) return `<div class="card" style="text-align:center;"><div style="font-size:42px;">✉️</div><p>لا توجد رسائل بعد</p><p class="muted">تصلك هنا معلومات الليل من الراوي</p></div>`;
   return ids.map((id,i)=>{
     const m = inbox[id];
+    if(m.kind==='question') return pendingQuestions().includes(m) ? '' : questionCardHtml(m);
     const t = new Date(m.at||0);
     const time = isNaN(t) ? '' : `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
     return `<div class="card msg ${i===0 && Date.now()-(m.at||0)<10*60*1000 ? 'new':''}"><div class="lbl"><span>${esc(m.label||'')}</span><span class="en">${time}</span></div><div class="msgtext">${fmt(m.text)}</div></div>`;
@@ -508,6 +562,7 @@ function joinedScreen(){
       <button class="ghost" style="padding:6px 10px;font-size:12px;" onclick="switchName()">لست أنا</button>
     </div>
     ${deadBar}
+    ${pendingQuestions().map(questionCardHtml).join('')}
     ${body}
     <nav class="tabs">
       ${tab('role','🎭','دوري')}
