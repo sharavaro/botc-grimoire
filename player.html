@@ -127,8 +127,13 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
 .ctok.nominee .cav{box-shadow:0 0 0 3px #b8323f,0 0 16px #e0483f;}
 .ctok.me .nm{color:#fff;font-weight:700;}
 .ctok .nm{font-size:11.5px;margin-top:3px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ctok .yes{position:absolute;top:-6px;inset-inline-end:-8px;background:#3aa65a;color:#fff;border-radius:50%;width:20px;height:20px;font-size:13px;line-height:20px;font-weight:700;box-shadow:0 0 6px #3aa65a;}
-.ctok .exec{position:absolute;bottom:-8px;inset-inline-start:-8px;font-size:15px;}
+.ctok .yes{position:absolute;bottom:-6px;right:-8px;background:#3aa65a;color:#fff;border-radius:50%;width:20px;height:20px;font-size:13px;line-height:20px;font-weight:700;box-shadow:0 0 6px #3aa65a;}
+.ctok .exec{position:absolute;bottom:-8px;right:-8px;font-size:15px;}
+.ctok .recv{position:absolute;top:-7px;right:-12px;background:#b8323f;color:#fff;border-radius:10px;min-width:22px;height:20px;padding:0 5px;font-size:12px;line-height:20px;font-weight:700;box-shadow:0 0 8px #e0483f;}
+.ctok .recv.lead{background:#e0483f;box-shadow:0 0 12px #ff5b50;}
+.ctok .nomd{position:absolute;bottom:-7px;left:-9px;background:#6b5a2a;border:1px solid var(--gold);border-radius:50%;width:20px;height:20px;font-size:11px;line-height:19px;text-align:center;}
+.court-legend{font-size:12px;color:var(--mist);line-height:1.9;padding:4px 6px;}
+.court-legend .b{display:inline-block;min-width:18px;height:18px;border-radius:9px;color:#fff;text-align:center;font-size:11px;line-height:18px;margin-left:4px;padding:0 4px;}
 .court-center{position:absolute;inset:27%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px;}
 .court-center .vs{font-size:13.5px;line-height:1.5;}
 .court-center .cnt{font-size:40px;font-weight:700;line-height:1;font-family:'Cinzel',serif;}
@@ -145,7 +150,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.24';
+const PLAYER_BUILD = '2026.10.28.25';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -813,13 +818,18 @@ function courtCircleHtml(court){
   const radius = 40;
   const voters = new Set(nom && nom.trialActive ? (nom.voters||[]) : []);
   const leading = new Set(court.leadingIds||[]);
+  const day = S.pub ? S.pub.dayNum : 0;
+  const todays = (court.history && court.history['d'+day]) || [];
+  const received = {};
+  todays.forEach(hh=>{ if(hh.nomineeId) received[hh.nomineeId] = Math.max(received[hh.nomineeId]||0, hh.voteCount||0); });
+  const nominatedToday = new Set(court.nominatedToday||[]);
   const pos = {};
   const toks = order.map((s,i)=>{
     const {x,y} = seatPos(i, n, radius); pos[s.pid] = {x,y};
     const cls = ['ctok', s.alive ? '' : (s.ghostVoteUsed ? 'novote' : 'ghost'), s.traveller?'trav':'', s.pid===S.pid?'me':'',
       nom && nom.nominatorId===s.pid ? 'nominator':'', nom && nom.nomineeId===s.pid ? 'nominee':''].join(' ');
     return `<div class="${cls}" style="left:${x}%;top:${y}%;">
-      <div class="cav">${!s.alive ? (s.ghostVoteUsed ? '💀' : '🕯️') : ''}${voters.has(s.pid) ? '<span class="yes">✓</span>' : ''}${leading.has(s.pid) ? '<span class="exec">⚔️</span>' : ''}</div>
+      <div class="cav">${!s.alive ? (s.ghostVoteUsed ? '💀' : '🕯️') : ''}${voters.has(s.pid) ? '<span class="yes">✓</span>' : ''}${received[s.pid]!==undefined ? `<span class="recv ${leading.has(s.pid)?'lead':''}">${received[s.pid]}</span>` : ''}${nominatedToday.has(s.pid) ? '<span class="nomd">🔒</span>' : ''}${leading.has(s.pid) ? '<span class="exec">⚔️</span>' : ''}</div>
       <div class="nm"><bdi>${esc(s.name)}</bdi></div>
     </div>`;
   }).join('');
@@ -853,13 +863,19 @@ function voteTab(){
   let live = '';
   if(court.publicMessage){ live += `<div class="deadbar">${esc(court.publicMessage)}</div>`; }
   live += `<div class="card" style="padding:8px;">${courtCircleHtml(court)}
-    ${nom && nom.trialActive ? `<div class="muted" style="text-align:center;font-size:12px;margin-top:6px;">✓ = صوّت بنعم · ⚔️ = في طريقه للإعدام · 🕯️ = ميت ولديه صوت شبح · 💀 = ميت بلا صوت</div>` : ''}
+  </div>
+  <div class="card court-legend">
+    <div><span class="b" style="background:#b8323f">4</span> عدد الأصوات التي حصل عليها اليوم</div>
+    <div><span class="b" style="background:#6b5a2a;border:1px solid #c9a94a">🔒</span> رشّح اليوم — لا يمكنه الترشيح مرة أخرى</div>
+    <div>⚔️ الأكثر أصواتًا — في طريقه للإعدام</div>
+    ${nom && nom.trialActive ? '<div><span class="b" style="background:#3aa65a">✓</span> صوّت بنعم في التصويت الحالي</div>' : ''}
+    <div>🕯️ ميت ولديه صوت شبح · 💀 ميت بلا صوت</div>
   </div>`;
   const me = mySeat();
   const voteNote = me ? (me.alive ? '' : (me.ghostVoteUsed ? '<p class="muted" style="text-align:center;">لقد استخدمت صوت الشبح.</p>' : '<p class="muted" style="text-align:center;">👻 لديك صوت شبح واحد لبقية اللعبة.</p>')) : '';
   return live + voteNote + (hist.length ? `
     <div class="card"><h3 style="font-size:15px;margin-bottom:6px;">ترشيحات اليوم ${day}</h3>
-      ${hist.map(h=>`<div class="hist"><bdi>${esc(h.nominatorName)}</bdi> ← <bdi>${esc(h.nomineeName)}</bdi>${h.isExile?' (نفي)':''}: <b style="${h.exceedsThreshold?'color:#e0483f;':''}">${h.voteCount}</b> <span class="muted">من ${h.threshold}</span></div>`).join('')}
+      ${hist.map(h=>`<div class="hist"><bdi>${esc(h.nominatorName)}</bdi> ← <b><bdi>${esc(h.nomineeName)}</bdi></b>${h.isExile?' (نفي)':''}: <b style="${h.exceedsThreshold?'color:#e0483f;':''}">${h.voteCount}</b> <span class="muted">من ${h.threshold}${(h.voterNames||[]).length ? ` — صوّت: ${h.voterNames.map(n=>`<bdi>${esc(n)}</bdi>`).join('، ')}` : ''}</span></div>`).join('')}
     </div>` : '');
 }
 function referenceTab(){

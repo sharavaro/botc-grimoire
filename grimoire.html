@@ -535,6 +535,9 @@ bdi{unicode-bidi:isolate;}
 }
 .court-vote-badge{position:absolute;bottom:-4px;right:-4px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;border:2px solid var(--bg-deep);}
 .court-vote-yes{background:#1e9e6a;color:#fff;}
+.court-recv-badge{position:absolute;top:-6px;right:-10px;min-width:26px;height:24px;padding:0 6px;border-radius:12px;background:#b8323f;color:#fff;font-weight:bold;font-size:14px;line-height:24px;text-align:center;box-shadow:0 0 8px #e0483f;border:2px solid var(--bg-deep);z-index:3;}
+.court-recv-badge.lead{background:#e0483f;box-shadow:0 0 14px #ff5b50;}
+.court-nomd-badge{position:absolute;bottom:-4px;left:-4px;width:26px;height:26px;border-radius:50%;background:#6b5a2a;border:2px solid var(--gold);font-size:13px;line-height:22px;text-align:center;z-index:3;}
 .court-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;max-width:70%;z-index:4;display:flex;flex-direction:column;align-items:center;gap:14px;}
 .court-nom-banner{background:var(--bg-panel-2);border:1px solid var(--gold);border-radius:10px;padding:22px 28px;font-family:'Cinzel',serif;font-size:17px;color:var(--parchment);}
 .court-history-item{font-size:12px;color:var(--mist);background:var(--bg-panel-2);padding:8px 10px;border-radius:6px;margin-bottom:6px;line-height:1.5;}
@@ -863,7 +866,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.24';
+const APP_BUILD = '2026.10.28.25';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -4149,6 +4152,15 @@ function courtScreenHtml(){
     </div>
   `;
 }
+// Most votes this player received in any nomination today (null if never nominated today).
+function courtVotesReceivedToday(pid){
+  const counts = courtHistoryForToday().filter(h=>h.nomineeId===pid).map(h=>h.voteCount||0);
+  return counts.length ? Math.max(...counts) : null;
+}
+// Has nominated today, so may not nominate again (the Butcher's golden light lifts this for him).
+function courtNominationUsedToday(p){
+  return game.court.nominatedToday.includes(p.id) && !(p.character==='Butcher' && game.court.butcherGoldenLight);
+}
 function courtTokenHtml(p, x, y){
   const nom = game.court.nomination;
   const isNominatedToday = game.court.nominatedToday.includes(p.id);
@@ -4177,6 +4189,8 @@ function courtTokenHtml(p, x, y){
         ${!p.alive && !p.ghostVoteUsed ? courtSoulFlameSvg() : ''}
         ${isMarkedForExecution ? '<span class="court-execution-mark">⚔️</span>' : ''}
         ${vote ? '<span class="court-vote-badge court-vote-yes">✓</span>' : ''}
+        ${courtVotesReceivedToday(p.id)!==null ? `<span class="court-recv-badge ${isMarkedForExecution?'lead':''}" title="Most votes received today">${courtVotesReceivedToday(p.id)}</span>` : ''}
+        ${courtNominationUsedToday(p) ? '<span class="court-nomd-badge" title="Already nominated today">🔒</span>' : ''}
       </div>
       <div class="court-token-name">${escapeHtml(p.name)}</div>
       ${isNominatedToday && !butcherCanDragAgain ? `<div class="court-token-restriction">🔒 لا يمكنه الترشيح مرة أخرى اليوم</div>` : ''}
@@ -10465,6 +10479,7 @@ function appBuildPublicState(){
   Object.keys(court.historyByDay||{}).forEach(d=>{
     history['d'+d] = (court.historyByDay[d]||[]).map(h=>({
       nominatorName: h.nominatorName||'', nomineeName: h.nomineeName||'',
+      nominatorId: h.nominatorId||null, nomineeId: h.nomineeId||null,
       voteCount: h.voteCount||0, threshold: h.threshold||0, exceedsThreshold: !!h.exceedsThreshold,
       isExile: !!h.isExile, voterNames: h.voterNames||[],
     }));
@@ -10479,6 +10494,7 @@ function appBuildPublicState(){
     seats,
     court: { nomination, history, leadingIds: leading, publicMessage: court.publicMessage || null,
              openSeq: court.openSeq || 0, hostInCourt: route==='court',
+             nominatedToday: game.phase==='play' ? game.players.filter(p=>courtNominationUsedToday(p)).map(p=>p.id) : [],
              closedForDay: !!court.closedForDay, butcherGoldenLight: !!court.butcherGoldenLight },
   };
 }
