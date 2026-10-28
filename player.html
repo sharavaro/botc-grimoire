@@ -115,7 +115,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.5';
+const PLAYER_BUILD = '2026.10.28.7';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -283,13 +283,16 @@ function setPresence(){
   if(NET.onDisconnectSet) NET.onDisconnectSet(path, {online:false, at:Date.now()});
 }
 function onPrivate(v){
+  const prev = S.priv;
   const prevInbox = (S.priv && S.priv.inbox) || {};
   const firstLoad = S.priv===null;
   S.priv = v || {inbox:{}};
   const inbox = S.priv.inbox || {};
-  const fresh = Object.keys(inbox).filter(id=>!prevInbox[id]);
-  if(!firstLoad && fresh.length){
-    const isRole = fresh.some(id=>inbox[id].kind==='role');
+  const fresh = Object.keys(inbox).filter(id=>!prevInbox[id] && inbox[id].kind!=='role');
+  const prevRoleAt = (prev && prev.role && prev.role.at) || null;
+  const roleChanged = !!(S.priv.role && S.priv.role.at && S.priv.role.at!==prevRoleAt);
+  if(!firstLoad && (fresh.length || roleChanged)){
+    const isRole = roleChanged;
     const isQuestion = fresh.some(id=>inbox[id].kind==='question');
     showBanner(isQuestion ? '❓ الراوي يطلب اختيارك الآن' : (isRole ? '🎭 وصلك دورك' : '✉️ رسالة جديدة من الراوي'));
     // A re-asked question starts fresh.
@@ -303,7 +306,7 @@ function onPrivate(v){
 function loadReads(){ S.reads = lsGet('reads_'+S.room) || {}; S.qSent = lsGet('qsent_'+S.room) || {}; }
 function unreadIds(){
   const inbox = (S.priv && S.priv.inbox) || {};
-  return Object.keys(inbox).filter(id=>!S.reads[id]);
+  return Object.keys(inbox).filter(id=>!S.reads[id] && inbox[id].kind!=='role');
 }
 function markAllRead(){
   const ids = unreadIds();
@@ -445,7 +448,7 @@ function roleTab(){
 }
 function inboxTab(){
   const inbox = (S.priv && S.priv.inbox) || {};
-  const ids = Object.keys(inbox).sort((a,b)=>(inbox[b].at||0)-(inbox[a].at||0));
+  const ids = Object.keys(inbox).filter(id=>inbox[id].kind!=='role').sort((a,b)=>(inbox[b].at||0)-(inbox[a].at||0));
   if(!ids.length) return `<div class="card" style="text-align:center;"><div style="font-size:42px;">✉️</div><p>لا توجد رسائل بعد</p><p class="muted">تصلك هنا معلومات الليل من الراوي</p></div>`;
   return ids.map((id,i)=>{
     const m = inbox[id];

@@ -859,7 +859,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.6';
+const APP_BUILD = '2026.10.28.7';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -10642,9 +10642,9 @@ async function appSendRole(pid, btn, textOverride){
   const text = textOverride!==undefined ? textOverride
     : (game.messageOverrides && game.messageOverrides[overrideKey]!==undefined ? game.messageOverrides[overrideKey] : withRevealHeader(characterRevealText(p)));
   const role = appBuildRole(p, text);
-  const msg = { id: appNewMsgId(), text, at: Date.now(), kind:'role', label:'كشف الشخصية' };
   try{
-    const status = await appDeliver(pid, msg, role);
+    // The role lives on the phone's role tab only — it is not posted as a message.
+    const status = await appDeliver(pid, null, role);
     game.waSentReveal = game.waSentReveal || {};
     game.waSentReveal[pid] = true;
     saveGame();
