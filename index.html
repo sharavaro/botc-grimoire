@@ -863,7 +863,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.13';
+const APP_BUILD = '2026.10.28.14';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1789,7 +1789,7 @@ function render(){
   if(game) syncCourtierDrunkEffect();
   if(game) syncPhilosopherAbility();
   const app = document.getElementById('app');
-  app.innerHTML = topbarHtml() + (screens[route] ? screens[route]() : '');
+  app.innerHTML = topbarHtml() + appSeatTrackerHtml() + (screens[route] ? screens[route]() : '');
   positionTokens();
   renderModal();
 }
@@ -10632,6 +10632,7 @@ async function appOnClaims(val){
     if(!val[key] || val[key]!==before[key]){ try{ await NET.remove(appRoomPath('private/'+before[key])); }catch(e){} }
   }
   appSyncSoon(); appRefreshPanel();
+  if(APP_PREGAME_ROUTES.includes(route) && !(ui && ui.modal)) render();
 }
 async function appUnlinkPlayer(pid){
   const key = appKey(pid);
@@ -10912,6 +10913,33 @@ function appNomKey(nom){ return `${game.dayNum}-${nom.nominatorId}-${nom.nominee
 // Players choose seats only before the game starts; from the reveal on, seats are final
 // (the Storyteller can still move people from the seating screen).
 function appSeatingFinal(){ return !!game && ['reveal','play'].includes(game.phase); }
+// Host-side tracker: who has picked a seat on their phone (with seat numbers) and who hasn't yet.
+const APP_PREGAME_ROUTES = ['names','tokens','review','seating'];
+function appSeatTrackerHtml(full){
+  if(!game || !appState.code || appSeatingFinal()) return '';
+  if(!full && !APP_PREGAME_ROUTES.includes(route)) return '';
+  game.seatLocks = game.seatLocks || {};
+  const order = seatedPlayers();
+  const n = order.length;
+  if(!n) return '';
+  const chip = (txt, bg, bd, title)=>`<span title="${title}" style="display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:12px;background:${bg};border:1px solid ${bd};font-size:12.5px;margin:2px;">${txt}</span>`;
+  const seated = order.map((p,i)=>({p,i})).filter(x=>game.seatLocks[x.p.id]);
+  const waiting = order.filter(p=>!game.seatLocks[p.id] && appState.claims[appKey(p.id)]);
+  const notJoined = order.filter(p=>!game.seatLocks[p.id] && !appState.claims[appKey(p.id)]);
+  const done = seated.length===n;
+  return `<div class="panel" style="padding:10px 14px;margin-bottom:12px;border-color:${done?'#4caf6a':'var(--line)'};">
+    <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap;">
+      <b style="color:${done?'#6fc58a':'var(--gold-bright)'};">🪑 Seats chosen: ${seated.length}/${n}</b>
+      ${done ? '<span class="muted" style="font-size:12px;">Everyone has picked a seat.</span>' : ''}
+    </div>
+    <div style="margin-top:6px;">
+      ${seated.map(({p,i})=>chip(`<b>${i+1}</b> <bdi>${escapeHtml(p.name)}</bdi>`, '#1f3a2a', '#4caf6a', 'Seat chosen on their phone')).join('')}
+      ${waiting.map(p=>chip(`⏳ <bdi>${escapeHtml(p.name)}</bdi>`, '#3a2f17', '#e0943f', 'Joined, still choosing a seat')).join('')}
+      ${notJoined.map(p=>chip(`○ <bdi>${escapeHtml(p.name)}</bdi>`, 'transparent', 'var(--line)', 'Has not joined on a phone yet')).join('')}
+    </div>
+    ${waiting.length || notJoined.length ? `<div class="muted" style="font-size:11px;margin-top:4px;">⏳ joined, choosing a seat · ○ not joined yet</div>` : ''}
+  </div>`;
+}
 function appOnSeatRequests(val){
   val = val || {};
   if(appSeatingFinal()) return;
@@ -11079,6 +11107,7 @@ function appRoomPanelHtml(){
   const joinedCount = game.players.filter(p=>appState.claims[appKey(p.id)]).length;
   return `
     ${appJoinRequestsHtml()}
+    ${appSeatTrackerHtml(true)}
     <div class="row" style="gap:16px;align-items:flex-start;flex-wrap:wrap;">
       <div style="background:#fff;border-radius:8px;padding:6px;width:180px;height:180px;">${appQrSvg(url) || '<div style="color:#333;font-size:12px;padding:20px;">Loading QR…</div>'}</div>
       <div style="flex:1;min-width:200px;">
