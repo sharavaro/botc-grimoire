@@ -859,7 +859,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.7';
+const APP_BUILD = '2026.10.28.8';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -3993,6 +3993,7 @@ function courtScreenHtml(){
                 <div style="font-size:22px;">${escapeHtml(game.players.find(x=>x.id===nom.nominatorId)?.name||'')} ← ${escapeHtml(courtNomineeName(nom.nomineeId))}</div>
                 <div style="font-size:34px;margin-top:10px;font-family:'Cinzel',serif;color:${courtVoteCountColor(courtVoteCount(nom, false), courtThreshold())};">${courtVoteCount(nom, false)} / ${courtThreshold()}</div>
                 <div class="muted" style="margin-top:10px;font-size:13px;">عدد اللاعبين الأحياء هو ${aliveCount}, عدد الأصوات المطلوبة للإعدام هو ${courtThreshold()}</div>
+                ${appVoteWindowOpen(nom) ? `<div style="margin-top:10px;font-size:15px;color:var(--gold-bright);">📱 التصويت مفتوح على الهواتف: <span id="court-vote-countdown">${Math.max(0, Math.ceil((nom.voteOpenedAt + (nom.voteWindowMs||APP_VOTE_WINDOW_MS) - Date.now())/1000))}</span></div>` : ''}
                 <button class="primary" style="margin-top:16px;" onclick="finishPoll()">إنهاء التصويت</button>
               </div>
             ` : ''}
@@ -4002,7 +4003,7 @@ function courtScreenHtml(){
                 <div style="font-size:34px;margin:8px 0;font-family:'Cinzel',serif;color:${courtVoteCountColor(courtVoteCount(nom, false), courtThreshold())};">${courtVoteCount(nom, false)} / ${courtThreshold()}</div>
                 <div class="row" style="justify-content:center;gap:10px;">
                   <button class="primary" onclick="confirmCourtVotes()">تثبيت النتيجة</button>
-                  <button class="ghost" onclick="reopenCourtVoting()">إعادة فتح التصويت</button>
+                  <button class="ghost" onclick="reopenCourtVoting()">إعادة فتح التصويت${appState.code ? ' (10 ثوانٍ)' : ''}</button>
                   <button class="ghost" onclick="resetCourtVoting()">إعادة التصويت</button>
                 </div>
               </div>
@@ -4331,6 +4332,7 @@ function beginTrial(){
   game.court.nomination.trialActive = true;
   // Nominator starts already marked Voted.
   game.court.nomination.votes[game.court.nomination.nominatorId] = true;
+  appOpenVoteWindow();
   saveGame();
   refreshCourt();
 }
@@ -4359,6 +4361,7 @@ function finishPoll(){
   const nom = game.court.nomination;
   if(!nom) return;
   nom.readyToConfirm = true;
+  nom.voteOpenRound = null; clearTimeout(appState.voteTimer); clearInterval(appState.voteTick);
   saveGame();
   refreshCourt();
 }
@@ -4366,6 +4369,7 @@ function reopenCourtVoting(){
   const nom = game.court.nomination;
   if(!nom) return;
   nom.readyToConfirm = false;
+  appOpenVoteWindow();
   saveGame();
   refreshCourt();
 }
@@ -4379,6 +4383,7 @@ function resetCourtVoting(){
   nom.votes = {};
   nom.votes[nom.nominatorId] = true;
   nom.readyToConfirm = false;
+  appOpenVoteWindow();
   saveGame();
   refreshCourt();
 }
@@ -10376,10 +10381,13 @@ function appBuildRole(p, text){
 // ---- The public board: the ONLY game data that leaves the Storyteller's device for everyone ----
 function appBuildPublicState(){
   const seats = {};
+  const circleOrder = seatedPlayers().map(x=>x.id);
+  game.seatLocks = game.seatLocks || {};
   game.players.forEach(p=>{
     const isTraveller = p.character && TYPE_OF[p.character]==='traveller';
     seats[appKey(p.id)] = {
-      pid: p.id, name: p.name, seat: (p.seat===null||p.seat===undefined) ? null : p.seat,
+      pid: p.id, name: p.name, seat: circleOrder.indexOf(p.id)>=0 ? circleOrder.indexOf(p.id) : null,
+      seatLocked: !!game.seatLocks[p.id],
       alive: p.alive!==false, ghostVoteUsed: !!p.ghostVoteUsed,
       traveller: isTraveller ? p.character : null,
       claimed: !!appState.claims[appKey(p.id)],
@@ -10395,6 +10403,8 @@ function appBuildPublicState(){
       nominatorName: courtNomineeName(nom.nominatorId), nomineeName: courtNomineeName(nom.nomineeId),
       isExile: !!nom.isExile, trialActive: !!nom.trialActive, locked: !!nom.readyToConfirm,
       voters, count: courtVoteCount(nom, false), threshold: courtThreshold(),
+      voteOpen: appVoteWindowOpen(nom), voteRound: nom.voteOpenRound || null, nomKey: appNomKey(nom),
+      voteRemainingMs: appVoteWindowOpen(nom) ? Math.max(0, nom.voteOpenedAt + (nom.voteWindowMs||APP_VOTE_WINDOW_MS) - Date.now()) : 0,
     };
   }
   const history = {};
@@ -10489,6 +10499,8 @@ async function appResetForNewGame(){
   await NET.remove(appRoomPath('reads'));
   await NET.remove(appRoomPath('presence'));
   await NET.remove(appRoomPath('answers'));
+  await NET.remove(appRoomPath('votes'));
+  await NET.remove(appRoomPath('seatReq'));
   appState.claims = {}; appState.presence = {}; appState.reads = {};
   appState.gameId = gid; appState.lastPublicJson = null;
   appSaveRoomRecord();
@@ -10512,7 +10524,7 @@ async function appStartRoom(){
       if(owner === NET.uid){
         // An old room of this same grimoire: safe to reuse after clearing what's left in it.
         appState.code = tryCode;
-        for(const sub of ['public','script','icons','claims','private','reads','presence','answers']){ try{ await NET.remove(appRoomPath(sub)); }catch(e){} }
+        for(const sub of ['public','script','icons','claims','private','reads','presence','answers','votes','seatReq']){ try{ await NET.remove(appRoomPath(sub)); }catch(e){} }
         code = tryCode;
       } else if(!owner){
         try{ await NET.set(`rooms/${tryCode}/owner`, NET.uid); code = tryCode; }catch(e){ /* someone took it first: try another */ }
@@ -10536,6 +10548,8 @@ async function appAttach(){
   appState.unsubs.push(NET.on(appRoomPath('presence'), val=>{ appState.presence = val||{}; appRefreshPanel(); }));
   appState.unsubs.push(NET.on(appRoomPath('reads'), val=>{ appState.reads = val||{}; appRefreshPanel(); }));
   appState.unsubs.push(NET.on(appRoomPath('answers'), val=>appOnAnswers(val)));
+  appState.unsubs.push(NET.on(appRoomPath('votes'), val=>appOnVotes(val)));
+  appState.unsubs.push(NET.on(appRoomPath('seatReq'), val=>appOnSeatRequests(val)));
   if(NET.onConnected) appState.unsubs.push(NET.onConnected(ok=>{ appState.online = ok; appRefreshPanel(); }));
   else appState.online = true;
   appState.lastPublicJson = null; appState.lastScriptKey = null;
@@ -10568,7 +10582,7 @@ async function appResumeRoom(){
 async function appCloseRoom(){
   if(!appState.code) return;
   try{
-    for(const sub of ['public','script','icons','claims','private','reads','presence','answers','meta']) await NET.remove(appRoomPath(sub));
+    for(const sub of ['public','script','icons','claims','private','reads','presence','answers','votes','seatReq','meta']) await NET.remove(appRoomPath(sub));
   }catch(e){}
   appDetach();
   appState.code = null; appState.claims = {}; appState.presence = {}; appState.reads = {};
@@ -10806,6 +10820,98 @@ function appOnAnswers(val){
     if(!p) continue;
     for(const qid of Object.keys(val[uidOf]||{})) appApplyAnswer(p.id, qid, val[uidOf][qid]);
   }
+}
+
+// ---- Phone voting: the Storyteller starts the vote; phones vote Yes/No for 10 seconds ----
+const APP_VOTE_WINDOW_MS = 10000;
+function appVoteWindowOpen(nom){ return !!(nom && nom.trialActive && !nom.readyToConfirm && nom.voteOpenRound && nom.voteOpenedAt && Date.now() < nom.voteOpenedAt + (nom.voteWindowMs||APP_VOTE_WINDOW_MS)); }
+function appOpenVoteWindow(){
+  const nom = game.court && game.court.nomination;
+  if(!nom || !nom.trialActive) return;
+  if(!appState.code) return; // no phones connected: the vote runs by hand, as before
+  nom.voteRound = (nom.voteRound||0) + 1;
+  nom.voteOpenRound = nom.voteRound;
+  nom.voteOpenedAt = Date.now();
+  nom.voteWindowMs = APP_VOTE_WINDOW_MS;
+  clearTimeout(appState.voteTimer); clearInterval(appState.voteTick);
+  appState.voteTimer = setTimeout(()=>appCloseVoteWindow(nom.voteRound), APP_VOTE_WINDOW_MS + 400);
+  appState.voteTick = setInterval(()=>{
+    const el = typeof document!=='undefined' ? document.getElementById('court-vote-countdown') : null;
+    const left = Math.max(0, Math.ceil((nom.voteOpenedAt + APP_VOTE_WINDOW_MS - Date.now())/1000));
+    if(el) el.textContent = String(left);
+    if(left<=0) clearInterval(appState.voteTick);
+  }, 250);
+  saveGame();
+}
+function appCloseVoteWindow(round){
+  const nom = game.court && game.court.nomination;
+  clearInterval(appState.voteTick);
+  if(!nom || nom.voteOpenRound!==round) return;
+  nom.voteOpenRound = null;
+  if(nom.trialActive && !nom.readyToConfirm){ finishPoll(); return; } // finishPoll saves + refreshes
+  saveGame();
+  if(route==='court') refreshCourt();
+}
+function appVoterEligible(nom, voter){
+  if(!voter) return false;
+  if(nom.isExile) return true;                 // everyone may vote in an exile
+  return voter.alive || !voter.ghostVoteUsed;  // dead players need an unused ghost vote
+}
+function appOnVotes(val){
+  val = val || {};
+  const nom = game.court && game.court.nomination;
+  if(!nom || !nom.voteOpenRound) return;
+  if(!appVoteWindowOpen(nom) && Date.now() > nom.voteOpenedAt + (nom.voteWindowMs||APP_VOTE_WINDOW_MS) + 1500) return;
+  let changed = false;
+  for(const uidOf of Object.keys(val)){
+    const v = val[uidOf];
+    if(!v || v.round!==nom.voteOpenRound || v.nomKey!==appNomKey(nom)) continue;
+    const pidKey = Object.keys(appState.claims).find(k=>appState.claims[k]===uidOf);
+    const voter = pidKey ? game.players.find(x=>appKey(x.id)===pidKey) : null;
+    if(!voter || !appVoterEligible(nom, voter)) continue;
+    const now = nom.votes[voter.id]===true;
+    if(v.yes && !now){ nom.votes[voter.id] = true; changed = true; }
+    if(!v.yes && now){ delete nom.votes[voter.id]; changed = true; }
+  }
+  if(changed){ saveGame(); if(route==='court') refreshCourt(); }
+}
+// Identifies one specific nomination, so a vote can never land on a different trial.
+function appNomKey(nom){ return `${game.dayNum}-${nom.nominatorId}-${nom.nomineeId}-${(courtHistoryForToday()||[]).length}`; }
+
+// ---- Self-seating: each phone picks its own seat once; after that only the Storyteller moves people ----
+function appOnSeatRequests(val){
+  val = val || {};
+  game.seatLocks = game.seatLocks || {};
+  let changed = false;
+  for(const uidOf of Object.keys(val)){
+    const req = val[uidOf];
+    if(!req || req.seat===undefined) continue;
+    const pidKey = Object.keys(appState.claims).find(k=>appState.claims[k]===uidOf);
+    const p = pidKey ? game.players.find(x=>appKey(x.id)===pidKey) : null;
+    if(!p || req.pid!==p.id || game.seatLocks[p.id]) continue;        // only your own seat, only once
+    const order = seatedPlayers();
+    const n = order.length;
+    const target = Number(req.seat);
+    if(!Number.isInteger(target) || target<0 || target>=n) continue;
+    const occupant = order[target];
+    if(occupant && occupant.id!==p.id && game.seatLocks[occupant.id]) continue; // someone already sat there
+    // Move p into position `target` of the circle; everyone else keeps their relative order.
+    const rest = order.filter(x=>x.id!==p.id);
+    rest.splice(target, 0, p);
+    // Locked players must not be pushed around by this move: keep them where they are.
+    const locked = order.map((x,i)=>game.seatLocks[x.id] ? [x,i] : null).filter(Boolean);
+    const result = new Array(n).fill(null);
+    locked.forEach(([x,i])=>{ result[i] = x; });
+    result[target] = p;
+    const others = rest.filter(x=>x.id!==p.id && !game.seatLocks[x.id]);
+    for(let i=0;i<n;i++) if(!result[i]) result[i] = others.shift();
+    result.forEach((x,i)=>{ x.seat = i; });
+    game.seatingLayout = game.seatingLayout==='free' ? 'circle' : game.seatingLayout;
+    game.seatLocks[p.id] = true;
+    logAction(`📱 ${p.name} chose seat ${target+1} on their phone.`);
+    changed = true;
+  }
+  if(changed){ saveGame(); render(); }
 }
 
 // ---- Testing mode: every player's phone as a Chrome tab ----

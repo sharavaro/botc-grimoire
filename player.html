@@ -103,6 +103,19 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
 .qcard .namegrid button.sel{background:var(--gold);color:#1a1405;border-color:var(--gold-bright);font-weight:700;}
 .qcard .namegrid button.deadopt{opacity:.75;}
 .qdone{color:#8fd6a4;font-size:14px;margin-top:8px;}
+.host-mark{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;width:80px;text-align:center;}
+.host-mark .av{width:48px;height:48px;border-radius:50%;background:#3b2d6b;border:2px dashed #b99cff;display:flex;align-items:center;justify-content:center;font-size:22px;}
+.host-mark .nm{font-size:12px;color:#d6c2ff;margin-top:3px;}
+.slot{position:absolute;transform:translate(-50%,-50%);width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;padding:0;}
+.slot.free{background:#2a2240;border:2px solid var(--gold);color:var(--gold-bright);}
+.slot.taken{background:#1a1626;border:1px solid var(--line);color:var(--mist);font-size:11px;font-weight:400;line-height:1.2;}
+.slot.pick{background:var(--gold);color:#1a1405;}
+.votecard{border:2px solid #e0483f;box-shadow:0 0 22px #e0483f44;text-align:center;}
+.votebtns{display:flex;gap:10px;margin-top:12px;}
+.votebtns button{flex:1;padding:18px 8px;font-size:18px;font-weight:700;}
+.votebtns button.yes.on{background:#e0483f;border-color:#ff7a70;color:#fff;}
+.votebtns button.no.on{background:#4a90d9;border-color:#8fc0f5;color:#fff;}
+.countdown{font-size:44px;font-weight:700;color:var(--gold-bright);line-height:1;margin-top:6px;}
 </style>
 </head>
 <body>
@@ -115,7 +128,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.7';
+const PLAYER_BUILD = '2026.10.28.8';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -137,7 +150,7 @@ const S = {
   pub:null, script:null, icons:{}, priv:null,
   tab:'role', roleShown:false, refTab:'chars', showEnglish:false,
   seenMsgs:{}, reads:{}, banner:null, confirmPid:null, unsubs:[], privUnsub:null,
-  qSel:{}, qSent:{},
+  qSel:{}, qSent:{}, confirmSeat:null, seatPending:null, voteDeadline:{}, myVote:{}, voteTicker:null,
 };
 
 /* ---------- storage helpers (per-device memory of which room/name this phone is) ---------- */
@@ -225,6 +238,11 @@ function subscribeShared(){
 function mySavedJoin(){ const j = lsGet('join'); return j && j.room===S.room ? j : null; }
 async function onPublic(){
   const pub = S.pub;
+  if(S.seatPending!==null && S.pid && pub && pub.seats){
+    const mine = pub.seats[appKey(S.pid)];
+    if(mine && mine.seatLocked){ S.seatPending = null; }
+    else if(pub.seats && Object.values(pub.seats).some(s=>s.seat===S.seatPending && s.seatLocked && s.pid!==S.pid)){ S.seatPending = null; showBanner('سبقك أحد إلى هذا المقعد، اختر غيره'); }
+  }
   if(!pub || !pub.seats){ if(S.stage!=='joined'){ S.stage = 'join'; } render(); return; }
   const seats = pub.seats;
   if(S.pid){
@@ -402,6 +420,109 @@ function sortedSeats(){
   return seats.sort((a,b)=>((a.seat??999)-(b.seat??999)) || String(a.name).localeCompare(String(b.name)));
 }
 function mySeat(){ return S.pid && S.pub && S.pub.seats ? S.pub.seats[appKey(S.pid)] : null; }
+// The Storyteller is always drawn at the top as a fixed reference point; seats run clockwise from them.
+function seatPos(i, n, radius){
+  const ang = ((i+1)/(n+1))*2*Math.PI - Math.PI/2;
+  return {x: 50 + radius*Math.cos(ang), y: 50 + radius*Math.sin(ang)};
+}
+function hostMarkHtml(radius){ return `<div class="host-mark" style="left:50%;top:${50-radius}%;"><div class="av">🎭</div><div class="nm">الراوي</div></div>`; }
+
+/* ---------- choosing your seat (once) ---------- */
+function seatOrder(){
+  const seats = Object.values((S.pub && S.pub.seats) || {});
+  const n = seats.length;
+  const bySeat = new Array(n).fill(null);
+  seats.forEach(s=>{ if(s.seat!==null && s.seat!==undefined && s.seat<n) bySeat[s.seat] = s; });
+  return bySeat;
+}
+function askSeat(i){ S.confirmSeat = i; render(); }
+function cancelSeat(){ S.confirmSeat = null; render(); }
+async function chooseSeat(i){
+  S.confirmSeat = null; S.seatPending = i; render();
+  try{ await NET.set(R('seatReq/'+S.uid), {pid:S.pid, seat:i, at:Date.now()}); }
+  catch(e){ S.seatPending = null; showBanner('تعذّر حجز المقعد، حاول مرة أخرى'); }
+  render();
+}
+function seatNeighbourText(i){
+  const order = seatOrder(); const n = order.length;
+  const name = j=>{ if(j===-1 || j===n) return 'الراوي'; const s = order[j]; return s && s.seatLocked ? s.name : null; };
+  const before = name(i-1), after = name(i+1);
+  if(before && after) return `بين ${before} و${after}`;
+  if(before || after) return `بجانب ${before || after}`;
+  return '';
+}
+function seatPickerCard(){
+  const me = mySeat();
+  if(!me || me.seatLocked) return '';
+  const order = seatOrder(); const n = order.length;
+  const radius = 40;
+  const slots = order.map((s,i)=>{
+    const {x,y} = seatPos(i, n, radius);
+    const taken = s && s.seatLocked && s.pid!==S.pid;
+    if(taken) return `<div class="slot taken" style="left:${x}%;top:${y}%;"><bdi>${esc(s.name)}</bdi></div>`;
+    const cls = S.seatPending===i ? 'slot pick' : 'slot free';
+    return `<button class="${cls}" style="left:${x}%;top:${y}%;" ${S.seatPending!==null?'disabled':''} onclick="askSeat(${i})">${i+1}</button>`;
+  }).join('');
+  return `<div class="card qcard">
+    <h3 style="font-size:17px;">🪑 اختر مقعدك</h3>
+    <p class="muted" style="margin:4px 0 0;">الراوي في الأعلى. اختر الرقم الذي يطابق مكان جلوسك بالنسبة للراوي. لا يمكنك تغييره بعد الاختيار.</p>
+    <div class="circle" style="margin-top:4px;">${hostMarkHtml(radius)}${slots}
+      <div class="center-info"><div class="stat">${S.seatPending!==null ? 'جارٍ الحجز…' : 'اضغط على رقم'}</div></div>
+    </div>
+  </div>`;
+}
+
+/* ---------- voting (opened by the Storyteller, 10 seconds) ---------- */
+function liveVote(){
+  const nom = S.pub && S.pub.court && S.pub.court.nomination;
+  if(!nom || !nom.trialActive || !nom.voteOpen || !nom.voteRound) return null;
+  const key = nom.nomKey + '#' + nom.voteRound;
+  if(!S.voteDeadline[key]){
+    S.voteDeadline[key] = Date.now() + (nom.voteRemainingMs || 10000);
+    try{ navigator.vibrate && navigator.vibrate([120,60,120,60,120]); }catch(e){}
+  }
+  const left = S.voteDeadline[key] - Date.now();
+  return left > 0 ? {nom, key, left} : null;
+}
+function voteEligible(nom){
+  const me = mySeat(); if(!me) return false;
+  if(nom.isExile) return true;
+  return me.alive || !me.ghostVoteUsed;
+}
+function myCurrentVote(v){
+  if(S.myVote[v.key]!==undefined) return S.myVote[v.key];
+  return (v.nom.voters||[]).includes(S.pid);
+}
+async function castVote(yes){
+  const v = liveVote(); if(!v || !voteEligible(v.nom)) return;
+  S.myVote[v.key] = !!yes; render();
+  try{ await NET.set(R('votes/'+S.uid), {round:v.nom.voteRound, nomKey:v.nom.nomKey, yes:!!yes, at:Date.now()}); }
+  catch(e){ showBanner('تعذّر إرسال صوتك'); }
+}
+function voteCardHtml(){
+  const v = liveVote();
+  if(!v) return '';
+  const me = mySeat();
+  const nom = v.nom;
+  const secs = Math.ceil(v.left/1000);
+  if(!voteEligible(nom)) return `<div class="card votecard"><div>⚖️ تصويت على <b><bdi>${esc(nom.nomineeName)}</bdi></b></div><p class="muted">لقد استخدمت صوت الشبح، لا يمكنك التصويت.</p><div class="countdown">${secs}</div></div>`;
+  const yes = myCurrentVote(v);
+  const ghostNote = me && !me.alive && !nom.isExile ? '<p class="muted" style="margin:6px 0 0;">👻 التصويت بنعم يستخدم صوت الشبح الوحيد لديك.</p>' : '';
+  return `<div class="card votecard">
+    <div style="font-size:15px;">${nom.isExile ? 'نفي' : 'إعدام'} <b style="color:#ff8c90;"><bdi>${esc(nom.nomineeName)}</bdi></b>؟ <span class="muted">(رشّحه <bdi>${esc(nom.nominatorName)}</bdi>)</span></div>
+    <div class="countdown">${secs}</div>
+    ${ghostNote}
+    <div class="votebtns">
+      <button class="yes ${yes?'on':''}" onclick="castVote(true)">✋ نعم</button>
+      <button class="no ${!yes?'on':''}" onclick="castVote(false)">✊ لا</button>
+    </div>
+    <p class="muted" style="margin:8px 0 0;">${yes ? 'صوتك: نعم' : 'صوتك: لا'} — يمكنك التغيير حتى ينتهي الوقت</p>
+  </div>`;
+}
+function ensureVoteTicker(){
+  const open = !!liveVote();
+  if(open && !S.voteTicker) S.voteTicker = setInterval(()=>{ render(); if(!liveVote()){ clearInterval(S.voteTicker); S.voteTicker = null; render(); } }, 500);
+}
 
 /* ---------- screens ---------- */
 function codeScreen(){
@@ -470,8 +591,7 @@ function boardTab(){
   const ghostsLeft = all.filter(s=>!s.alive && !s.ghostVoteUsed).length;
   const radius = 41;
   const seatHtml = all.map((s,i)=>{
-    const ang = (i/n)*2*Math.PI - Math.PI/2;
-    const x = 50 + radius*Math.cos(ang), y = 50 + radius*Math.sin(ang);
+    const {x,y} = seatPos(i, n, radius);
     const cls = ['seat', s.alive?'':'dead', s.pid===S.pid?'me':'', s.traveller?'trav':'',
       nom && nom.nomineeId===s.pid ? 'nominee':'', voters.has(s.pid)?'voted':''].join(' ');
     return `<div class="${cls}" style="left:${x}%;top:${y}%;">
@@ -483,6 +603,7 @@ function boardTab(){
   return `
     <div class="card" style="padding:10px;">
       <div class="circle">
+        ${hostMarkHtml(radius)}
         ${seatHtml}
         <div class="center-info">
           <div class="stat">أحياء <b>${alive}</b> / ${n}</div>
@@ -574,6 +695,8 @@ function joinedScreen(){
       <button class="ghost" style="padding:6px 10px;font-size:12px;" onclick="switchName()">لست أنا</button>
     </div>
     ${deadBar}
+    ${voteCardHtml()}
+    ${seatPickerCard()}
     ${pendingQuestions().map(questionCardHtml).join('')}
     ${body}
     <nav class="tabs">
@@ -593,11 +716,17 @@ function render(){
   else if(S.stage==='join') html = joinScreen();
   else html = joinedScreen();
   app.innerHTML = html;
+  if(S.stage==='joined') ensureVoteTicker();
   try{ const me = mySeat(); document.title = (TEST_AS ? '🧪 ' : '') + (me ? me.name : 'Clocktower Player'); }catch(e){}
   const ov = document.getElementById('overlay');
   if(ov){
     let o = '';
     if(S.banner) o += `<div class="banner" onclick="setTab('${S.banner.includes('دور')?'role':'inbox'}')">${esc(S.banner)}</div>`;
+    if(S.confirmSeat!==null && S.confirmSeat!==undefined){
+      const near = seatNeighbourText(S.confirmSeat);
+      o += `<div class="modal"><div class="card"><p style="font-size:18px;">المقعد رقم <b>${S.confirmSeat+1}</b>${near ? `<br><span class="muted" style="font-size:14px;">${esc(near)}</span>` : ''}</p><p class="muted">لا يمكنك تغيير المقعد بعد التأكيد.</p>
+        <div style="display:flex;gap:10px;"><button class="ghost" style="flex:1;" onclick="cancelSeat()">رجوع</button><button class="primary" style="flex:1;" onclick="chooseSeat(${S.confirmSeat})">تأكيد</button></div></div></div>`;
+    }
     if(S.confirmPid && S.pub && S.pub.seats){
       const s = S.pub.seats[appKey(S.confirmPid)];
       o += `<div class="modal"><div class="card"><p style="font-size:18px;">هل أنت <b><bdi>${esc(s ? s.name : '')}</bdi></b>؟</p>
