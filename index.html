@@ -551,6 +551,10 @@ bdi{unicode-bidi:isolate;}
 .drag-handle{cursor:grab;padding:6px 10px;color:var(--mist);font-size:18px;touch-action:none;user-select:none;}
 .drag-handle:active{cursor:grabbing;}
 .seat-num{font-family:'Cinzel',serif;color:var(--gold);width:20px;}
+/* The Storyteller's own place in the circle — a fixed reference point (matches the phones). */
+.st-host-mark{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none;z-index:2;}
+.st-host-mark .st-av{width:44px;height:44px;border-radius:50%;background:#3b2d6b;border:2px dashed #b99cff;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 12px #8a5fd655;}
+.st-host-mark .st-nm{font-size:11px;color:#d6c2ff;margin-top:2px;letter-spacing:.04em;}
 </style>
 </head>
 <body>
@@ -859,7 +863,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.10';
+const APP_BUILD = '2026.10.28.13';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -2296,8 +2300,9 @@ function positionTokens(){
       });
     } else {
       const r = rect.width/2 - 58;
+      // Seat positions leave the top slot for the Storyteller, exactly like the players' phones.
       tokens.forEach((t,i)=>{
-        const angle = (i/n)*2*Math.PI - Math.PI/2;
+        const angle = ((i+1)/(n+1))*2*Math.PI - Math.PI/2;
         const x = 50 + (r/rect.width*100)*Math.cos(angle);
         const y = 50 + (r/rect.height*100)*Math.sin(angle);
         t.style.left = x+'%'; t.style.top = y+'%';
@@ -2306,13 +2311,14 @@ function positionTokens(){
       if(gaps.length){
         gaps.forEach(g=>{
           const i = parseInt(g.dataset.insertAfter,10);
-          const angle = ((i+0.5)/n)*2*Math.PI - Math.PI/2;
+          const angle = ((i+1.5)/(n+1))*2*Math.PI - Math.PI/2;
           const x = 50 + (r/rect.width*100)*Math.cos(angle);
           const y = 50 + (r/rect.height*100)*Math.sin(angle);
           g.style.left = x+'%'; g.style.top = y+'%';
         });
       }
     }
+    stPlaceHostMark(wrap, layout, rect);
   });
   drawEvilTwinString();
   drawGrandmotherString();
@@ -2325,6 +2331,23 @@ function positionTokens(){
   drawVortoxTornadoLinks();
 }
 window.addEventListener('resize', positionTokens);
+function stPlaceHostMark(wrap, layout, rect){
+  let mark = wrap.querySelector(':scope > .st-host-mark');
+  if(layout==='free'){ if(mark) mark.remove(); return; }
+  if(!mark){
+    mark = document.createElement('div');
+    mark.className = 'st-host-mark';
+    mark.title = 'The Storyteller (you) — the reference point players use to choose their seats';
+    mark.innerHTML = '<div class="st-av">🎭</div><div class="st-nm">Storyteller</div>';
+    wrap.appendChild(mark);
+  }
+  if(layout==='ushape'){
+    mark.style.left = '50%'; mark.style.top = '92%'; // the open end of the U, between the last and first seats
+  } else {
+    const r = rect.width/2 - 58;
+    mark.style.left = '50%'; mark.style.top = (50 - (r/rect.height*100))+'%';
+  }
+}
 // Distributes seats along an inverted-U path: up the left side, across the top, down the right side —
 // leaving the bottom open. t goes from 0 (bottom-left) to 1 (bottom-right).
 function ushapePointAtFraction(t){
@@ -3959,7 +3982,7 @@ function courtScreenHtml(){
   const nom = game.court.nomination;
   const aliveCount = game.players.filter(p=>p.alive).length;
   const positions = seated.map((p,i)=>{
-    const angle = (i/n)*2*Math.PI - Math.PI/2;
+    const angle = ((i+1)/(n+1))*2*Math.PI - Math.PI/2; // top slot is the Storyteller's
     return {p, x: 50+42*Math.cos(angle), y: 50+42*Math.sin(angle)};
   });
   return `
@@ -3973,6 +3996,7 @@ function courtScreenHtml(){
         <div class="court-board-wrap">
           ${nom && nom.isExile ? `<div class="court-exile-smoke"></div>` : ''}
           <svg id="court-nom-line-svg" class="court-line-svg"></svg>
+          <div class="st-host-mark" style="left:50%;top:8%;"><div class="st-av">🎭</div><div class="st-nm">الراوي</div></div>
           ${positions.map(({p,x,y})=>courtTokenHtml(p,x,y)).join('')}
           ${nom && nom.nomineeId==='__STORYTELLER__' ? `
             <div class="court-token court-storyteller-token court-token-nominee" style="left:50%;top:50%;" data-pid="__STORYTELLER__">
