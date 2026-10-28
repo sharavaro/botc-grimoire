@@ -115,6 +115,23 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
 .votebtns button{flex:1;padding:18px 8px;font-size:18px;font-weight:700;}
 .votebtns button.yes.on{background:#e0483f;border-color:#ff7a70;color:#fff;}
 .votebtns button.no.on{background:#4a90d9;border-color:#8fc0f5;color:#fff;}
+/* Courthouse view (mirrors the grimoire's Courthouse) */
+.court{position:relative;width:100%;aspect-ratio:1/1;background:radial-gradient(circle at 50% 50%,#1d1830 0%,#0f0c18 75%);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+.court svg.rope{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.ctok{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;width:70px;text-align:center;}
+.ctok .cav{width:44px;height:44px;border-radius:50%;border:3px solid var(--gold-bright);background:#2a2240;position:relative;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.ctok.ghost .cav{border-color:#8a8370;background:#1a1826;}
+.ctok.novote .cav{border-color:#333;background:#111;opacity:.85;}
+.ctok.trav .cav{border:3px solid transparent;background:linear-gradient(#2a2240,#2a2240) padding-box,repeating-linear-gradient(45deg,#d43b3b 0 6px,#2f6fd4 6px 12px) border-box;}
+.ctok.nominator .cav{box-shadow:0 0 0 3px var(--gold-bright),0 0 12px #e6c65c88;}
+.ctok.nominee .cav{box-shadow:0 0 0 3px #b8323f,0 0 16px #e0483f;}
+.ctok.me .nm{color:#fff;font-weight:700;}
+.ctok .nm{font-size:11.5px;margin-top:3px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ctok .yes{position:absolute;top:-6px;inset-inline-end:-8px;background:#3aa65a;color:#fff;border-radius:50%;width:20px;height:20px;font-size:13px;line-height:20px;font-weight:700;box-shadow:0 0 6px #3aa65a;}
+.ctok .exec{position:absolute;bottom:-8px;inset-inline-start:-8px;font-size:15px;}
+.court-center{position:absolute;inset:27%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px;}
+.court-center .vs{font-size:13.5px;line-height:1.5;}
+.court-center .cnt{font-size:40px;font-weight:700;line-height:1;font-family:'Cinzel',serif;}
 .countdown{font-size:44px;font-weight:700;color:var(--gold-bright);line-height:1;margin-top:6px;}
 </style>
 </head>
@@ -128,7 +145,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.16';
+const PLAYER_BUILD = '2026.10.28.17';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -521,6 +538,7 @@ function liveVote(){
   const key = nom.nomKey + '#' + nom.voteRound;
   if(!S.voteDeadline[key]){
     S.voteDeadline[key] = Date.now() + (nom.voteRemainingMs || 10000);
+    S.tab = 'vote'; // jump to the Courthouse so everyone watches the vote live
     try{ navigator.vibrate && navigator.vibrate([120,60,120,60,120]); }catch(e){}
   }
   const left = S.voteDeadline[key] - Date.now();
@@ -712,6 +730,44 @@ function boardTab(){
       ${!seats.length && unseated.length ? '<p class="muted" style="text-align:center;">لم يتم ترتيب المقاعد بعد</p>' : ''}
     </div>`;
 }
+// The Courthouse, as on the Storyteller's screen: same circle, rope, hands and count — everyone's votes visible live.
+function courtColor(count, threshold){ return count>=threshold ? '#e0483f' : (count===threshold-1 ? '#e0943f' : 'var(--text)'); }
+function courtCircleHtml(court){
+  const nom = court.nomination;
+  const order = seatOrder().filter(Boolean);
+  const n = order.length;
+  const radius = 40;
+  const voters = new Set(nom && nom.trialActive ? (nom.voters||[]) : []);
+  const leading = new Set(court.leadingIds||[]);
+  const pos = {};
+  const toks = order.map((s,i)=>{
+    const {x,y} = seatPos(i, n, radius); pos[s.pid] = {x,y};
+    const cls = ['ctok', s.alive ? '' : (s.ghostVoteUsed ? 'novote' : 'ghost'), s.traveller?'trav':'', s.pid===S.pid?'me':'',
+      nom && nom.nominatorId===s.pid ? 'nominator':'', nom && nom.nomineeId===s.pid ? 'nominee':''].join(' ');
+    return `<div class="${cls}" style="left:${x}%;top:${y}%;">
+      <div class="cav">${!s.alive ? (s.ghostVoteUsed ? '💀' : '🕯️') : ''}${voters.has(s.pid) ? '<span class="yes">✓</span>' : ''}${leading.has(s.pid) ? '<span class="exec">⚔️</span>' : ''}</div>
+      <div class="nm"><bdi>${esc(s.name)}</bdi></div>
+    </div>`;
+  }).join('');
+  let rope = '';
+  if(nom && pos[nom.nominatorId]){
+    const a = pos[nom.nominatorId];
+    const b = nom.nomineeId==='__STORYTELLER__' ? {x:50, y:50+radius} : pos[nom.nomineeId];
+    if(b) rope = `<svg class="rope" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${nom.isExile?'#9b7bd6':'#c9a94a'}" stroke-width="0.9" stroke-dasharray="${nom.isExile?'2 1.5':''}" stroke-linecap="round"/></svg>`;
+  }
+  const v = liveVote();
+  let center;
+  if(!nom){
+    center = `<div style="font-size:30px;">⚖️</div><div class="muted" style="font-size:13px;">${S.pub && S.pub.subphase==='night' ? 'لا تصويت في الليل' : (court.closedForDay ? 'المحكمة مغلقة لهذا اليوم' : 'لا يوجد ترشيح الآن')}</div>`;
+  } else if(!nom.trialActive){
+    center = `<div class="muted" style="font-size:12px;">${nom.isExile ? 'نفي' : 'ترشيح'}</div><div class="vs"><b><bdi>${esc(nom.nominatorName)}</bdi></b> يرشّح <b style="color:#ff8c90;"><bdi>${esc(nom.nomineeName)}</bdi></b></div><div class="muted" style="font-size:12px;">بانتظار بدء التصويت…</div>`;
+  } else {
+    center = `<div class="vs"><bdi>${esc(nom.nominatorName)}</bdi> ← <b style="color:#ff8c90;"><bdi>${esc(nom.nomineeName)}</bdi></b></div>
+      <div class="cnt" style="color:${courtColor(nom.count, nom.threshold)};">${nom.count} / ${nom.threshold}</div>
+      <div class="muted" style="font-size:12px;">${v ? `⏳ ${Math.ceil(v.left/1000)} ث — التصويت مفتوح` : (nom.locked ? 'اكتمل التصويت' : 'التصويت جارٍ')}</div>`;
+  }
+  return `<div class="court">${rope}${hostMarkHtml(radius)}${toks}<div class="court-center">${center}</div></div>`;
+}
 function voteTab(){
   const court = (S.pub && S.pub.court) || {};
   const nom = court.nomination;
@@ -719,23 +775,9 @@ function voteTab(){
   const hist = (court.history && court.history['d'+day]) || [];
   let live = '';
   if(court.publicMessage){ live += `<div class="deadbar">${esc(court.publicMessage)}</div>`; }
-  if(nom){
-    const color = nom.count>=nom.threshold ? '#e0483f' : (nom.count===nom.threshold-1 ? '#e0943f' : 'var(--text)');
-    const seats = (S.pub && S.pub.seats) || {};
-    const voterNames = (nom.voters||[]).map(pid=>{ const s = seats[appKey(pid)]; return s ? s.name : ''; }).filter(Boolean);
-    live += `
-      <div class="card" style="text-align:center;">
-        <div class="muted">${nom.isExile ? 'نفي (مسافر)' : 'ترشيح'}</div>
-        <div style="font-size:19px;margin-top:6px;"><b><bdi>${esc(nom.nominatorName)}</bdi></b> رشّح <b style="color:#ff8c90;"><bdi>${esc(nom.nomineeName)}</bdi></b></div>
-        ${nom.trialActive ? `
-          <div class="bigcount" style="color:${color};">${nom.count}</div>
-          <div class="muted">المطلوب ${nom.threshold} ${nom.locked ? '— انتهى التصويت' : '— التصويت جارٍ'}</div>
-          <div style="margin-top:12px;font-size:14px;">${voterNames.length ? '✋ ' + voterNames.map(n=>`<bdi>${esc(n)}</bdi>`).join('، ') : '<span class="muted">لم يصوّت أحد بعد</span>'}</div>
-        ` : `<p class="muted">بانتظار بدء التصويت…</p>`}
-      </div>`;
-  } else {
-    live += `<div class="card" style="text-align:center;"><div style="font-size:40px;">⚖️</div><p class="muted">${S.pub && S.pub.subphase==='night' ? 'لا تصويت في الليل' : 'لا يوجد ترشيح الآن'}</p></div>`;
-  }
+  live += `<div class="card" style="padding:8px;">${courtCircleHtml(court)}
+    ${nom && nom.trialActive ? `<div class="muted" style="text-align:center;font-size:12px;margin-top:6px;">✓ = صوّت بنعم · ⚔️ = في طريقه للإعدام · 🕯️ = ميت ولديه صوت شبح · 💀 = ميت بلا صوت</div>` : ''}
+  </div>`;
   const me = mySeat();
   const voteNote = me ? (me.alive ? '' : (me.ghostVoteUsed ? '<p class="muted" style="text-align:center;">لقد استخدمت صوت الشبح.</p>' : '<p class="muted" style="text-align:center;">👻 لديك صوت شبح واحد لبقية اللعبة.</p>')) : '';
   return live + voteNote + (hist.length ? `
@@ -778,6 +820,7 @@ function referenceTab(){
     `<p class="muted" style="text-align:center;">هذا هو ترتيب الاستيقاظ لكل شخصيات النص، وليس قائمة بمن هو في اللعب.</p>`;
 }
 function joinedScreen(){
+  liveVote(); // registers a newly opened vote first (vibrate + jump to the Courthouse tab)
   const me = mySeat();
   const unread = unreadIds().length;
   const nom = S.pub && S.pub.court && S.pub.court.nomination;
@@ -801,7 +844,7 @@ function joinedScreen(){
       ${tab('role','🎭','دوري')}
       ${tab('inbox','✉️','الرسائل')}
       ${tab('board','⭕','اللوحة')}
-      ${tab('vote','⚖️','التصويت', nom && nom.trialActive ? 'live' : '')}
+      ${tab('vote','⚖️','المحكمة', nom && nom.trialActive ? 'live' : '')}
       ${tab('ref','📖','المرجع')}
     </nav>`;
 }
