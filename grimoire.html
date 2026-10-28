@@ -863,7 +863,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.22';
+const APP_BUILD = '2026.10.28.23';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1877,7 +1877,7 @@ function topbarHtml(){
         ${game && game.phase==='play' ? `<button class="ghost small" onclick="pageTurnTransition(()=>go('seating'))">Seating</button>` : ''}
         ${game && game.phase==='play' && game.activeLoric && game.activeLoric.length>0 ? `<button class="ghost small" onclick="showLoricReminder()" style="border-color:var(--gold);color:var(--gold-bright);" title="Active Loric rule reminders">🌀 Loric (${game.activeLoric.length})</button>` : ''}
         <button class="ghost small" onclick="openAppRoomPanel()" title="Players' phones: room code, QR, who has joined">📱 Phones${appState.code ? ` <span style="color:${appState.online?'#4caf6a':'#e0943f'};">●</span>` : ''}${appState.code && appPendingJoinRequests().length ? ` <span style="background:${TYPE_COLORS.traveller};color:#fff;border-radius:9px;padding:0 6px;font-size:11px;" title="Someone wants to join as a Traveller">🧳 ${appPendingJoinRequests().length}</span>` : ''}</button>
-        ${game && game.phase==='play' ? `<button class="ghost small" onclick="openAddTravellerModal()" title="Add a Traveller joining partway through the game" style="border-color:${TYPE_COLORS.traveller};">➕ Add Traveller</button>` : ''}
+        ${game && (game.phase==='play' || (game.scriptConfirmed && ['tokens','review','seating','reveal'].includes(route))) ? `<button class="ghost small" onclick="openAddTravellerModal()" title="Add a Traveller (during setup they wake on the first night like everyone else)" style="border-color:${TYPE_COLORS.traveller};">➕ Add Traveller</button>` : ''}
         ${game && (game.phase==='play' || game.phase==='reveal') ? `<button class="ghost small" onclick="confirmResetGame()">Reset game</button>` : ''}
         <button class="ghost small" onclick="confirmReset()">New game</button>
         ${game && game.phase==='play' ? `
@@ -1968,12 +1968,16 @@ function confirmAddTraveller(){
     seat: null, alive: true, ghostVoteUsed: false,
     isDrunk: false, drunkCover: null, markers: [],
   };
+  const duringSetup = game.phase!=='play';
+  if(duringSetup) newPlayer.seat = Math.max(-1, ...game.players.map(p=>(typeof p.seat==='number' ? p.seat : -1))) + 1;
   game.players.push(newPlayer);
-  logAction(`${name} joined the game as the Traveller ${character} (${alignment}).`);
+  logAction(`${name} joined the game as the Traveller ${character} (${alignment})${duringSetup ? ' during setup' : ''}.`);
   const reqUid = ui.modal && ui.modal.prefill ? ui.modal.prefill.reqUid : null;
   saveGame();
-  appSendRole(newPlayer.id, null);
+  // Mid-game: their role card goes out now. During setup it goes out with everyone else's.
+  if(!duringSetup) appSendRole(newPlayer.id, null);
   if(reqUid) appLinkTravellerRequest(reqUid, newPlayer.id);
+  if(duringSetup){ closeModal(); render(); return; }
   closeModal();
   pageTurnTransition(()=>go('seating'));
 }
@@ -3279,14 +3283,14 @@ function updatePoolStartButtonState(){
   const btn = document.getElementById('manual-pool-start-btn');
   if(!btn) return;
   const totalChecked = document.querySelectorAll('.pool-check:checked').length;
-  btn.disabled = totalChecked !== game.players.length;
+  btn.disabled = totalChecked !== nonTravellerPlayerCount(); // Travellers already have their character
 }
 function collectManualPool(){
   return Array.from(document.querySelectorAll('.pool-check:checked')).map(el=>el.dataset.name);
 }
 function assignFromManualPool(){
   const pool = collectManualPool();
-  const n = game.players.length;
+  const n = nonTravellerPlayerCount();
   if(pool.length !== n){
     showConfirm(`You selected ${pool.length} characters for ${n} players. Continue anyway?`, ()=>finalizeAssignment(pool));
     return;
@@ -3330,7 +3334,8 @@ function syncDrunkEffectMarker(p){
 }
 function finalizeAssignment(pool){
   const shuffled = shuffle(pool);
-  game.players.forEach((p,i)=>{
+  // Travellers added during setup keep their Traveller character; only everyone else gets a token.
+  game.players.filter(p=>!(p.character && TYPE_OF[p.character]==='traveller')).forEach((p,i)=>{
     const charName = shuffled[i] || null;
     p.character = charName;
     p.isDrunk = charName === 'Drunk';
@@ -3912,7 +3917,8 @@ function assignRedHerring(){
   chosen.markers.push('red_herring');
 }
 function goToSeatingFresh(){
-  if(!game.keepSeating){
+  const phoneSeated = Object.keys(game.seatLocks||{}).some(id=>game.seatLocks[id] && game.players.some(p=>p.id===id));
+  if(!game.keepSeating && !phoneSeated){
     game.players.forEach(p=>p.seat=null);
   }
   saveGame();

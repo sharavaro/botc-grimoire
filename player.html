@@ -145,7 +145,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.22';
+const PLAYER_BUILD = '2026.10.28.23';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -669,7 +669,9 @@ function travellersOffered(){
   return all.filter(c=>!inPlay.has(c.name));
 }
 function travellerJoinHtml(){
-  if(!S.pub || !['play','reveal'].includes(S.pub.phase)) return '';
+  // Available during setup too, once the Storyteller has added players: a Traveller who joins before
+  // the game starts wakes on the first night like everyone else.
+  if(!S.pub || !S.pub.seats || !Object.keys(S.pub.seats).length) return '';
   const T = S.trav;
   if(T.sent) return `<div class="card" style="text-align:center;"><div style="font-size:34px;">🧳</div><p>تم إرسال طلبك إلى الراوي.</p><p class="muted">انتظر قليلًا — سيتم ربطك تلقائيًا عندما يضيفك الراوي.</p></div>`;
   if(!T.open) return `<div class="card" style="text-align:center;"><p style="margin:0 0 8px;">اسمك غير موجود؟</p><button class="primary" style="width:100%;" onclick="openTravellerJoin()">🧳 انضممت متأخرًا؟ انضم كمسافر</button></div>`;
