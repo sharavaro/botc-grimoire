@@ -102,6 +102,12 @@ input:focus,select:focus,textarea:focus{outline:1px solid var(--gold);border-col
 .topbar .brand{font-family:'Cinzel Decorative',serif;font-size:16px;color:var(--gold-bright);}
 .topbar .brand-build{font-family:'Cinzel',serif;font-size:9.5px;letter-spacing:0.12em;color:var(--mist);opacity:0.7;margin-top:2px;}
 .navlinks button{margin-left:6px;}
+@keyframes chatpulse{0%,100%{box-shadow:0 0 0 0 #e0483f88;}50%{box-shadow:0 0 0 7px #e0483f00;}}
+.chat-pulse{animation:chatpulse 1.4s infinite;border-color:#e0483f !important;}
+.chat-badge-n{background:#e0483f;color:#fff;border-radius:9px;padding:0 7px;font-size:11px;margin-inline-start:4px;}
+.stchat-bub{max-width:80%;padding:7px 11px;border-radius:12px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-break:break-word;margin:4px 0;}
+.stchat-bub.p{background:#2d4a73;border:1px solid #4a90d9;margin-right:auto;}
+.stchat-bub.st{background:#3b2d6b;border:1px solid #8a5fd6;margin-left:auto;}
 bdi{unicode-bidi:isolate;}
 
 /* town square */
@@ -866,7 +872,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.33';
+const APP_BUILD = '2026.10.28.34';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1875,6 +1881,7 @@ function go(r){
   const enteringCourt = r==='court' && route!=='court';
   route=r; ui.modal=null;
   // Phones jump to their Courthouse view whenever the Storyteller opens the Courthouse.
+  if(enteringCourt && game && appPendingDeclarations().length) ui.courtDeclarePrompt = true;
   if(enteringCourt && game && game.court){ game.court.openSeq = (game.court.openSeq||0) + 1; saveGame(); }
   else if(typeof appSyncSoon==='function') appSyncSoon();
   render(); window.scrollTo(0, 0);
@@ -1893,6 +1900,7 @@ function topbarHtml(){
         ${game && game.phase==='play' ? `<button class="ghost small" onclick="openNightOrder()">🌙 Night Order</button>` : ''}
         ${game && game.phase==='play' ? `<button class="ghost small" onclick="pageTurnTransition(()=>go('seating'))">Seating</button>` : ''}
         ${game && game.phase==='play' && game.activeLoric && game.activeLoric.length>0 ? `<button class="ghost small" onclick="showLoricReminder()" style="border-color:var(--gold);color:var(--gold-bright);" title="Active Loric rule reminders">🌀 Loric (${game.activeLoric.length})</button>` : ''}
+        ${appState.code ? appChatButtonHtml() : ''}
         <button class="ghost small" onclick="openAppRoomPanel()" title="Players' phones: room code, QR, who has joined">📱 Phones${appState.code ? ` <span style="color:${appState.online?'#4caf6a':'#e0943f'};">●</span>` : ''}${appState.code && appPendingJoinRequests().length ? ` <span style="background:${TYPE_COLORS.traveller};color:#fff;border-radius:9px;padding:0 6px;font-size:11px;" title="Someone wants to join as a Traveller">🧳 ${appPendingJoinRequests().length}</span>` : ''}</button>
         ${game && (game.phase==='play' || (game.scriptConfirmed && ['tokens','review','seating','reveal'].includes(route))) ? `<button class="ghost small" onclick="openAddTravellerModal()" title="Add a Traveller (during setup they wake on the first night like everyone else)" style="border-color:${TYPE_COLORS.traveller};">➕ Add Traveller</button>` : ''}
         ${game && (game.phase==='play' || game.phase==='reveal') ? `<button class="ghost small" onclick="confirmResetGame()">Reset game</button>` : ''}
@@ -4028,6 +4036,7 @@ function courtScreenHtml(){
       <div class="court-topbar">
         <button class="ghost small" onclick="ui.courtHistoryMobileVisible=false;pageTurnTransition(()=>go('play'), true)">→ العودة إلى دفتر الراوي</button>
         <div class="court-title" id="court-storyteller-target">⚖️ المحكمة — اليوم ${game.dayNum}</div>
+        ${appState.code ? appChatButtonHtml() : ''}
         <button class="ghost small court-history-toggle-btn" onclick="toggleCourtHistoryMobile()">📜 السجل</button>
       </div>
       <div class="court-board-area">
@@ -4050,6 +4059,7 @@ function courtScreenHtml(){
                   <button class="primary" onclick="beginTrial()">بدء المحاكمة</button>
                   <button class="ghost" onclick="cancelCourtNomination()">إلغاء</button>
                 </div>
+                ${voteModeSwitchHtml()}
               </div>
             ` : ''}
             ${nom && nom.trialActive && !nom.readyToConfirm ? `
@@ -4057,7 +4067,8 @@ function courtScreenHtml(){
                 <div style="font-size:22px;">${escapeHtml(game.players.find(x=>x.id===nom.nominatorId)?.name||'')} ← ${escapeHtml(courtNomineeName(nom.nomineeId))}</div>
                 <div style="font-size:34px;margin-top:10px;font-family:'Cinzel',serif;color:${courtVoteCountColor(courtVoteCount(nom, false), courtThreshold())};">${courtVoteCount(nom, false)} / ${courtThreshold()}</div>
                 <div class="muted" style="margin-top:10px;font-size:13px;">عدد اللاعبين الأحياء هو ${aliveCount}, عدد الأصوات المطلوبة للإعدام هو ${courtThreshold()}</div>
-                ${appVoteWindowOpen(nom) ? `<div style="margin-top:10px;font-size:15px;color:var(--gold-bright);">📱 التصويت مفتوح على الهواتف: <span id="court-vote-countdown">${Math.max(0, Math.ceil((nom.voteOpenedAt + (nom.voteWindowMs||APP_VOTE_WINDOW_MS) - Date.now())/1000))}</span></div>` : ''}
+                ${appVoteWindowOpen(nom) ? `<div style="margin-top:10px;font-size:15px;color:var(--gold-bright);">📱 التصويت مفتوح على الهواتف حتى تنهيه: <span id="court-vote-countdown">${Math.max(0, Math.ceil((nom.voteOpenedAt + (nom.voteWindowMs||APP_VOTE_WINDOW_MS) - Date.now())/1000))}</span></div>` : ''}
+                ${voteModeSwitchHtml()}
                 <button class="primary" style="margin-top:16px;" onclick="finishPoll()">إنهاء التصويت</button>
               </div>
             ` : ''}
@@ -4067,7 +4078,7 @@ function courtScreenHtml(){
                 <div style="font-size:34px;margin:8px 0;font-family:'Cinzel',serif;color:${courtVoteCountColor(courtVoteCount(nom, false), courtThreshold())};">${courtVoteCount(nom, false)} / ${courtThreshold()}</div>
                 <div class="row" style="justify-content:center;gap:10px;">
                   <button class="primary" onclick="confirmCourtVotes()">تثبيت النتيجة</button>
-                  <button class="ghost" onclick="reopenCourtVoting()">إعادة فتح التصويت${appState.code ? ' (10 ثوانٍ)' : ''}</button>
+                  <button class="ghost" onclick="reopenCourtVoting()">إعادة فتح التصويت</button>
                   <button class="ghost" onclick="resetCourtVoting()">إعادة التصويت</button>
                 </div>
               </div>
@@ -4086,6 +4097,7 @@ function courtScreenHtml(){
             </div>
           </div>
         ` : ''}
+        ${declarePromptHtml()}
         ${ui.courtShowButcherPrompt ? `
           <div class="court-public-popup">
             <div class="court-public-popup-box">
@@ -4352,7 +4364,7 @@ function courtDragEnd(e){
   const nominator = game.players.find(x=>x.id===fromId);
   if(nominator && isCursed(nominator)){
     game.court.closedForDay = true;
-    game.court.publicMessage = `${nominator.name} قد مات، المحكمة مغلقة لهذا اليوم`;
+    game.court.publicMessage = appHideDeathMessage(`${nominator.name} قد مات، المحكمة مغلقة لهذا اليوم`);
     game.pendingExecutionId = nominator.id;
     game.court.executionReason = 'curse';
     logAction(`${nominator.name} nominated while cursed by the Witch — the Courthouse is closed for the day, awaiting execution.`);
@@ -4371,7 +4383,7 @@ function courtDragEnd(e){
       const nominatorRealChar = nominator ? (nominator.isDrunk ? nominator.drunkCover : nominator.character) : null;
       if(nominatorRealChar && TYPE_OF[nominatorRealChar]==='townsfolk'){
         game.court.closedForDay = true;
-        game.court.publicMessage = `${nominator.name} قد مات، المحكمة مغلقة لهذا اليوم`;
+        game.court.publicMessage = appHideDeathMessage(`${nominator.name} قد مات، المحكمة مغلقة لهذا اليوم`);
         game.pendingExecutionId = nominator.id;
         game.court.executionReason = 'virgin';
         logAction(`${nominee.name} (Virgin) was nominated by a Townsfolk (${nominator.name}) — the Courthouse is closed for the day, awaiting execution.`);
@@ -4401,6 +4413,12 @@ function cancelCourtNomination(){
   game.court.nomination = null;
   saveGame();
   refreshCourt();
+}
+function voteModeSwitchHtml(){
+  if(!appState.code) return '';
+  const m = appVoteMode();
+  const b = (mode,label)=>`<button class="${m===mode?'primary':'ghost'} small" onclick="setVoteMode('${mode}')">${label}</button>`;
+  return `<div class="row" style="justify-content:center;gap:8px;margin-top:12px;align-items:center;"><span class="muted" style="font-size:12px;">طريقة التصويت:</span>${b('phones','📱 من الهواتف')}${b('manual','✋ يدويًا (أنا أصوّت)')}</div>`;
 }
 function beginTrial(){
   if(!game.court.nomination) return;
@@ -4691,7 +4709,7 @@ function gunslingerKillTarget(targetId){
   target.diedAtNight = null;
   if(!noDashiiPoisonedIds().includes(target.id)) target.markers = (target.markers||[]).filter(m=>m!=='poisoned');
   playDeathSound();
-  game.court.publicMessage = `${target.name} تم قتله بواسطة ${gunslinger ? gunslinger.name : 'Gunslinger'}`;
+  game.court.publicMessage = appHideDeathMessage(`${target.name} تم قتله بواسطة ${gunslinger ? gunslinger.name : 'Gunslinger'}`);
   logAction(`Gunslinger killed ${target.name}, who had just voted.`);
   checkReactiveDeathTrigger(target);
   saveGame();
@@ -4795,6 +4813,7 @@ screens['play'] = () => {
         <svg id="monk-protect-svg" class="fx-svg"></svg>
         <svg id="witch-curse-svg" class="fx-svg"></svg>
         <svg id="vortox-tornado-svg" class="fx-svg"></svg>
+        ${declareButtonHtml()}
         <div class="circle-center"><div class="clock-icon">🕰️</div><div class="muted" style="font-size:10.5px;">${game.players.filter(p=>p.alive).length} alive</div></div>
         ${svVoteFlagOverlayHtml()}
         ${seatedPlayers().map(p=>tokenHtml(p)).join('')}
@@ -5137,6 +5156,10 @@ function renderModal(){
   }
   if(ui.modal.type==='appRoom'){
     host.innerHTML = appRoomModalHtml();
+    return;
+  }
+  if(ui.modal.type==='chat'){
+    host.innerHTML = appChatModalHtml();
     return;
   }
   if(ui.modal.type==='nightorder'){
@@ -10204,7 +10227,7 @@ function generateExecutionAnnouncement(btn, selectClass, textField){
     // "dead" nominee's execution genuinely means something -- this is her real, second death.
     if(p.character==='Zombuul' && p.zombuulFakeDeathUsed){
       p.actsWhileDead = false;
-      game.court.publicMessage = `${p.name} تم اعدامه — هذه المرة مات فعلا`;
+      game.court.publicMessage = appHideDeathMessage(`${p.name} تم اعدامه — هذه المرة مات فعلا`);
       game[textField] = withHeader(`${p.name} تم إعدامه من قبل البلدة — ماتت الزمبول فعلاً هذه المرة.`);
       logAction(`${p.name} (Zombuul) has died for real this time — this was her second death.`);
       showInfo(`${p.name} (Zombuul) has genuinely died this time. Per the rules, good wins now.`);
@@ -10426,7 +10449,7 @@ const PLAYER_APP_URL = 'https://sharavaro.github.io/botc-grimoire/player.html';
 const FB_SDK_VERSION = '10.12.2';
 let NET = null;
 const appState = { code:null, gameId:null, attached:false, connecting:false, error:null, online:false,
-  claims:{}, presence:{}, reads:{}, unsubs:[], lastPublicJson:null, lastScriptKey:null, syncTimer:null };
+  claims:{}, presence:{}, reads:{}, chat:{}, unsubs:[], lastPublicJson:null, lastScriptKey:null, syncTimer:null };
 
 function appLoadScriptOnce(src){
   return new Promise((resolve, reject)=>{
@@ -10498,8 +10521,62 @@ function appBuildRole(p, text){
   };
 }
 
+// ---- Declare deaths: phones only learn about deaths/revivals when the Storyteller declares them ----
+// game.declaredAlive maps player id -> what the phones currently believe (true = alive).
+function appDeclaredMap(){
+  if(!game.declaredAlive){
+    game.declaredAlive = {};
+    game.players.forEach(p=>{ game.declaredAlive[p.id] = p.alive!==false; });
+  }
+  return game.declaredAlive;
+}
+function appShownAlive(p){
+  if(!game || game.phase!=='play') return p.alive!==false; // before the game starts nothing is hidden
+  const m = appDeclaredMap();
+  return m[p.id]===undefined ? true : !!m[p.id];
+}
+// Players whose real alive/dead state differs from what the phones show.
+function appPendingDeclarations(){
+  if(!game || game.phase!=='play' || !appState.attached) return [];
+  return game.players.filter(p=>(p.alive!==false) !== appShownAlive(p)).map(p=>({p, dying: p.alive===false}));
+}
+function appShownThreshold(){
+  return Math.ceil(game.players.filter(p=>appShownAlive(p)).length/2);
+}
+function appDeclareDeaths(){
+  const pend = appPendingDeclarations();
+  if(!pend.length) return;
+  const m = appDeclaredMap();
+  game.players.forEach(p=>{ m[p.id] = p.alive!==false; });
+  ui.courtDeclarePrompt = false;
+  logAction('Declared to the players: ' + pend.map(x=>`${x.p.name} ${x.dying?'died':'is alive again'}`).join(', ') + '.');
+  saveGame();
+  appSyncSoon();
+  if(route==='court') refreshCourt(); else if(route==='play') refreshPlay(); else render();
+}
+function skipDeclarePrompt(){ ui.courtDeclarePrompt = false; if(route==='court') refreshCourt(); }
+function declareButtonHtml(){
+  if(!game || game.phase!=='play' || !appState.attached) return '';
+  const n = appPendingDeclarations().length;
+  return `<button class="${n?'primary':'ghost'} small" ${n?'':'disabled'} onclick="appDeclareDeaths()" style="position:absolute;left:6px;top:6px;z-index:5;${n?'':'opacity:.4;cursor:not-allowed;'}" title="${n?'Tell the players about the deaths/revivals that happened':'Nothing to declare right now'}">💀 Declare deaths${n?` <b style="background:#d6403a;color:#fff;border-radius:9px;padding:0 7px;margin-inline-start:4px;">${n}</b>`:''}</button>`;
+}
+function declarePromptHtml(){
+  const pend = appPendingDeclarations();
+  if(!ui.courtDeclarePrompt || !pend.length) return '';
+  return `<div class="court-public-popup"><div class="court-public-popup-box">
+    <div style="color:var(--gold-bright);font-size:19px;">💀 تذكير: هناك وفيات / إحياءات لم تُعلن بعد</div>
+    <div style="margin-top:10px;font-size:15px;line-height:1.7;">${pend.map(x=>`<div><bdi>${escapeHtml(x.p.name)}</bdi> — ${x.dying?'مات':'عاد إلى الحياة'}</div>`).join('')}</div>
+    <div class="row" style="justify-content:center;margin-top:16px;gap:10px;">
+      <button class="primary" onclick="appDeclareDeaths()">إعلان الآن</button>
+      <button class="ghost" onclick="skipDeclarePrompt()">تخطي</button>
+    </div></div></div>`;
+}
+// Messages that would reveal an undeclared death are kept off the phones.
+function appHideDeathMessage(text){ game.court.deathMsgText = text; return text; }
+
 // ---- The public board: the ONLY game data that leaves the Storyteller's device for everyone ----
 function appBuildPublicState(){
+  if(game.phase!=='play') game.declaredAlive = null; // outside play everything is visible; re-baselines at game start
   const seats = {};
   const circleOrder = seatedPlayers().map(x=>x.id);
   game.seatLocks = game.seatLocks || {};
@@ -10508,7 +10585,7 @@ function appBuildPublicState(){
     seats[appKey(p.id)] = {
       pid: p.id, name: p.name, seat: circleOrder.indexOf(p.id)>=0 ? circleOrder.indexOf(p.id) : null,
       seatLocked: !!game.seatLocks[p.id] || appSeatingFinal(),
-      alive: p.alive!==false, ghostVoteUsed: !!p.ghostVoteUsed,
+      alive: appShownAlive(p), ghostVoteUsed: appShownAlive(p) ? false : !!p.ghostVoteUsed,
       traveller: isTraveller ? p.character : null,
       claimed: !!appState.claims[appKey(p.id)],
     };
@@ -10522,7 +10599,7 @@ function appBuildPublicState(){
       nominatorId: nom.nominatorId||null, nomineeId: nom.nomineeId||null,
       nominatorName: courtNomineeName(nom.nominatorId), nomineeName: courtNomineeName(nom.nomineeId),
       isExile: !!nom.isExile, trialActive: !!nom.trialActive, locked: !!nom.readyToConfirm,
-      voters, count: courtVoteCount(nom, false), threshold: courtThreshold(),
+      voters, count: courtVoteCount(nom, false), threshold: appShownThreshold(),
       voteOpen: appVoteWindowOpen(nom), voteRound: nom.voteOpenRound || null, nomKey: appNomKey(nom),
       voteRemainingMs: appVoteWindowOpen(nom) ? Math.max(0, nom.voteOpenedAt + (nom.voteWindowMs||APP_VOTE_WINDOW_MS) - Date.now()) : 0,
     };
@@ -10544,7 +10621,7 @@ function appBuildPublicState(){
     phase: game.phase || 'names', subphase: game.subphase || null,
     nightNum: game.nightNum || 0, dayNum: game.dayNum || 0,
     seats,
-    court: { nomination, history, leadingIds: leading, publicMessage: court.publicMessage || null,
+    court: { nomination, history, leadingIds: leading, publicMessage: (court.publicMessage && court.publicMessage===court.deathMsgText) ? null : (court.publicMessage || null),
              openSeq: court.openSeq || 0, hostInCourt: route==='court',
              nominatedToday: game.phase==='play' ? game.players.filter(p=>courtNominationUsedToday(p)).map(p=>p.id) : [],
              closedForDay: !!court.closedForDay, butcherGoldenLight: !!court.butcherGoldenLight },
@@ -10625,6 +10702,8 @@ async function appResetForNewGame(){
   await NET.remove(appRoomPath('votes'));
   await NET.remove(appRoomPath('seatReq'));
   await NET.remove(appRoomPath('joinReq'));
+  await NET.remove(appRoomPath('chat'));
+  appState.chat = {};
   appState.claims = {}; appState.presence = {}; appState.reads = {};
   appState.gameId = gid; appState.lastPublicJson = null;
   appSaveRoomRecord();
@@ -10674,6 +10753,7 @@ async function appAttach(){
   appState.unsubs.push(NET.on(appRoomPath('answers'), val=>appOnAnswers(val)));
   appState.unsubs.push(NET.on(appRoomPath('votes'), val=>appOnVotes(val)));
   appState.unsubs.push(NET.on(appRoomPath('seatReq'), val=>appOnSeatRequests(val)));
+  appState.unsubs.push(NET.on(appRoomPath('chat'), val=>appOnChat(val)));
   appState.unsubs.push(NET.on(appRoomPath('joinReq'), val=>appOnJoinRequests(val)));
   if(NET.onConnected) appState.unsubs.push(NET.onConnected(ok=>{ appState.online = ok; appRefreshPanel(); }));
   else appState.online = true;
@@ -11127,23 +11207,42 @@ function appOnAnswers(val){
   }
 }
 
-// ---- Phone voting: the Storyteller starts the vote; phones vote Yes/No for 10 seconds ----
-const APP_VOTE_WINDOW_MS = 10000;
-function appVoteWindowOpen(nom){ return !!(nom && nom.trialActive && !nom.readyToConfirm && nom.voteOpenRound && nom.voteOpenedAt && Date.now() < nom.voteOpenedAt + (nom.voteWindowMs||APP_VOTE_WINDOW_MS)); }
+// ---- Phone voting: the Storyteller starts the vote; phones vote Yes/No (15s guide, open until he ends it) ----
+// The 15 seconds is only a guide shown on the phones: the vote stays open until the Storyteller ends it.
+const APP_VOTE_WINDOW_MS = 15000;
+function appVoteMode(){ return (game && game.voteMode==='manual') ? 'manual' : 'phones'; }
+function appVoteWindowOpen(nom){ return !!(nom && nom.trialActive && !nom.readyToConfirm && nom.voteOpenRound && nom.voteOpenedAt); }
+// Switch between phone voting and the Storyteller tapping the votes himself.
+function setVoteMode(mode){
+  if(!game) return;
+  game.voteMode = mode==='manual' ? 'manual' : 'phones';
+  const nom = game.court && game.court.nomination;
+  if(nom && nom.trialActive && !nom.readyToConfirm){
+    if(game.voteMode==='manual'){
+      nom.voteOpenRound = null;
+      clearTimeout(appState.voteTimer); clearInterval(appState.voteTick);
+    } else {
+      appOpenVoteWindow();
+    }
+  }
+  saveGame();
+  if(route==='court') refreshCourt();
+}
 function appOpenVoteWindow(){
   const nom = game.court && game.court.nomination;
   if(!nom || !nom.trialActive) return;
   if(!appState.code) return; // no phones connected: the vote runs by hand, as before
+  if(appVoteMode()==='manual') return; // Storyteller chose to tap the votes himself
   nom.voteRound = (nom.voteRound||0) + 1;
   nom.voteOpenRound = nom.voteRound;
   nom.voteOpenedAt = Date.now();
   nom.voteWindowMs = APP_VOTE_WINDOW_MS;
   clearTimeout(appState.voteTimer); clearInterval(appState.voteTick);
-  appState.voteTimer = setTimeout(()=>appCloseVoteWindow(nom.voteRound), APP_VOTE_WINDOW_MS + 400);
   appState.voteTick = setInterval(()=>{
     const el = typeof document!=='undefined' ? document.getElementById('court-vote-countdown') : null;
     const left = Math.max(0, Math.ceil((nom.voteOpenedAt + APP_VOTE_WINDOW_MS - Date.now())/1000));
     if(el) el.textContent = String(left);
+    if(el && left<=0) el.textContent = '0';
     if(left<=0) clearInterval(appState.voteTick);
   }, 250);
   saveGame();
@@ -11166,7 +11265,7 @@ function appOnVotes(val){
   val = val || {};
   const nom = game.court && game.court.nomination;
   if(!nom || !nom.voteOpenRound) return;
-  if(!appVoteWindowOpen(nom) && Date.now() > nom.voteOpenedAt + (nom.voteWindowMs||APP_VOTE_WINDOW_MS) + 1500) return;
+  if(!appVoteWindowOpen(nom)) return;
   let changed = false;
   for(const uidOf of Object.keys(val)){
     const v = val[uidOf];
@@ -11182,6 +11281,110 @@ function appOnVotes(val){
 }
 // Identifies one specific nomination, so a vote can never land on a different trial.
 function appNomKey(nom){ return `${game.dayNum}-${nom.nominatorId}-${nom.nomineeId}-${(courtHistoryForToday()||[]).length}`; }
+
+// ---- Private chat: players ask the Storyteller things privately; replies go back the same way ----
+// Messages live at rooms/<code>/chat/<player uid>/<id> = {from:'p'|'st', text, at}; wiped when a new game starts.
+function appChatThread(pid){
+  const uidOf = appState.claims[appKey(pid)];
+  const t = (appState.chat||{})[uidOf] || {};
+  return Object.keys(t).map(id=>Object.assign({id}, t[id])).sort((a,b)=>(a.at||0)-(b.at||0));
+}
+function appChatUnread(pid){
+  const seen = ((game && game.chatSeen)||{})[pid] || 0;
+  return appChatThread(pid).filter(m=>m.from==='p' && (m.at||0)>seen).length;
+}
+function appChatUnreadTotal(){ return game ? game.players.reduce((n,p)=>n+appChatUnread(p.id),0) : 0; }
+function appChatMarkSeen(pid){
+  if(!game) return;
+  game.chatSeen = game.chatSeen || {};
+  const th = appChatThread(pid);
+  const last = th.length ? Math.max(...th.map(m=>m.at||0)) : 0;
+  if((game.chatSeen[pid]||0) < last){ game.chatSeen[pid] = last; saveGame(); }
+}
+function appChatButtonHtml(){
+  const n = appChatUnreadTotal();
+  return `<button class="ghost small chat-btn ${n?'chat-pulse':''}" onclick="openChat()" title="Private messages from players">💬 Chat<span class="chat-badge-n" style="${n?'':'display:none;'}">${n}</span></button>`;
+}
+function appChatRefreshBadges(){
+  if(typeof document==='undefined') return;
+  const n = appChatUnreadTotal();
+  document.querySelectorAll('.chat-btn').forEach(b=>{
+    b.classList.toggle('chat-pulse', n>0);
+    const sp = b.querySelector('.chat-badge-n');
+    if(sp){ sp.textContent = String(n); sp.style.display = n ? '' : 'none'; }
+  });
+  if(typeof document.title==='string'){
+    document.title = document.title.replace(/^\(\d+\)\s*/,'');
+    if(n) document.title = `(${n}) ${document.title}`;
+  }
+}
+function appOnChat(val){
+  if(!game) return;
+  appState.chat = val || {};
+  if(ui && ui.modal && ui.modal.type==='chat' && ui.modal.pid) appChatMarkSeen(ui.modal.pid);
+  appChatRefreshBadges();
+  if(ui && ui.modal && ui.modal.type==='chat') appChatRerender();
+}
+function appChatRerender(){
+  const a = typeof document!=='undefined' ? document.activeElement : null;
+  const keep = a && a.id==='st-chat-input' ? {s:a.selectionStart, e:a.selectionEnd} : null;
+  renderModal();
+  const log = document.getElementById('st-chat-log'); if(log) log.scrollTop = log.scrollHeight;
+  if(keep){ const el = document.getElementById('st-chat-input'); if(el){ el.focus(); try{ el.setSelectionRange(keep.s, keep.e); }catch(e){} } }
+}
+function openChat(pid){
+  if(!pid){
+    // Jump straight to the first player with something waiting.
+    const waiting = game ? game.players.find(p=>appChatUnread(p.id)>0) : null;
+    pid = waiting ? waiting.id : null;
+  }
+  ui.modal = {type:'chat', pid: pid||null};
+  if(pid) appChatMarkSeen(pid);
+  renderModal(); appChatRefreshBadges();
+  const log = document.getElementById('st-chat-log'); if(log) log.scrollTop = log.scrollHeight;
+}
+function appChatSelect(pid){ ui.modal = {type:'chat', pid}; appChatMarkSeen(pid); appChatRerender(); appChatRefreshBadges(); }
+function appChatDraftInput(v){ ui.chatDraft = ui.chatDraft || {}; if(ui.modal && ui.modal.pid) ui.chatDraft[ui.modal.pid] = v; }
+async function appChatSend(){
+  const pid = ui.modal && ui.modal.pid;
+  if(!pid || !NET) return;
+  const uidOf = appState.claims[appKey(pid)];
+  const el = document.getElementById('st-chat-input');
+  const text = ((el ? el.value : ((ui.chatDraft||{})[pid])) || '').trim().slice(0,600);
+  if(!uidOf || !text) return;
+  const mid = 'm'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const msg = {from:'st', text, at:Date.now()};
+  appState.chat = appState.chat || {};
+  appState.chat[uidOf] = Object.assign({}, appState.chat[uidOf]||{}, {[mid]: msg});
+  ui.chatDraft = ui.chatDraft || {}; ui.chatDraft[pid] = '';
+  appChatMarkSeen(pid);
+  appChatRerender();
+  try{ await NET.set(appRoomPath(`chat/${uidOf}/${mid}`), msg); }
+  catch(e){ console.warn('chat send', e); showInfo('Could not send the reply — check the connection and the Firebase rules (chat block).'); }
+}
+function appChatModalHtml(){
+  const players = game.players.filter(p=>appState.claims[appKey(p.id)]);
+  const sel = ui.modal.pid && players.find(p=>p.id===ui.modal.pid) ? ui.modal.pid : null;
+  const th = sel ? appChatThread(sel) : [];
+  const fmtT = t=>{ const d = new Date(t||0); return isNaN(d) ? '' : `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+  const chips = players.map(p=>{
+    const n = appChatUnread(p.id), has = appChatThread(p.id).length>0;
+    return `<button class="${p.id===sel?'primary':'ghost'} small" style="margin:3px;" onclick="appChatSelect('${p.id}')"><bdi>${escapeHtml(p.name)}</bdi>${n?` <span class="chat-badge-n">${n}</span>`:(has?' <span class="muted">·</span>':'')}</button>`;
+  }).join('');
+  return `<div class="modal-overlay" onclick="if(event.target===this) closeModal();">
+    <div class="modal" style="max-width:560px;">
+      <div class="row between"><h3 style="margin:0;">💬 Private chat</h3><button class="ghost small" onclick="closeModal()">Close</button></div>
+      <div class="hr"></div>
+      ${players.length ? `<div style="margin-bottom:6px;">${chips}</div>` : '<p class="muted">No player has joined from a phone yet.</p>'}
+      ${sel ? `
+        <div id="st-chat-log" style="max-height:42vh;overflow-y:auto;padding:4px 2px;">
+          ${th.length ? th.map(m=>`<div class="stchat-bub ${m.from}"><bdi>${escapeHtml(m.text)}</bdi><div class="muted" style="font-size:10px;">${m.from==='p'?escapeHtml(game.players.find(x=>x.id===sel).name):'You'} · ${fmtT(m.at)}</div></div>`).join('') : '<p class="muted" style="text-align:center;">No messages yet — you can start the conversation.</p>'}
+        </div>
+        <textarea id="st-chat-input" rows="2" maxlength="600" style="width:100%;box-sizing:border-box;margin-top:8px;" placeholder="Reply to ${escapeHtml(game.players.find(x=>x.id===sel).name)}…" oninput="appChatDraftInput(this.value)">${escapeHtml(((ui.chatDraft||{})[sel])||'')}</textarea>
+        <div class="row" style="justify-content:flex-end;margin-top:8px;"><button class="primary" onclick="appChatSend()">Send</button></div>
+      ` : (players.length ? '<p class="muted">Pick a player to read or send messages.</p>' : '')}
+    </div></div>`;
+}
 
 // ---- Self-seating: each phone picks its own seat once; after that only the Storyteller moves people ----
 // Players choose seats only before the game starts; from the reveal on, seats are final

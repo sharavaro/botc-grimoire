@@ -71,6 +71,17 @@
             ".write": "auth != null && auth.uid === $uid"
           }
         },
+        "chat": {
+          ".read": "auth != null && root.child('rooms').child($room).child('owner').val() === auth.uid",
+          ".write": "auth != null && root.child('rooms').child($room).child('owner').val() === auth.uid",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            "$mid": {
+              ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.child('from').val() === 'p'",
+              ".validate": "newData.hasChildren(['from','text','at']) && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 600 && (newData.child('from').val() === 'p' || newData.child('from').val() === 'st')"
+            }
+          }
+        },
         "joinReq": {
           ".read": "auth != null && root.child('rooms').child($room).child('owner').val() === auth.uid",
           ".write": "auth != null && root.child('rooms').child($room).child('owner').val() === auth.uid",

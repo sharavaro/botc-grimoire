@@ -106,6 +106,16 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
 .host-mark{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;width:80px;text-align:center;}
 .host-mark .av{width:48px;height:48px;border-radius:50%;background:#3b2d6b;border:2px dashed #b99cff;display:flex;align-items:center;justify-content:center;font-size:22px;}
 .host-mark .nm{font-size:12px;color:#d6c2ff;margin-top:3px;}
+.host-mark.tap{pointer-events:auto;cursor:pointer;z-index:3;}
+.host-mark .rdot{position:absolute;top:-2px;inset-inline-end:6px;width:14px;height:14px;border-radius:50%;background:#e0483f;border:2px solid #1a1530;}
+.seat,.ctok{cursor:pointer;}
+.notemark{font-size:10px;margin-inline-start:2px;}
+.chatlog{max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin:8px 0;padding:4px 2px;}
+.bub{max-width:82%;padding:7px 11px;border-radius:12px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-break:break-word;}
+.bub.me{align-self:flex-start;background:#2d4a73;border:1px solid #4a90d9;}
+.bub.st{align-self:flex-end;background:#3b2d6b;border:1px solid #8a5fd6;}
+.bub .tm{display:block;font-size:10px;opacity:.6;margin-top:2px;}
+textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:15px;resize:vertical;}
 .slot{position:absolute;transform:translate(-50%,-50%);width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;padding:0;}
 .slot.free{background:#2a2240;border:2px solid var(--gold);color:var(--gold-bright);}
 .slot.taken{background:#1a1626;border:1px solid var(--line);color:var(--mist);font-size:11px;font-weight:400;line-height:1.2;}
@@ -150,7 +160,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.34';
+const PLAYER_BUILD = '2026.10.28.35';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -173,6 +183,7 @@ const S = {
   tab:'role', roleShown:false, refTab:'chars', showEnglish:false,
   seenMsgs:{}, reads:{}, banner:null, confirmPid:null, unsubs:[], privUnsub:null,
   trav:{open:false, name:'', prefer:'', sent:false, unsub:null},
+  notes:null, view:null, chat:{}, chatReadAt:0, chatUnsub:null, chatDraft:'',
   qSel:{}, qSent:{}, confirmSeat:null, seatPending:null, voteDeadline:{}, myVote:{}, voteTicker:null,
 };
 
@@ -286,6 +297,7 @@ function courtAutoJump(pub){
 }
 async function onPublic(){
   const pub = S.pub;
+  try{ notesSync(); }catch(e){}
   courtAutoJump(pub);
   if(S.seatPending!==null && S.pid && pub && pub.seats){
     const mine = pub.seats[appKey(S.pid)];
@@ -350,9 +362,14 @@ function takeSeat(pid){
   setPresence();
   if(S.privUnsub) S.privUnsub();
   S.privUnsub = NET.on(R('private/'+S.uid), v=>onPrivate(v));
+  S.chatReadAt = lsGet('chatread_'+S.room) || 0; S.chatLoaded = false;
+  if(S.chatUnsub) S.chatUnsub();
+  S.chatUnsub = NET.on(R('chat/'+S.uid), v=>onChat(v));
 }
 function leaveSeat(){
   if(S.privUnsub){ S.privUnsub(); S.privUnsub = null; }
+  if(S.chatUnsub){ S.chatUnsub(); S.chatUnsub = null; }
+  S.chat = {}; S.view = null;
   S.pid = null; S.priv = null; S.stage = 'join'; S.roleShown = false; S.seenMsgs = {};
 }
 function setPresence(){
@@ -372,17 +389,22 @@ function onPrivate(v){
   const roleChanged = !!(S.priv.role && S.priv.role.at && S.priv.role.at!==prevRoleAt);
   if(!firstLoad && (fresh.length || roleChanged)){
     const isRole = roleChanged;
+    const roleKey = r=>r ? (r.char||'')+'|'+(r.team||'') : null;
+    const charChanged = roleChanged && prev && prev.role && roleKey(prev.role)!==roleKey(S.priv.role);
     const isQuestion = fresh.some(id=>inbox[id].kind==='question');
-    showBanner(isQuestion ? '❓ الراوي يطلب اختيارك الآن' : (isRole ? '🎭 وصلك دورك' : '✉️ رسالة جديدة من الراوي'));
+    showBanner(isQuestion ? '❓ الراوي يطلب اختيارك الآن' : (charChanged ? '🎭 تغيّر دورك' : isRole ? '🎭 وصلك دورك' : '✉️ رسالة جديدة من الراوي'));
     // A re-asked question starts fresh.
     fresh.forEach(id=>{ if(inbox[id].kind==='question'){ const rq = inbox[id].qid; delete S.qSent[rq]; delete S.qSel[rq]; if(S.qPairs) delete S.qPairs[rq]; if(S.qDraft) delete S.qDraft[rq]; if(S.qText) delete S.qText[rq]; } });
     try{ navigator.vibrate && navigator.vibrate([180,80,180]); }catch(e){}
-    if(isRole){ S.tab = 'role'; S.roleShown = false; }
+    if(charChanged){
+      // A character change shows as a red dot on the دوري tab — no automatic jump.
+      if(S.tab!=='role'){ S.roleDot = true; lsSet('roledot_'+S.room, true); }
+    } else if(isRole){ S.tab = 'role'; S.roleShown = false; }
   }
   if(S.tab==='inbox') markAllRead();
   render();
 }
-function loadReads(){ S.reads = lsGet('reads_'+S.room) || {}; S.qSent = lsGet('qsent_'+S.room) || {}; }
+function loadReads(){ S.roleDot = !!lsGet('roledot_'+S.room); S.reads = lsGet('reads_'+S.room) || {}; S.qSent = lsGet('qsent_'+S.room) || {}; }
 function unreadIds(){
   const inbox = (S.priv && S.priv.inbox) || {};
   return Object.keys(inbox).filter(id=>!S.reads[id] && inbox[id].kind!=='role');
@@ -397,7 +419,7 @@ function markAllRead(){
 }
 
 /* ---------- actions ---------- */
-function setTab(t){ if(t==='vote') t = 'board'; S.tab = t; if(t==='inbox') markAllRead(); if(t!=='role') S.roleShown = false; render(); window.scrollTo(0,0); }
+function setTab(t){ if(t==='vote') t = 'board'; S.tab = t; S.view = null; if(t==='role' && S.roleDot){ S.roleDot = false; lsSet('roledot_'+S.room, false); } if(t==='inbox') markAllRead(); if(t!=='role') S.roleShown = false; render(); window.scrollTo(0,0); }
 function toggleRole(){ S.roleShown = !S.roleShown; render(); }
 function askClaim(pid){ S.confirmPid = pid; render(); }
 function cancelClaim(){ S.confirmPid = null; render(); }
@@ -618,7 +640,97 @@ function seatPos(i, n, radius){
   const ang = ((i+1)/(n+1))*2*Math.PI + Math.PI/2;
   return {x: 50 + radius*Math.cos(ang), y: 50 + radius*Math.sin(ang)};
 }
-function hostMarkHtml(radius){ return `<div class="host-mark" style="left:50%;top:${50+radius}%;"><div class="av">🎭</div><div class="nm">الراوي</div></div>`; }
+function hostMarkHtml(radius, tap){
+  if(!tap) return `<div class="host-mark" style="left:50%;top:${50+radius}%;"><div class="av">🎭</div><div class="nm">الراوي</div></div>`;
+  return `<div class="host-mark tap" style="left:50%;top:${50+radius}%;" onclick="openChat()" title="محادثة خاصة مع الراوي"><div class="av" style="position:relative;">🎭</div>${chatUnread() ? '<span class="rdot"></span>' : ''}<div class="nm">الراوي 💬</div></div>`;
+}
+
+/* ---------- personal notes (this phone only, current match only) ---------- */
+function notesLoad(){
+  if(S.notes) return S.notes;
+  const n = lsGet('notes_'+S.room);
+  S.notes = (n && typeof n==='object') ? n : {gid:null, free:'', players:{}};
+  S.notes.players = S.notes.players || {};
+  return S.notes;
+}
+function notesSave(){ if(S.notes) lsSet('notes_'+S.room, S.notes); }
+// A new game wipes every note (and the chat) — notes belong to one match only.
+function notesSync(){
+  const gid = S.pub && S.pub.gameId;
+  if(!gid) return;
+  const n = notesLoad();
+  if(n.gid && n.gid!==gid){
+    S.notes = {gid, free:'', players:{}}; notesSave();
+    S.chat = {}; S.chatReadAt = 0; S.chatDraft = ''; lsSet('chatread_'+S.room, 0);
+    S.view = null; S.roleDot = false; lsSet('roledot_'+S.room, false);
+  } else if(!n.gid){ n.gid = gid; notesSave(); }
+}
+function playerNote(pid){ return (notesLoad().players[pid]||''); }
+function noteInput(v){ const n = notesLoad(); n.players[S.view && S.view.pid] = v; if(!v) delete n.players[S.view && S.view.pid]; notesSave(); }
+function freeNoteInput(v){ notesLoad().free = v; notesSave(); }
+function openNote(pid){ S.view = {type:'note', pid}; render(); window.scrollTo(0,0); }
+function closeView(){ S.view = null; render(); }
+function noteView(){
+  const s = (S.pub && S.pub.seats && S.pub.seats[appKey(S.view.pid)]) || null;
+  return `<div class="card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><button class="ghost" style="padding:6px 12px;" onclick="closeView()">→ رجوع</button><b style="font-size:16px;">📝 ملاحظة عن <bdi>${esc(s ? s.name : '')}</bdi></b></div>
+    <textarea id="note-edit" class="plain" rows="7" maxlength="1500" placeholder="اكتب ما تشك به أو تعرفه عن هذا اللاعب…" oninput="noteInput(this.value)">${esc(playerNote(S.view.pid))}</textarea>
+    <p class="muted" style="font-size:12px;margin:6px 0 0;">تُحفظ تلقائيًا على هاتفك فقط ولا يراها أحد. تُحذف كل الملاحظات عند انتهاء اللعبة أو بدء لعبة جديدة.</p>
+  </div>`;
+}
+function notesTab(){
+  const n = notesLoad();
+  const seats = sortedSeats();
+  return `<div class="card">
+    <h3 style="font-size:16px;margin-bottom:6px;">📝 ملاحظاتي</h3>
+    <textarea id="notes-free" class="plain" rows="6" maxlength="3000" placeholder="ملاحظات عامة عن اللعبة…" oninput="freeNoteInput(this.value)">${esc(n.free||'')}</textarea>
+    <p class="muted" style="font-size:12px;margin:6px 0 0;">تبقى على هاتفك فقط وتُحذف عند انتهاء اللعبة أو بدء لعبة جديدة.</p>
+  </div>
+  <div class="card"><h3 style="font-size:15px;margin-bottom:4px;">ملاحظات عن اللاعبين</h3>
+    ${seats.map(s=>{ const t = playerNote(s.pid); return `<div onclick="openNote('${esc(s.pid)}')" style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line);cursor:pointer;">
+      <b style="min-width:84px;"><bdi>${esc(s.name)}</bdi>${s.pid===S.pid?' <span class="muted">(أنا)</span>':''}</b>
+      <span class="${t?'':'muted'}" style="flex:1;font-size:13px;white-space:pre-wrap;word-break:break-word;">${t ? esc(t.length>90 ? t.slice(0,90)+'…' : t) : 'اضغط لإضافة ملاحظة'}</span></div>`; }).join('')}
+  </div>`;
+}
+
+/* ---------- private chat with the Storyteller ---------- */
+function chatList(){ return Object.keys(S.chat||{}).map(k=>Object.assign({id:k}, S.chat[k])).sort((a,b)=>(a.at||0)-(b.at||0)); }
+function chatUnread(){ return chatList().filter(m=>m.from==='st' && (m.at||0)>(S.chatReadAt||0)).length; }
+function markChatRead(){ S.chatReadAt = Date.now(); lsSet('chatread_'+S.room, S.chatReadAt); }
+function openChat(){ S.view = {type:'chat'}; markChatRead(); render(); window.scrollTo(0,0); scrollChat(); }
+function scrollChat(){ setTimeout(()=>{ const cl = document.getElementById('chatlog'); if(cl) cl.scrollTop = cl.scrollHeight; }, 30); }
+function onChat(v){
+  const prevIds = new Set(Object.keys(S.chat||{}));
+  S.chat = v || {};
+  const newSt = Object.keys(S.chat).filter(k=>!prevIds.has(k) && S.chat[k].from==='st');
+  if(S.view && S.view.type==='chat'){ markChatRead(); render(); scrollChat(); return; }
+  if(newSt.length && prevIds.size>=0 && S.chatLoaded){
+    showBanner('💬 رد جديد من الراوي');
+    try{ navigator.vibrate && navigator.vibrate([120,60,120]); }catch(e){}
+  } else render();
+  S.chatLoaded = true;
+}
+async function sendChat(){
+  const el = document.getElementById('chat-input');
+  const text = ((el ? el.value : S.chatDraft) || '').trim().slice(0,600);
+  if(!text) return;
+  const mid = 'm'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const msg = {from:'p', text, at:Date.now()};
+  S.chat[mid] = msg; S.chatDraft = ''; render(); scrollChat();
+  try{ await NET.set(R(`chat/${S.uid}/${mid}`), msg); }
+  catch(e){ delete S.chat[mid]; S.chatDraft = text; render(); showErr('تعذّر إرسال رسالتك', e, 'chat'); }
+}
+function chatView(){
+  const fmtT = t=>{ const d = new Date(t||0); return isNaN(d) ? '' : `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+  const msgs = chatList();
+  return `<div class="card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><button class="ghost" style="padding:6px 12px;" onclick="closeView()">→ رجوع</button><b style="font-size:16px;">🎭 محادثة خاصة مع الراوي</b></div>
+    <p class="muted" style="font-size:12px;margin:0;">رسالتك تصل إلى الراوي وحده — مناسبة لسؤال عن القواعد. تُحذف المحادثة عند بدء لعبة جديدة.</p>
+    <div class="chatlog" id="chatlog">${msgs.length ? msgs.map(m=>`<div class="bub ${m.from==='p'?'me':'st'}">${esc(m.text)}<span class="tm">${m.from==='p'?'أنت':'الراوي'} · ${fmtT(m.at)}</span></div>`).join('') : '<p class="muted" style="text-align:center;">لا رسائل بعد</p>'}</div>
+    <textarea id="chat-input" class="plain" rows="3" maxlength="600" placeholder="اكتب سؤالك للراوي…" oninput="S.chatDraft=this.value">${esc(S.chatDraft||'')}</textarea>
+    <button class="primary" style="width:100%;margin-top:8px;" onclick="sendChat()">إرسال</button>
+  </div>`;
+}
 
 /* ---------- choosing your seat (once) ---------- */
 function seatOrder(){
@@ -689,18 +801,18 @@ function seatWatchCard(me){
   </div>`;
 }
 
-/* ---------- voting (opened by the Storyteller, 10 seconds) ---------- */
+/* ---------- voting (opened by the Storyteller, open until he ends it; 15s countdown is a guide) ---------- */
 function liveVote(){
   const nom = S.pub && S.pub.court && S.pub.court.nomination;
   if(!nom || !nom.trialActive || !nom.voteOpen || !nom.voteRound) return null;
   const key = nom.nomKey + '#' + nom.voteRound;
   if(!S.voteDeadline[key]){
-    S.voteDeadline[key] = Date.now() + (nom.voteRemainingMs || 10000);
+    S.voteDeadline[key] = Date.now() + (nom.voteRemainingMs || 15000);
     if(S.tab!=='board'){ S.tab = 'board'; S.roleShown = false; } // jump to the Courthouse so everyone watches the vote live
     try{ navigator.vibrate && navigator.vibrate([120,60,120,60,120]); }catch(e){}
   }
   const left = S.voteDeadline[key] - Date.now();
-  return left > 0 ? {nom, key, left} : null;
+  return {nom, key, left: Math.max(0, left)};
 }
 function voteEligible(nom){
   const me = mySeat(); if(!me) return false;
@@ -723,23 +835,26 @@ function voteCardHtml(){
   const me = mySeat();
   const nom = v.nom;
   const secs = Math.ceil(v.left/1000);
+  const timeNote = v.left<=0 ? '⏳ انتهى الوقت المقترح — التصويت ما زال مفتوحًا حتى يغلقه الراوي' : '';
   if(!voteEligible(nom)) return `<div class="card votecard"><div>⚖️ تصويت على <b><bdi>${esc(nom.nomineeName)}</bdi></b></div><p class="muted">لقد استخدمت صوت الشبح، لا يمكنك التصويت.</p><div class="countdown">${secs}</div></div>`;
   const yes = myCurrentVote(v);
   const ghostNote = me && !me.alive && !nom.isExile ? '<p class="muted" style="margin:6px 0 0;">👻 التصويت بنعم يستخدم صوت الشبح الوحيد لديك.</p>' : '';
   return `<div class="card votecard">
     <div style="font-size:15px;">${nom.isExile ? 'نفي' : 'إعدام'} <b style="color:#ff8c90;"><bdi>${esc(nom.nomineeName)}</bdi></b>؟ <span class="muted">(رشّحه <bdi>${esc(nom.nominatorName)}</bdi>)</span></div>
     <div class="countdown">${secs}</div>
+    ${timeNote ? `<p class="muted" style="margin:4px 0;color:var(--gold,#e8c35a);">${timeNote}</p>` : ''}
     ${ghostNote}
     <div class="votebtns">
       <button class="yes ${yes?'on':''}" onclick="castVote(true)">✋ نعم</button>
       <button class="no ${!yes?'on':''}" onclick="castVote(false)">✊ لا</button>
     </div>
-    <p class="muted" style="margin:8px 0 0;">${yes ? 'صوتك: نعم' : 'صوتك: لا'} — يمكنك التغيير حتى ينتهي الوقت</p>
+    <p class="muted" style="margin:8px 0 0;">${yes ? 'صوتك: نعم' : 'صوتك: لا'} — يمكنك التغيير حتى يغلق الراوي التصويت</p>
   </div>`;
 }
 function ensureVoteTicker(){
-  const open = !!liveVote();
-  if(open && !S.voteTicker) S.voteTicker = setInterval(()=>{ render(); if(!liveVote()){ clearInterval(S.voteTicker); S.voteTicker = null; render(); } }, 500);
+  const v0 = liveVote();
+  const open = !!(v0 && v0.left>0);
+  if(open && !S.voteTicker) S.voteTicker = setInterval(()=>{ render(); const v = liveVote(); if(!v || v.left<=0){ clearInterval(S.voteTicker); S.voteTicker = null; render(); } }, 500);
 }
 
 /* ---------- screens ---------- */
@@ -897,16 +1012,16 @@ function boardTab(){
     const {x,y} = seatPos(i, n, radius);
     const cls = ['seat', s.alive?'':'dead', s.pid===S.pid?'me':'', s.traveller?'trav':'',
       nom && nom.nomineeId===s.pid ? 'nominee':'', voters.has(s.pid)?'voted':''].join(' ');
-    return `<div class="${cls}" style="left:${x}%;top:${y}%;">
+    return `<div class="${cls}" style="left:${x}%;top:${y}%;" onclick="openNote('${esc(s.pid)}')">
       <div class="av">${s.traveller ? iconHtml(s.traveller) : `<span style="font-size:20px;">${s.alive?'🙂':''}</span>`}${!s.alive?'<span class="shroud">⚰️</span>':''}</div>
-      <div class="nm"><bdi>${esc(s.name)}</bdi></div>
+      <div class="nm"><bdi>${esc(s.name)}</bdi>${playerNote(s.pid)?'<span class="notemark">📝</span>':''}</div>
       ${!s.alive ? `<div class="gv">${s.ghostVoteUsed?'بلا صوت':'👻 صوت شبح'}</div>` : (s.traveller ? `<div class="gv" style="color:#e88;">${esc((charInfo(s.traveller)||{}).nameAr||s.traveller)}</div>` : '')}
     </div>`;
   }).join('');
   return `
     <div class="card" style="padding:10px;">
       <div class="circle">
-        ${hostMarkHtml(radius)}
+        ${hostMarkHtml(radius, true)}
         ${seatHtml}
         <div class="center-info">
           <div class="stat">أحياء <b>${alive}</b> / ${n}</div>
@@ -936,9 +1051,9 @@ function courtCircleHtml(court){
     const {x,y} = seatPos(i, n, radius); pos[s.pid] = {x,y};
     const cls = ['ctok', s.alive ? '' : (s.ghostVoteUsed ? 'novote' : 'ghost'), s.traveller?'trav':'', s.pid===S.pid?'me':'',
       nom && nom.nominatorId===s.pid ? 'nominator':'', nom && nom.nomineeId===s.pid ? 'nominee':''].join(' ');
-    return `<div class="${cls}" style="left:${x}%;top:${y}%;">
+    return `<div class="${cls}" style="left:${x}%;top:${y}%;" onclick="openNote('${esc(s.pid)}')">
       <div class="cav">${!s.alive ? (s.ghostVoteUsed ? '💀' : '🕯️') : ''}${voters.has(s.pid) ? '<span class="yes">✓</span>' : ''}${received[s.pid]!==undefined ? `<span class="recv ${leading.has(s.pid)?'lead':''}">${received[s.pid]}</span>` : ''}${nominatedToday.has(s.pid) ? '<span class="nomd">🔒</span>' : ''}${leading.has(s.pid) ? '<span class="exec">⚔️</span>' : ''}</div>
-      <div class="nm"><bdi>${esc(s.name)}</bdi></div>
+      <div class="nm"><bdi>${esc(s.name)}</bdi>${playerNote(s.pid)?'<span class="notemark">📝</span>':''}</div>
     </div>`;
   }).join('');
   let rope = '';
@@ -961,7 +1076,7 @@ function courtCircleHtml(court){
       <div class="cnt" style="color:${courtColor(nom.count, nom.threshold)};">${nom.count} / ${nom.threshold}</div>
       <div class="muted" style="font-size:12px;">${v ? `⏳ ${Math.ceil(v.left/1000)} ث — التصويت مفتوح` : (nom.locked ? 'اكتمل التصويت' : 'التصويت جارٍ')}</div>`;
   }
-  return `<div class="court">${rope}${hostMarkHtml(radius)}${toks}<div class="court-center">${center}</div></div>`;
+  return `<div class="court">${rope}${hostMarkHtml(radius, true)}${toks}<div class="court-center">${center}</div></div>`;
 }
 function voteTab(){
   const court = (S.pub && S.pub.court) || {};
@@ -1026,8 +1141,8 @@ function joinedScreen(){
   const unread = unreadIds().length;
   const nom = S.pub && S.pub.court && S.pub.court.nomination;
   const deadBar = me && !me.alive ? `<div class="deadbar">⚰️ أنت ميت. ${me.ghostVoteUsed ? 'لقد استخدمت صوت الشبح.' : 'لديك صوت شبح واحد.'} يمكنك الاستمرار في الكلام.</div>` : '';
-  const body = S.tab==='role' ? roleTab() : S.tab==='inbox' ? inboxTab() : S.tab==='board' ? (courtActive() ? voteTab() : boardTab()) : referenceTab();
-  const tab = (id, ic, label, extra)=>`<button class="${S.tab===id?'on':''} ${extra||''}" onclick="setTab('${id}')"><span class="ic">${ic}</span>${label}${id==='inbox' && unread ? `<span class="badge">${unread}</span>` : ''}</button>`;
+  const body = S.view ? (S.view.type==='chat' ? chatView() : noteView()) : S.tab==='notes' ? notesTab() : S.tab==='role' ? roleTab() : S.tab==='inbox' ? inboxTab() : S.tab==='board' ? (courtActive() ? voteTab() : boardTab()) : referenceTab();
+  const tab = (id, ic, label, extra)=>`<button class="${S.tab===id?'on':''} ${extra||''}" onclick="setTab('${id}')"><span class="ic">${ic}</span>${label}${id==='inbox' && unread ? `<span class="badge">${unread}</span>` : ''}${id==='role' && S.roleDot ? `<span class="badge" style="min-width:11px;width:11px;height:11px;padding:0;top:6px;"></span>` : ''}${id==='board' && chatUnread() ? `<span class="badge" style="min-width:11px;width:11px;height:11px;padding:0;top:6px;"></span>` : ''}</button>`;
   return `
     <div class="top">
       <div>
@@ -1045,6 +1160,7 @@ function joinedScreen(){
       ${tab('role','🎭','دوري')}
       ${tab('inbox','✉️','الرسائل')}
       ${courtActive() ? tab('board','⚖️','المحكمة', nom && nom.trialActive ? 'live' : '') : tab('board','⭕','اللوحة')}
+      ${tab('notes','📝','ملاحظات')}
       ${tab('ref','📖','المرجع')}
     </nav>`;
 }
@@ -1057,7 +1173,7 @@ function render(){
   else if(S.stage==='join') html = joinScreen();
   else html = joinedScreen();
   let keep = null;
-  try{ const a = document.activeElement; if(a && a.id && /^(qtext-|trav-name|code-input)/.test(a.id)) keep = {id:a.id, s:a.selectionStart, e:a.selectionEnd}; }catch(e){}
+  try{ const a = document.activeElement; if(a && a.id && /^(qtext-|trav-name|code-input|note-edit|notes-free|chat-input)/.test(a.id)) keep = {id:a.id, s:a.selectionStart, e:a.selectionEnd}; }catch(e){}
   app.innerHTML = html;
   try{ if(keep){ const el = document.getElementById(keep.id); if(el){ el.focus(); if(keep.s!=null) el.setSelectionRange(keep.s, keep.e); } } }catch(e){}
   if(S.stage==='joined') ensureVoteTicker();
@@ -1065,7 +1181,7 @@ function render(){
   const ov = document.getElementById('overlay');
   if(ov){
     let o = '';
-    if(S.banner) o += `<div class="banner" onclick="setTab('${S.banner.includes('دور')?'role':'inbox'}')">${esc(S.banner)}</div>`;
+    if(S.banner) o += `<div class="banner" onclick="${S.banner.includes('💬') ? 'openChat()' : `setTab('${S.banner.includes('دور')?'role':'inbox'}')`}">${esc(S.banner)}</div>`;
     if(S.confirmSeat!==null && S.confirmSeat!==undefined){
       const near = seatNeighbourText(S.confirmSeat);
       o += `<div class="modal"><div class="card"><p style="font-size:18px;">المقعد رقم <b>${S.confirmSeat+1}</b>${near ? `<br><span class="muted" style="font-size:14px;">${esc(near)}</span>` : ''}</p><p class="muted">لا يمكنك تغيير المقعد بعد التأكيد.</p>
