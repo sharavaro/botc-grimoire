@@ -128,7 +128,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.10';
+const PLAYER_BUILD = '2026.10.28.11';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -344,6 +344,14 @@ function cancelClaim(){ S.confirmPid = null; render(); }
 function submitCode(){ const el = document.getElementById('code-input'); enterRoom(el ? el.value : ''); }
 function setRefTab(t){ S.refTab = t; render(); }
 function toggleEnglish(){ S.showEnglish = !S.showEnglish; render(); }
+// Errors show Firebase's real reason, so a missing database rule is obvious instead of a mystery.
+function showErr(what, e, node){
+  const msg = String((e && (e.code || e.message)) || e || '');
+  const denied = /permission|denied/i.test(msg);
+  S.lastError = {what, node, msg, at: Date.now()};
+  showBanner(denied ? `${what}: قواعد Firebase ترفض "${node}" — حدّث القواعد` : `${what}: ${msg.slice(0,80)}`);
+  render();
+}
 function showBanner(text){ S.banner = text; render(); clearTimeout(showBanner._t); showBanner._t = setTimeout(()=>{ S.banner = null; render(); }, 3500); }
 function switchName(){ lsDel('join'); if(S.pid){ leaveSeat(); } render(); }
 
@@ -370,7 +378,7 @@ async function qSubmit(qid){
     S.qSent[qid] = {picks: sel, at: Date.now()};
     lsSet('qsent_'+S.room, S.qSent);
     showBanner('✓ تم إرسال اختيارك');
-  }catch(e){ showBanner('تعذّر الإرسال، حاول مرة أخرى'); }
+  }catch(e){ showErr('تعذّر الإرسال', e, 'answers'); }
   render();
 }
 function optionName(q, pid){ const o = (q.options||[]).find(x=>x.pid===pid); return o ? o.name : ''; }
@@ -441,7 +449,7 @@ function cancelSeat(){ S.confirmSeat = null; render(); }
 async function chooseSeat(i){
   S.confirmSeat = null; S.seatPending = i; render();
   try{ await NET.set(R('seatReq/'+S.uid), {pid:S.pid, seat:i, at:Date.now()}); }
-  catch(e){ S.seatPending = null; showBanner('تعذّر حجز المقعد، حاول مرة أخرى'); }
+  catch(e){ S.seatPending = null; showErr('تعذّر حجز المقعد', e, 'seatReq'); }
   render();
 }
 function seatNeighbourText(i){
@@ -469,6 +477,9 @@ function seatPickerCard(){
     <p class="muted" style="margin:4px 0 0;">الراوي في الأعلى. اختر الرقم الذي يطابق مكان جلوسك بالنسبة للراوي. لا يمكنك تغييره بعد الاختيار.</p>
     <div class="circle" style="margin-top:4px;">${hostMarkHtml(radius)}${slots}
       <div class="center-info"><div class="stat">${S.seatPending!==null ? 'جارٍ الحجز…' : 'اضغط على رقم'}</div></div>
+    </div>
+    ${S.lastError && S.lastError.node==='seatReq' ? `<div class="muted en" dir="ltr" style="font-size:11px;text-align:left;margin-top:4px;word-break:break-all;">Error: ${esc(S.lastError.msg)}</div>` : ''}
+    <div>
     </div>
   </div>`;
 }
@@ -498,7 +509,7 @@ async function castVote(yes){
   const v = liveVote(); if(!v || !voteEligible(v.nom)) return;
   S.myVote[v.key] = !!yes; render();
   try{ await NET.set(R('votes/'+S.uid), {round:v.nom.voteRound, nomKey:v.nom.nomKey, yes:!!yes, at:Date.now()}); }
-  catch(e){ showBanner('تعذّر إرسال صوتك'); }
+  catch(e){ showErr('تعذّر إرسال صوتك', e, 'votes'); }
 }
 function voteCardHtml(){
   const v = liveVote();
@@ -584,7 +595,7 @@ async function sendTravellerJoin(){
     await NET.set(R('joinReq/'+S.uid), {name: name.slice(0,40), prefer: S.trav.prefer||'', at: Date.now()});
     S.trav.sent = true;
     watchTravellerJoin();
-  }catch(e){ showBanner('تعذّر إرسال الطلب'); }
+  }catch(e){ showErr('تعذّر إرسال الطلب', e, 'joinReq'); }
   render();
 }
 function watchTravellerJoin(){
