@@ -128,7 +128,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.15';
+const PLAYER_BUILD = '2026.10.28.16';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -353,7 +353,16 @@ function showErr(what, e, node){
   render();
 }
 function showBanner(text){ S.banner = text; render(); clearTimeout(showBanner._t); showBanner._t = setTimeout(()=>{ S.banner = null; render(); }, 3500); }
-function switchName(){ lsDel('join'); if(S.pid){ leaveSeat(); } render(); }
+// "Not me": tell the Storyteller to free this seat, so the right person (or a Traveller request) can use it.
+function switchName(){
+  lsDel('join');
+  if(S.pid){
+    const pid = S.pid;
+    NET.set(R('joinReq/'+S.uid), {release: pid, at: Date.now()}).catch(()=>{});
+    leaveSeat();
+  }
+  render();
+}
 
 /* ---------- answering the Storyteller's questions ---------- */
 function pendingQuestions(){

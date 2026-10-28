@@ -863,7 +863,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.15';
+const APP_BUILD = '2026.10.28.16';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -10981,15 +10981,36 @@ function appPendingJoinRequests(){
   const out = [];
   Object.keys(appState.joinReqs||{}).forEach(uidOf=>{
     const r = appState.joinReqs[uidOf];
-    if(r && r.name && !r.result && !Object.values(appState.claims).includes(uidOf)) out.push(Object.assign({uid:uidOf}, r));
+    if(!r || !r.name || r.result) return;
+    // Never hide a request: a phone still linked to someone (e.g. they pressed "not me") is shown with a note.
+    const linkedKey = Object.keys(appState.claims).find(k=>appState.claims[k]===uidOf);
+    const linked = linkedKey ? game.players.find(x=>appKey(x.id)===linkedKey) : null;
+    out.push(Object.assign({uid:uidOf, linkedTo: linked ? linked.name : null}, r));
   });
   return out.sort((a,b)=>(a.at||0)-(b.at||0));
 }
 function appOnJoinRequests(val){
   const before = appPendingJoinRequests().length;
   appState.joinReqs = val || {};
+  // A phone pressed "not me": free the seat it was linked to.
+  Object.keys(appState.joinReqs).forEach(uidOf=>{
+    const r = appState.joinReqs[uidOf];
+    if(r && r.release){
+      const key = appKey(r.release);
+      if(appState.claims[key]===uidOf){
+        const p = game.players.find(x=>appKey(x.id)===key);
+        appUnlinkPlayer(r.release).catch(()=>{});
+        if(p) logAction(`📱 ${p.name}'s phone was unlinked from their own phone ("not me").`);
+      }
+      NET.set(appRoomPath(`joinReq/${uidOf}/release`), null).catch(()=>{});
+    }
+  });
   const after = appPendingJoinRequests().length;
-  if(after!==before){ if(route==='play' || route==='seating') render(); else appRefreshPanel(); }
+  if(after>before && !(ui && ui.modal)){
+    // A new Traveller request: open the Phones window so it can't be missed.
+    ui.modal = {type:'appRoom'}; render(); return;
+  }
+  if(after!==before){ if(route!=='court' && !(ui && ui.modal && ui.modal.type==='addTraveller')) render(); else appRefreshPanel(); }
 }
 function appOpenAddTravellerFromRequest(uidOf){
   const r = (appState.joinReqs||{})[uidOf];
@@ -11015,6 +11036,13 @@ function appApplyAddTravellerPrefill(){
 async function appLinkTravellerRequest(reqUid, pid){
   if(!reqUid || !NET || !appState.code) return;
   try{
+    // If that phone was still linked to another player, release that seat first.
+    for(const k of Object.keys(appState.claims)){
+      if(appState.claims[k]===reqUid && k!==appKey(pid)){
+        const old = game.players.find(x=>appKey(x.id)===k);
+        if(old) await appUnlinkPlayer(old.id);
+      }
+    }
     await NET.set(appRoomPath('claims/'+appKey(pid)), reqUid);
     await NET.set(appRoomPath(`joinReq/${reqUid}/result`), {pid});
   }catch(e){ console.warn('link traveller', e); }
@@ -11029,7 +11057,7 @@ function appJoinRequestsHtml(){
   return `<div style="border:1px solid ${TYPE_COLORS.traveller};border-radius:8px;padding:8px 10px;margin-bottom:10px;">
     <div class="eyebrow" style="color:${TYPE_COLORS.traveller};">🧳 Wants to join as a Traveller</div>
     ${reqs.map(r=>`<div class="row" style="align-items:center;margin-top:6px;">
-      <bdi style="flex:1;">${escapeHtml(r.name)}${r.prefer ? ` <span class="muted" style="font-size:12px;">— prefers ${escapeHtml(r.prefer)}</span>` : ''}</bdi>
+      <bdi style="flex:1;">${escapeHtml(r.name)}${r.prefer ? ` <span class="muted" style="font-size:12px;">— prefers ${escapeHtml(r.prefer)}</span>` : ''}${r.linkedTo ? ` <span style="font-size:11px;color:#e0943f;">(this phone is still linked to ${escapeHtml(r.linkedTo)} — adding moves it)</span>` : ''}</bdi>
       <button class="primary small" onclick="appOpenAddTravellerFromRequest('${escapeHtml(r.uid)}')">Add</button>
       <button class="ghost small" onclick="appDismissJoinRequest('${escapeHtml(r.uid)}')">Dismiss</button>
     </div>`).join('')}
