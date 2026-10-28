@@ -128,7 +128,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.8';
+const PLAYER_BUILD = '2026.10.28.10';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -150,6 +150,7 @@ const S = {
   pub:null, script:null, icons:{}, priv:null,
   tab:'role', roleShown:false, refTab:'chars', showEnglish:false,
   seenMsgs:{}, reads:{}, banner:null, confirmPid:null, unsubs:[], privUnsub:null,
+  trav:{open:false, name:'', prefer:'', sent:false, unsub:null},
   qSel:{}, qSent:{}, confirmSeat:null, seatPending:null, voteDeadline:{}, myVote:{}, voteTicker:null,
 };
 
@@ -546,7 +547,63 @@ function joinScreen(){
         ${seats.map(s=>`<button class="${s.claimed?'taken':''}" ${s.claimed?'disabled':''} onclick="askClaim('${esc(s.pid)}')"><bdi>${esc(s.name)}</bdi>${s.claimed?'<div class="muted" style="font-size:11px;">انضم</div>':''}</button>`).join('')}
       </div>
     </div>
+    ${travellerJoinHtml()}
     <p class="muted" style="text-align:center;">الغرفة <span class="en">${esc(S.room)}</span></p>`;
+}
+/* ---------- joining late as a Traveller (the choice is only a preference) ---------- */
+function travellersOffered(){
+  const all = (S.script && S.script.characters && S.script.characters.traveller) || [];
+  const inPlay = new Set(Object.values((S.pub && S.pub.seats) || {}).map(s=>s.traveller).filter(Boolean));
+  return all.filter(c=>!inPlay.has(c.name));
+}
+function travellerJoinHtml(){
+  if(!S.pub || !['play','reveal'].includes(S.pub.phase)) return '';
+  const T = S.trav;
+  if(T.sent) return `<div class="card" style="text-align:center;"><div style="font-size:34px;">🧳</div><p>تم إرسال طلبك إلى الراوي.</p><p class="muted">انتظر قليلًا — سيتم ربطك تلقائيًا عندما يضيفك الراوي.</p></div>`;
+  if(!T.open) return `<div class="card" style="text-align:center;"><p style="margin:0 0 8px;">اسمك غير موجود؟</p><button class="primary" style="width:100%;" onclick="openTravellerJoin()">🧳 انضممت متأخرًا؟ انضم كمسافر</button></div>`;
+  const list = travellersOffered();
+  return `<div class="card qcard">
+    <h3 style="font-size:17px;">🧳 الانضمام كمسافر</h3>
+    <p class="muted" style="margin:4px 0 10px;">اختر المسافر الذي تفضّل أن تلعب به. هذا تفضيل فقط — الراوي يقرر.</p>
+    <input id="trav-name" dir="auto" placeholder="اسمك" style="letter-spacing:normal;text-transform:none;font-size:17px;" value="${esc(T.name)}" oninput="S.trav.name=this.value">
+    <div style="margin-top:10px;">${list.length ? list.map((c,i)=>`<button class="chr" style="width:100%;text-align:start;background:${T.prefer===c.name?'#3b2d6b':'transparent'};border:1px solid ${T.prefer===c.name?'#c9394a':'transparent'};border-radius:10px;padding:8px;margin-bottom:4px;" onclick="pickTravellerIdx(${i})">
+        <div class="ic">${iconHtml(c.name,'')}</div><div style="flex:1;"><div class="t" style="color:var(--traveller);">${esc(c.nameAr||c.name)}<span class="en">${esc(c.name)}</span></div><div class="a">${esc(c.abilityAr||'')}</div></div></button>`).join('') : '<p class="muted">لا يوجد مسافرون متاحون لهذا النص — أرسل اسمك فقط.</p>'}</div>
+    <div style="display:flex;gap:10px;margin-top:10px;"><button class="ghost" style="flex:1;" onclick="closeTravellerJoin()">رجوع</button>
+      <button class="primary" style="flex:2;" onclick="sendTravellerJoin()">إرسال الطلب</button></div>
+  </div>`;
+}
+function openTravellerJoin(){ S.trav.open = true; render(); }
+function closeTravellerJoin(){ S.trav.open = false; render(); }
+function pickTravellerIdx(i){ const c = travellersOffered()[i]; if(c) pickTraveller(c.name); }
+function pickTraveller(name){ const el = document.getElementById('trav-name'); if(el) S.trav.name = el.value; S.trav.prefer = S.trav.prefer===name ? '' : name; render(); }
+async function sendTravellerJoin(){
+  const el = document.getElementById('trav-name'); if(el) S.trav.name = el.value;
+  const name = String(S.trav.name||'').trim();
+  if(!name){ showBanner('اكتب اسمك أولًا'); return; }
+  try{
+    await NET.set(R('joinReq/'+S.uid), {name: name.slice(0,40), prefer: S.trav.prefer||'', at: Date.now()});
+    S.trav.sent = true;
+    watchTravellerJoin();
+  }catch(e){ showBanner('تعذّر إرسال الطلب'); }
+  render();
+}
+function watchTravellerJoin(){
+  if(S.trav.unsub) return;
+  S.trav.unsub = NET.on(R('joinReq/'+S.uid), v=>{
+    const res = v && v.result;
+    if(!res) return;
+    if(S.trav.unsub){ S.trav.unsub(); S.trav.unsub = null; }
+    if(res.pid){
+      lsSet('join', {room:S.room, pid:res.pid, name:(v && v.name) || ''});
+      S.trav = {open:false, name:'', prefer:'', sent:false, unsub:null};
+      takeSeat(res.pid);
+      showBanner('🧳 أضافك الراوي إلى اللعبة');
+    } else if(res.dismissed){
+      S.trav = {open:false, name:'', prefer:'', sent:false, unsub:null};
+      showBanner('لم يضفك الراوي هذه المرة');
+    }
+    render();
+  });
 }
 function roleTab(){
   const role = S.priv && S.priv.role;

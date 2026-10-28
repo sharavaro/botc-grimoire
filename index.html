@@ -859,7 +859,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.9';
+const APP_BUILD = '2026.10.28.10';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1866,7 +1866,7 @@ function topbarHtml(){
         ${game && game.phase==='play' ? `<button class="ghost small" onclick="openNightOrder()">🌙 Night Order</button>` : ''}
         ${game && game.phase==='play' ? `<button class="ghost small" onclick="pageTurnTransition(()=>go('seating'))">Seating</button>` : ''}
         ${game && game.phase==='play' && game.activeLoric && game.activeLoric.length>0 ? `<button class="ghost small" onclick="showLoricReminder()" style="border-color:var(--gold);color:var(--gold-bright);" title="Active Loric rule reminders">🌀 Loric (${game.activeLoric.length})</button>` : ''}
-        <button class="ghost small" onclick="openAppRoomPanel()" title="Players' phones: room code, QR, who has joined">📱 Phones${appState.code ? ` <span style="color:${appState.online?'#4caf6a':'#e0943f'};">●</span>` : ''}</button>
+        <button class="ghost small" onclick="openAppRoomPanel()" title="Players' phones: room code, QR, who has joined">📱 Phones${appState.code ? ` <span style="color:${appState.online?'#4caf6a':'#e0943f'};">●</span>` : ''}${appState.code && appPendingJoinRequests().length ? ` <span style="background:${TYPE_COLORS.traveller};color:#fff;border-radius:9px;padding:0 6px;font-size:11px;" title="Someone wants to join as a Traveller">🧳 ${appPendingJoinRequests().length}</span>` : ''}</button>
         ${game && game.phase==='play' ? `<button class="ghost small" onclick="openAddTravellerModal()" title="Add a Traveller joining partway through the game" style="border-color:${TYPE_COLORS.traveller};">➕ Add Traveller</button>` : ''}
         ${game && (game.phase==='play' || game.phase==='reveal') ? `<button class="ghost small" onclick="confirmResetGame()">Reset game</button>` : ''}
         <button class="ghost small" onclick="confirmReset()">New game</button>
@@ -1960,8 +1960,10 @@ function confirmAddTraveller(){
   };
   game.players.push(newPlayer);
   logAction(`${name} joined the game as the Traveller ${character} (${alignment}).`);
+  const reqUid = ui.modal && ui.modal.prefill ? ui.modal.prefill.reqUid : null;
   saveGame();
   appSendRole(newPlayer.id, null);
+  if(reqUid) appLinkTravellerRequest(reqUid, newPlayer.id);
   closeModal();
   pageTurnTransition(()=>go('seating'));
 }
@@ -5326,6 +5328,7 @@ function renderModal(){
         <div class="modal">
           <h3 style="margin:0 0 4px;color:${TYPE_COLORS.traveller};">➕ Add a Traveller</h3>
           <p class="muted" style="margin-top:0;">For a player joining partway through the game.</p>
+          ${ui.modal.prefill ? `<p style="margin:0 0 6px;font-size:13px;color:${TYPE_COLORS.traveller};">📱 Requested from ${escapeHtml(ui.modal.prefill.name)}'s phone${ui.modal.prefill.character ? ` — prefers ${escapeHtml(ui.modal.prefill.character)} (just a preference, your call)` : ''}.</p>` : ''}
           <div class="eyebrow" style="margin-top:10px;">Player</div>
           <select id="add-traveller-roster" onchange="onAddTravellerRosterChange(this.value); updateAddTravellerPreview();" style="width:100%;">
             <option value="">Choose from saved players...</option>
@@ -5355,6 +5358,7 @@ function renderModal(){
         </div>
       </div>
     `;
+    appApplyAddTravellerPrefill();
     return;
   }
 }
@@ -10501,6 +10505,7 @@ async function appResetForNewGame(){
   await NET.remove(appRoomPath('answers'));
   await NET.remove(appRoomPath('votes'));
   await NET.remove(appRoomPath('seatReq'));
+  await NET.remove(appRoomPath('joinReq'));
   appState.claims = {}; appState.presence = {}; appState.reads = {};
   appState.gameId = gid; appState.lastPublicJson = null;
   appSaveRoomRecord();
@@ -10524,7 +10529,7 @@ async function appStartRoom(){
       if(owner === NET.uid){
         // An old room of this same grimoire: safe to reuse after clearing what's left in it.
         appState.code = tryCode;
-        for(const sub of ['public','script','icons','claims','private','reads','presence','answers','votes','seatReq']){ try{ await NET.remove(appRoomPath(sub)); }catch(e){} }
+        for(const sub of ['public','script','icons','claims','private','reads','presence','answers','votes','seatReq','joinReq']){ try{ await NET.remove(appRoomPath(sub)); }catch(e){} }
         code = tryCode;
       } else if(!owner){
         try{ await NET.set(`rooms/${tryCode}/owner`, NET.uid); code = tryCode; }catch(e){ /* someone took it first: try another */ }
@@ -10550,6 +10555,7 @@ async function appAttach(){
   appState.unsubs.push(NET.on(appRoomPath('answers'), val=>appOnAnswers(val)));
   appState.unsubs.push(NET.on(appRoomPath('votes'), val=>appOnVotes(val)));
   appState.unsubs.push(NET.on(appRoomPath('seatReq'), val=>appOnSeatRequests(val)));
+  appState.unsubs.push(NET.on(appRoomPath('joinReq'), val=>appOnJoinRequests(val)));
   if(NET.onConnected) appState.unsubs.push(NET.onConnected(ok=>{ appState.online = ok; appRefreshPanel(); }));
   else appState.online = true;
   appState.lastPublicJson = null; appState.lastScriptKey = null;
@@ -10582,7 +10588,7 @@ async function appResumeRoom(){
 async function appCloseRoom(){
   if(!appState.code) return;
   try{
-    for(const sub of ['public','script','icons','claims','private','reads','presence','answers','votes','seatReq','meta']) await NET.remove(appRoomPath(sub));
+    for(const sub of ['public','script','icons','claims','private','reads','presence','answers','votes','seatReq','joinReq','meta']) await NET.remove(appRoomPath(sub));
   }catch(e){}
   appDetach();
   appState.code = null; appState.claims = {}; appState.presence = {}; appState.reads = {};
@@ -10918,6 +10924,66 @@ function appOnSeatRequests(val){
   if(changed){ saveGame(); render(); }
 }
 
+// ---- Late joiners: a phone asks to join as a Traveller (with a preferred character) ----
+function appPendingJoinRequests(){
+  const out = [];
+  Object.keys(appState.joinReqs||{}).forEach(uidOf=>{
+    const r = appState.joinReqs[uidOf];
+    if(r && r.name && !r.result && !Object.values(appState.claims).includes(uidOf)) out.push(Object.assign({uid:uidOf}, r));
+  });
+  return out.sort((a,b)=>(a.at||0)-(b.at||0));
+}
+function appOnJoinRequests(val){
+  const before = appPendingJoinRequests().length;
+  appState.joinReqs = val || {};
+  const after = appPendingJoinRequests().length;
+  if(after!==before){ if(route==='play' || route==='seating') render(); else appRefreshPanel(); }
+}
+function appOpenAddTravellerFromRequest(uidOf){
+  const r = (appState.joinReqs||{})[uidOf];
+  if(!r) return;
+  ui.modal = {type:'addTraveller', prefill:{name:String(r.name||'').slice(0,40), character:r.prefer||'', reqUid:uidOf}};
+  render();
+}
+function appApplyAddTravellerPrefill(){
+  const pf = ui.modal && ui.modal.prefill;
+  if(!pf || typeof document==='undefined') return;
+  const sel = document.getElementById('add-traveller-roster');
+  if(sel){
+    const match = [...(sel.options||[])].find(o=>o.value && o.value.toLowerCase()===pf.name.toLowerCase());
+    sel.value = match ? match.value : '__new__';
+    onAddTravellerRosterChange(sel.value);
+    const nameInput = document.getElementById('add-traveller-name');
+    if(!match && nameInput) nameInput.value = pf.name;
+  }
+  const charSel = document.getElementById('add-traveller-char');
+  if(charSel && pf.character && TRAVELLER_LOOKUP[pf.character]) charSel.value = pf.character;
+  try{ updateAddTravellerPreview(); }catch(e){}
+}
+async function appLinkTravellerRequest(reqUid, pid){
+  if(!reqUid || !NET || !appState.code) return;
+  try{
+    await NET.set(appRoomPath('claims/'+appKey(pid)), reqUid);
+    await NET.set(appRoomPath(`joinReq/${reqUid}/result`), {pid});
+  }catch(e){ console.warn('link traveller', e); }
+}
+async function appDismissJoinRequest(uidOf){
+  try{ await NET.set(appRoomPath(`joinReq/${uidOf}/result`), {dismissed:true}); }catch(e){}
+  appRefreshPanel();
+}
+function appJoinRequestsHtml(){
+  const reqs = appPendingJoinRequests();
+  if(!reqs.length) return '';
+  return `<div style="border:1px solid ${TYPE_COLORS.traveller};border-radius:8px;padding:8px 10px;margin-bottom:10px;">
+    <div class="eyebrow" style="color:${TYPE_COLORS.traveller};">🧳 Wants to join as a Traveller</div>
+    ${reqs.map(r=>`<div class="row" style="align-items:center;margin-top:6px;">
+      <bdi style="flex:1;">${escapeHtml(r.name)}${r.prefer ? ` <span class="muted" style="font-size:12px;">— prefers ${escapeHtml(r.prefer)}</span>` : ''}</bdi>
+      <button class="primary small" onclick="appOpenAddTravellerFromRequest('${escapeHtml(r.uid)}')">Add</button>
+      <button class="ghost small" onclick="appDismissJoinRequest('${escapeHtml(r.uid)}')">Dismiss</button>
+    </div>`).join('')}
+  </div>`;
+}
+
 // ---- Testing mode: every player's phone as a Chrome tab ----
 // Tabs must be opened directly inside the click (browsers block pop-ups opened later), so blank
 // tabs open first and are pointed at the player app once the room is ready.
@@ -10988,6 +11054,7 @@ function appRoomPanelHtml(){
   }).join('');
   const joinedCount = game.players.filter(p=>appState.claims[appKey(p.id)]).length;
   return `
+    ${appJoinRequestsHtml()}
     <div class="row" style="gap:16px;align-items:flex-start;flex-wrap:wrap;">
       <div style="background:#fff;border-radius:8px;padding:6px;width:180px;height:180px;">${appQrSvg(url) || '<div style="color:#333;font-size:12px;padding:20px;">Loading QR…</div>'}</div>
       <div style="flex:1;min-width:200px;">
