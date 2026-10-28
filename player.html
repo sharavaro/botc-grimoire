@@ -145,7 +145,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.17';
+const PLAYER_BUILD = '2026.10.28.19';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -254,8 +254,27 @@ function subscribeShared(){
   S.unsubs.push(NET.on(R('icons'), v=>{ S.icons = v || {}; render(); }));
 }
 function mySavedJoin(){ const j = lsGet('join'); return j && j.room===S.room ? j : null; }
+// Jump to the Courthouse tab when the Storyteller opens the Courthouse or a nomination is made
+// (the vote opening is handled in liveVote). A phone already there is left alone.
+// The board tab turns into the Courthouse while the Storyteller has it open or a nomination is active.
+function courtActive(){
+  const c = (S.pub && S.pub.court) || {};
+  return !!(c.hostInCourt || c.nomination);
+}
+function courtAutoJump(pub){
+  const c = (pub && pub.court) || {};
+  const seq = c.openSeq || 0;
+  const nk = c.nomination ? c.nomination.nomKey : null;
+  if(S.stage==='joined' && S.courtSeen){
+    const opened = c.hostInCourt && seq!==S.courtSeen.seq;
+    const nominated = nk && nk!==S.courtSeen.nk;
+    if((opened || nominated) && S.tab!=='board'){ S.tab = 'board'; S.roleShown = false; window.scrollTo && window.scrollTo(0,0); }
+  }
+  if(S.stage==='joined') S.courtSeen = {seq, nk};
+}
 async function onPublic(){
   const pub = S.pub;
+  courtAutoJump(pub);
   if(S.seatPending!==null && S.pid && pub && pub.seats){
     const mine = pub.seats[appKey(S.pid)];
     if(mine && mine.seatLocked){ S.seatPending = null; }
@@ -354,7 +373,7 @@ function markAllRead(){
 }
 
 /* ---------- actions ---------- */
-function setTab(t){ S.tab = t; if(t==='inbox') markAllRead(); if(t!=='role') S.roleShown = false; render(); window.scrollTo(0,0); }
+function setTab(t){ if(t==='vote') t = 'board'; S.tab = t; if(t==='inbox') markAllRead(); if(t!=='role') S.roleShown = false; render(); window.scrollTo(0,0); }
 function toggleRole(){ S.roleShown = !S.roleShown; render(); }
 function askClaim(pid){ S.confirmPid = pid; render(); }
 function cancelClaim(){ S.confirmPid = null; render(); }
@@ -538,7 +557,7 @@ function liveVote(){
   const key = nom.nomKey + '#' + nom.voteRound;
   if(!S.voteDeadline[key]){
     S.voteDeadline[key] = Date.now() + (nom.voteRemainingMs || 10000);
-    S.tab = 'vote'; // jump to the Courthouse so everyone watches the vote live
+    if(S.tab!=='board'){ S.tab = 'board'; S.roleShown = false; } // jump to the Courthouse so everyone watches the vote live
     try{ navigator.vibrate && navigator.vibrate([120,60,120,60,120]); }catch(e){}
   }
   const left = S.voteDeadline[key] - Date.now();
@@ -758,7 +777,10 @@ function courtCircleHtml(court){
   const v = liveVote();
   let center;
   if(!nom){
-    center = `<div style="font-size:30px;">⚖️</div><div class="muted" style="font-size:13px;">${S.pub && S.pub.subphase==='night' ? 'لا تصويت في الليل' : (court.closedForDay ? 'المحكمة مغلقة لهذا اليوم' : 'لا يوجد ترشيح الآن')}</div>`;
+    const all = Object.values((S.pub && S.pub.seats) || {});
+    const aliveN = all.filter(s=>s.alive).length, ghosts = all.filter(s=>!s.alive && !s.ghostVoteUsed).length;
+    center = `<div style="font-size:26px;">⚖️</div><div style="font-size:13px;color:var(--gold-bright);">${court.closedForDay ? 'المحكمة مغلقة لهذا اليوم' : 'المحكمة مفتوحة — بانتظار ترشيح'}</div>
+      <div class="stat">أحياء <b>${aliveN}</b> · للإعدام <b>${Math.ceil(aliveN/2)}</b> · أشباح <b>${ghosts}</b></div>`;
   } else if(!nom.trialActive){
     center = `<div class="muted" style="font-size:12px;">${nom.isExile ? 'نفي' : 'ترشيح'}</div><div class="vs"><b><bdi>${esc(nom.nominatorName)}</bdi></b> يرشّح <b style="color:#ff8c90;"><bdi>${esc(nom.nomineeName)}</bdi></b></div><div class="muted" style="font-size:12px;">بانتظار بدء التصويت…</div>`;
   } else {
@@ -825,7 +847,7 @@ function joinedScreen(){
   const unread = unreadIds().length;
   const nom = S.pub && S.pub.court && S.pub.court.nomination;
   const deadBar = me && !me.alive ? `<div class="deadbar">⚰️ أنت ميت. ${me.ghostVoteUsed ? 'لقد استخدمت صوت الشبح.' : 'لديك صوت شبح واحد.'} يمكنك الاستمرار في الكلام.</div>` : '';
-  const body = S.tab==='role' ? roleTab() : S.tab==='inbox' ? inboxTab() : S.tab==='board' ? boardTab() : S.tab==='vote' ? voteTab() : referenceTab();
+  const body = S.tab==='role' ? roleTab() : S.tab==='inbox' ? inboxTab() : S.tab==='board' ? (courtActive() ? voteTab() : boardTab()) : referenceTab();
   const tab = (id, ic, label, extra)=>`<button class="${S.tab===id?'on':''} ${extra||''}" onclick="setTab('${id}')"><span class="ic">${ic}</span>${label}${id==='inbox' && unread ? `<span class="badge">${unread}</span>` : ''}</button>`;
   return `
     <div class="top">
@@ -843,8 +865,7 @@ function joinedScreen(){
     <nav class="tabs">
       ${tab('role','🎭','دوري')}
       ${tab('inbox','✉️','الرسائل')}
-      ${tab('board','⭕','اللوحة')}
-      ${tab('vote','⚖️','المحكمة', nom && nom.trialActive ? 'live' : '')}
+      ${courtActive() ? tab('board','⚖️','المحكمة', nom && nom.trialActive ? 'live' : '') : tab('board','⭕','اللوحة')}
       ${tab('ref','📖','المرجع')}
     </nav>`;
 }

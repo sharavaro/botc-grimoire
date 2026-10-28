@@ -863,7 +863,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.16';
+const APP_BUILD = '2026.10.28.18';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1855,7 +1855,12 @@ function pageTurnTransition(afterCallback, reverse){
   setTimeout(()=>{ wrap.remove(); }, 2050);
 }
 function go(r){
-  route=r; ui.modal=null; render(); window.scrollTo(0, 0);
+  const enteringCourt = r==='court' && route!=='court';
+  route=r; ui.modal=null;
+  // Phones jump to their Courthouse view whenever the Storyteller opens the Courthouse.
+  if(enteringCourt && game && game.court){ game.court.openSeq = (game.court.openSeq||0) + 1; saveGame(); }
+  else if(typeof appSyncSoon==='function') appSyncSoon();
+  render(); window.scrollTo(0, 0);
 }
 function topbarHtml(){
   if(route==='boot' || route==='resume-check' || route==='court' || route==='boot-error') return '';
@@ -10452,6 +10457,7 @@ function appBuildPublicState(){
     nightNum: game.nightNum || 0, dayNum: game.dayNum || 0,
     seats,
     court: { nomination, history, leadingIds: leading, publicMessage: court.publicMessage || null,
+             openSeq: court.openSeq || 0, hostInCourt: route==='court',
              closedForDay: !!court.closedForDay, butcherGoldenLight: !!court.butcherGoldenLight },
   };
 }
