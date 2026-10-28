@@ -866,7 +866,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.32';
+const APP_BUILD = '2026.10.28.33';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -10906,8 +10906,11 @@ const APP_PHONE_CHOICES = {
       apply:(k,ids,ch,ans)=>{ game.jugglerGuesses = ((ans&&ans.pairs)||[]).map(pr=>({playerId:pr.pid, char:pr.char})); },
       ask:'خمّن علنًا حتى 5 لاعبين وشخصياتهم: اختر لاعبًا ثم شخصية، وكرر. الليلة ستعرف كم تخمينًا أصبت.' },
     // By day, a private yes/no question to the Storyteller — typed on the phone, shown on the card.
+    // Sending the question uses up the once-per-game ability (marked on the grimoire straight away);
+    // "not today" keeps it for another day.
     'Artist': { phase:'day', text:true, n:0, skip:true, key:()=>'artist-question', eligible:a=>[],
-      ask:'اكتب سؤالك (جوابه نعم أو لا) مرة واحدة فقط، أو اضغط "لا" لتحتفظ به ليوم آخر.' },
+      apply:(k,ids,ch,ans,a)=>appMarkArtistAsked(a), onSkip:(k,a)=>skipArtistToday(a.id, 1),
+      ask:'اكتب سؤالك للراوي (جوابه نعم أو لا). تستخدم بذلك قدرتك الوحيدة في اللعبة. أو اضغط "لا" لتحتفظ بها ليوم آخر.' },
   },
   bmr: {
     'Sailor': { n:1, key:()=>keyFor('Sailor'), eligible:a=>appAliveNotSelf(a),
@@ -10951,6 +10954,14 @@ const APP_PHONE_CHOICES = {
       ask:a=>(a && a.drunkCover==='Shabaloth') ? 'اختر لاعبين: يموتان الليلة.' : 'اختر لاعبًا ليموت الليلة.' },
   },
 };
+// The Artist's typed question arrived: her one use is spent (or the Barista's second one, same day).
+function appMarkArtistAsked(a){
+  if(!a) return;
+  a.markers = a.markers || [];
+  if(!a.markers.includes('ability_used')){ a.markers.push('ability_used'); a.artistUsedAtDay = game.dayNum; }
+  else if(hasActiveBaristaTwiceGrant(a) && !a.artistRound2Used){ a.artistRound2Used = true; a.artistRound2UsedAtDay = game.dayNum; }
+  logAction(`Artist (${a.name}) asked her question from her phone — ability used.`);
+}
 function appSpecVal(v, actor){ return typeof v==='function' ? v(actor) : v; }
 // Returns the choice spec for this step and actor, or null if the phone shouldn't be asked.
 function appChoiceSpec(step, actor){
@@ -11081,7 +11092,7 @@ function appApplyAnswer(pid, qid, ans){
   if(isSkip){
     if(spec.onSkip){ try{ spec.onSkip(q.key, actor); }catch(e){ console.warn('skip', e); } }
   } else if(!spec.manual){
-    try{ if(spec.apply) spec.apply(q.key, picks, ch, q.answer); }catch(e){ console.warn('apply answer', e); }
+    try{ if(spec.apply) spec.apply(q.key, picks, ch, q.answer, actor); }catch(e){ console.warn('apply answer', e); }
   }
   const names = isSkip ? ['لا أحد'] : text!==null ? [text] : pairs ? pairs.map(pr=>{ const x=game.players.find(p=>p.id===pr.pid); return `${x?x.name:'?'} = ${(CHAR_LOOKUP[pr.char] && CHAR_LOOKUP[pr.char].nameAr) || pr.char}`; }) : picks.map(id=>{ const x=game.players.find(p=>p.id===id); return x ? x.name : '?'; }).concat(ch ? [(CHAR_LOOKUP[ch] && CHAR_LOOKUP[ch].nameAr) || ch] : []);
   logAction(`📱 ${actor.name} (${q.step}) chose on their phone: ${isSkip ? 'nobody' : names.join(', ')}.`);
@@ -11101,7 +11112,7 @@ function appApplyStoredAnswer(qid){
   const spec = appChoiceSpec(q.step, actor);
   if(!spec) return;
   q.applied = true;
-  try{ if(spec.apply) spec.apply(q.key, q.answer.picks, q.answer.char, q.answer); }catch(e){ console.warn('apply', e); }
+  try{ if(spec.apply) spec.apply(q.key, q.answer.picks, q.answer.char, q.answer, actor); }catch(e){ console.warn('apply', e); }
   saveGame();
   if(route==='play') refreshPlay(); else render();
 }
