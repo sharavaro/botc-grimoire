@@ -866,7 +866,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.27';
+const APP_BUILD = '2026.10.28.28';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -6560,7 +6560,7 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
     (step==='Innkeeper' && !((game.infoPicks[keyFor('Innkeeper')]||{}).p1 && (game.infoPicks[keyFor('Innkeeper')]||{}).p2)) ||
     (step==='Moonchild' && !((game.infoPicks[keyFor('Moonchild')]||{}).p1)) ||
     (step==='Harlot' && !((game.infoPicks[keyFor('Harlot')]||{}).target));
-  const resultBoxHtml = (!isExorcisedDemon && step!=='Barista' && !hideResultBoxUntilPicked) ? `
+  const resultBoxHtml = (!isExorcisedDemon && step!=='Barista' && step!=='Gossip' && !hideResultBoxUntilPicked) ? `
         <div class="muted" style="font-size:11px;margin-top:6px;">${isDual ? (step==='Fortune Teller' ? '2 — Send the result once you\'ve entered their picks above' : '2 — Result (fills in once you pick their target above)') : ''}</div>
         <div class="muted" style="font-size:10px;">To ${escapeHtml(p.name)}</div>
         ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${k}', this.innerText)" style="${cardAssetStyle('messageBox', p.character)}">${escapeHtmlBr(text)}</div>`, `copyStepMessage('${k}', this)`, p ? (appAskOnResultBox ? appAskSend : `sendStepMessageWA('${p.id}', this)`) : null, cardAssetStyle('copyButton', p.character), cardAssetStyle('sendButton', p.character), p)}
