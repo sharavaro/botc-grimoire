@@ -863,7 +863,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.18';
+const APP_BUILD = '2026.10.28.20';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -5659,6 +5659,8 @@ function computeNightSteps(){
         // fall through here just because they happened to die earlier the same night (e.g.
         // Dreamer, killed by the Demon before her own turn, should correctly be skipped).
         if(step==='Ravenkeeper' && holder.diedAtNight === game.nightNum) return true;
+        // The Imp who killed himself tonight keeps his card: the message to the NEW Imp lives on it.
+        if(step==='Imp' && holder.diedAtNight === game.nightNum && game.players.some(x=>x.becameDemonViaSelfKillAtNight===game.nightNum && x.id!==holder.id)) return true;
         // Fang Gu specifically: the OLD Fang Gu who just died converting an Outsider tonight
         // still needs her card shown, purely to display the conversion messages to both her
         // and the new Fang Gu -- not a real turn, just the reveal.
@@ -5875,6 +5877,7 @@ function resolveStepRows(step){
     if(holder.alive) return true;
     if(holder.actsWhileDead) return true;
     if(step==='Ravenkeeper' && holder.diedAtNight === game.nightNum) return true;
+    if(step==='Imp' && holder.diedAtNight === game.nightNum && game.players.some(x=>x.becameDemonViaSelfKillAtNight===game.nightNum && x.id!==holder.id)) return true;
     if(step==='Fang Gu' && game.fangGuConversion && game.fangGuConversion.fangGuId===holder.id && game.fangGuConversion.nightNum===game.nightNum) return true;
     return false;
   });
@@ -6657,8 +6660,16 @@ function impSelfKillNewDemonMessageHtml(step, p){
   return `
     <div class="hr" style="margin:10px 0;"></div>
     <div class="muted" style="font-size:11px;">To ${escapeHtml(newImp.name)}</div>
-    ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${k3}', this.innerText)">${escapeHtmlBr(text3)}</div>`, `copyStepMessage('${k3}', this)`, newImp ? `sendStepMessageWA('${newImp.id}', this)` : null)}
+    ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${k3}', this.innerText)">${escapeHtmlBr(text3)}</div>`, `copyStepMessage('${k3}', this)`, newImp ? `appSendNewDemonMessage('${newImp.id}', this)` : null)}
   `;
+}
+// Sends "you are now the Imp" to the new Demon's phone AND updates their role card to the Imp.
+// The card carries only this message — a Minion who becomes the Imp learns no bluffs.
+async function appSendNewDemonMessage(pid, btn){
+  const box = btn && btn.parentElement ? btn.parentElement.querySelector('.msg-box') : null;
+  const text = box ? box.innerText : '';
+  await sendToPlayerText(pid, text, btn, 'night');
+  await appSendRole(pid, null, text);
 }
 function baristaTargetMessageHtml(step){
   if(step!=='Barista') return '';
