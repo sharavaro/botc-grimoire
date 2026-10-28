@@ -128,7 +128,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.11';
+const PLAYER_BUILD = '2026.10.28.12';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -460,9 +460,11 @@ function seatNeighbourText(i){
   if(before || after) return `بجانب ${before || after}`;
   return '';
 }
+function seatingFinal(){ return !!(S.pub && ['reveal','play'].includes(S.pub.phase)); }
 function seatPickerCard(){
   const me = mySeat();
-  if(!me || me.seatLocked) return '';
+  if(!me || seatingFinal()) return '';
+  if(me.seatLocked) return seatWatchCard(me);
   const order = seatOrder(); const n = order.length;
   const radius = 40;
   const slots = order.map((s,i)=>{
@@ -480,6 +482,25 @@ function seatPickerCard(){
     </div>
     ${S.lastError && S.lastError.node==='seatReq' ? `<div class="muted en" dir="ltr" style="font-size:11px;text-align:left;margin-top:4px;word-break:break-all;">Error: ${esc(S.lastError.msg)}</div>` : ''}
     <div>
+    </div>
+  </div>`;
+}
+// After choosing: keep watching the circle fill up (read-only) until the game starts.
+function seatWatchCard(me){
+  const order = seatOrder(); const n = order.length;
+  const radius = 40;
+  const seated = order.filter(s=>s && s.seatLocked).length;
+  const slots = order.map((s,i)=>{
+    const {x,y} = seatPos(i, n, radius);
+    if(s && s.pid===S.pid) return `<div class="slot pick" style="left:${x}%;top:${y}%;font-size:11px;font-weight:700;line-height:1.2;">أنت<br>${i+1}</div>`;
+    if(s && s.seatLocked) return `<div class="slot taken" style="left:${x}%;top:${y}%;"><bdi>${esc(s.name)}</bdi></div>`;
+    return `<div class="slot free" style="left:${x}%;top:${y}%;opacity:.55;border-style:dashed;">${i+1}</div>`;
+  }).join('');
+  return `<div class="card">
+    <h3 style="font-size:16px;">✓ مقعدك رقم ${me.seat+1}</h3>
+    <p class="muted" style="margin:4px 0 0;">${seated<n ? `بانتظار البقية (${seated}/${n})` : `جلس الجميع (${n}/${n}) — بانتظار بدء اللعبة`}</p>
+    <div class="circle" style="margin-top:4px;">${hostMarkHtml(radius)}${slots}
+      <div class="center-info"><div class="stat">${seated}/${n}</div></div>
     </div>
   </div>`;
 }
