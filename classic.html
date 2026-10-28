@@ -1840,6 +1840,7 @@ function messageFor(step, player){
     case 'Professor': return `اذا كنت تريد استخدام قدرتك هذه الليلة فاختر لاعبا ميتا, اذا كان من القرويين فإنك تعيده للحياة , وإلا رد بكلمة لا.`;
     case 'Bone Collector': return `اذا كنت تريد استخدام قدرتك هذه الليلة فاختر لاعبًا ميتًا لتعيد له قدرته حتى الغسق, وإلا رد بكلمة لا.`;
     case 'Bureaucrat': return `من تريد أن تعطيه القدرة لمضاعفة أصواته 3 مرات؟ يمكنك اختيار الأموات أيضا ان كان لديهم صوت متبقي.`;
+    case 'Thief': return `اختر لاعبًا (ليس أنت): صوته يُحسب سلبيًا غدًا. يمكنك اختيار الأموات أيضا ان كان لديهم صوت متبقي.`;
     case 'Harlot': {
       const pick = game.infoPicks[keyFor('Harlot')];
       if(!pick || !pick.target) return '(اختر لاعبًا أدناه لإنشاء هذه الرسالة)';
@@ -6672,7 +6673,7 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
   // dropdown — the storyteller sends the ask first, then records the answer. Result-style cards
   // (message reports back what was picked) correctly stay dropdown-first, since the message
   // can't exist meaningfully until a pick is made.
-  const MESSAGE_FIRST_STEPS = ['Poisoner','Monk','Butler','Witch','Cerenovus','Pit-Hag',"Devil's Advocate",'Gambler','Exorcist','Sailor','Courtier','Assassin','Professor','Bone Collector','Bureaucrat','Imp','Fang Gu','No Dashii','Vigormortis','Vortox','Zombuul','Pukka','Shabaloth','Po','Gossip','Lunatic'];
+  const MESSAGE_FIRST_STEPS = ['Poisoner','Monk','Butler','Witch','Cerenovus','Pit-Hag',"Devil's Advocate",'Gambler','Exorcist','Sailor','Courtier','Assassin','Professor','Bone Collector','Bureaucrat','Thief','Imp','Fang Gu','No Dashii','Vigormortis','Vortox','Zombuul','Pukka','Shabaloth','Po','Gossip','Lunatic'];
   const isMessageFirst = !isDual && MESSAGE_FIRST_STEPS.includes(step);
   // Fortune Teller and Ravenkeeper: the result has no meaning at all until the relevant pick(s)
   // are made, so hide the whole box rather than show an empty placeholder.
