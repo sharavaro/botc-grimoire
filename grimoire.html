@@ -863,7 +863,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.23';
+const APP_BUILD = '2026.10.28.24';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -11186,12 +11186,12 @@ function appJoinRequestsHtml(){
 // ---- Testing mode: every player's phone as a Chrome tab ----
 // Tabs must be opened directly inside the click (browsers block pop-ups opened later), so blank
 // tabs open first and are pointed at the player app once the room is ready.
-function appTestTabUrl(pid){ return `${appPlayerUrl()}&as=${encodeURIComponent(pid)}&test=1`; }
+function appTestTabUrl(pid, slot){ return `${appPlayerUrl()}&as=${encodeURIComponent(pid)}&slot=${slot}&test=1`; }
 function appTestModeOpenTabs(){
   if(!game || !game.testMode) return;
   const players = game.players.slice();
   if(!players.length) return;
-  const wins = players.map(p=>{ try{ return window.open('', 'botc-player-'+p.id); }catch(e){ return null; } });
+  const wins = players.map((p,i)=>{ try{ return window.open('', 'botc-test-tab-'+(i+1)); }catch(e){ return null; } });
   const blocked = wins.filter(w=>!w).length;
   (async()=>{
     try{
@@ -11199,7 +11199,7 @@ function appTestModeOpenTabs(){
       if(!appState.code) throw new Error(appState.error || 'Could not start a room.');
       // Fresh tabs need free seats to link to.
       for(const p of players){ if(appState.claims[appKey(p.id)]) await appUnlinkPlayer(p.id); }
-      players.forEach((p,i)=>{ const w = wins[i]; if(w){ try{ w.location.href = appTestTabUrl(p.id); }catch(e){} } });
+      players.forEach((p,i)=>{ const w = wins[i]; if(w){ try{ w.location.href = appTestTabUrl(p.id, i+1); }catch(e){} } });
     }catch(e){ showInfo('Testing mode could not open the player tabs: ' + (e && e.message ? e.message : e)); return; }
     if(blocked){
       showInfo(`Chrome blocked ${blocked} of ${players.length} player tabs.\n\nClick the blocked pop-up icon at the right end of Chrome's address bar, choose "Always allow pop-ups" for this site, then open 📱 Phones and press "🧪 Open all player tabs".`);

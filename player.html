@@ -145,7 +145,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.23';
+const PLAYER_BUILD = '2026.10.28.24';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -176,7 +176,10 @@ const S = {
 // Each tab then needs its own storage and its own sign-in, exactly like separate phones.
 const URLP = new URLSearchParams((typeof location!=='undefined' && location.search) || '');
 const TEST_AS = URLP.get('test')==='1' ? (URLP.get('as')||'') : '';
-const LS_PREFIX = 'botcp_' + (TEST_AS ? 't_'+TEST_AS+'_' : '');
+// Each test tab has a fixed slot (1st tab, 2nd tab, ...) whose identity is reused every game, so test
+// games never create new sign-ins (Firebase limits how many new ones one connection may make per hour).
+const TEST_SLOT = TEST_AS ? (URLP.get('slot') || TEST_AS) : '';
+const LS_PREFIX = 'botcp_' + (TEST_AS ? 't_'+TEST_SLOT+'_' : '');
 function lsGet(k){ try{ const v = localStorage.getItem(LS_PREFIX+k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(LS_PREFIX+k, JSON.stringify(v)); }catch(e){} }
 function lsDel(k){ try{ localStorage.removeItem(LS_PREFIX+k); }catch(e){} }
@@ -208,7 +211,7 @@ async function connect(){
   await loadScriptOnce(base+'firebase-auth-compat.js');
   await loadScriptOnce(base+'firebase-database-compat.js');
   // A named Firebase app per test player keeps each tab's sign-in separate in the same browser.
-  const appName = TEST_AS ? 'test-'+TEST_AS : '[DEFAULT]';
+  const appName = TEST_AS ? 'test-slot-'+TEST_SLOT : '[DEFAULT]';
   const fbApp = firebase.apps.find(a=>a.name===appName) || (TEST_AS ? firebase.initializeApp(FIREBASE_CONFIG, appName) : firebase.initializeApp(FIREBASE_CONFIG));
   const auth = fbApp.auth();
   if(!auth.currentUser){
@@ -243,7 +246,11 @@ async function enterRoom(code){
     loadReads();
     subscribeShared();
   }catch(e){
-    S.stage = 'code'; S.error = 'تعذّر الاتصال. تحقق من الإنترنت ثم حاول مرة أخرى.'; render();
+    S.stage = 'code';
+    S.error = 'تعذّر الاتصال. تحقق من الإنترنت ثم حاول مرة أخرى.' + (e && (e.code||e.message) ? ` (${String(e.code||e.message).slice(0,80)})` : '');
+    render();
+    // A test tab keeps trying by itself, so one hiccup doesn't leave it stuck.
+    if(TEST_AS){ S.testRetries = (S.testRetries||0) + 1; if(S.testRetries<=8) setTimeout(()=>enterRoom(S.room), 2500); }
   }
 }
 function subscribeShared(){
@@ -316,8 +323,20 @@ async function claimSeat(pid, silent){
     takeSeat(pid);
   }catch(e){
     S.confirmPid = null;
+    // Already ours (e.g. the tab reloaded before the old link was cleared)? Then just take it.
+    let owned = null; try{ owned = await NET.get(R('claims/'+appKey(pid))); }catch(err){ owned = null; }
+    if(owned===S.uid){
+      const seat = S.pub && S.pub.seats ? S.pub.seats[appKey(pid)] : null;
+      lsSet('join', {room:S.room, pid, name: seat ? seat.name : ''});
+      takeSeat(pid); render(); return;
+    }
     if(!silent) showBanner('هذا الاسم مأخوذ. اطلب من الراوي إلغاء ربطه إذا كان اسمك.');
     S.stage = 'join';
+    // A test tab retries its own seat for a while (the Storyteller may still be clearing old links).
+    if(TEST_AS && pid===TEST_AS){
+      S.testClaimTries = (S.testClaimTries||0) + 1;
+      if(S.testClaimTries<=10) setTimeout(()=>{ if(!S.pid) onPublic(); }, 1500);
+    }
   }
   render();
 }
