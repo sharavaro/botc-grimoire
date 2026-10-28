@@ -859,7 +859,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.5';
+const APP_BUILD = '2026.10.28.6';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -6476,6 +6476,11 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
   // can't exist meaningfully until a pick is made.
   const MESSAGE_FIRST_STEPS = ['Poisoner','Monk','Butler','Witch','Cerenovus','Pit-Hag',"Devil's Advocate",'Gambler','Exorcist','Sailor','Courtier','Assassin','Professor','Bone Collector','Bureaucrat','Imp','Fang Gu','No Dashii','Vigormortis','Vortox','Zombuul','Pukka','Shabaloth','Po','Gossip','Lunatic'];
   const isMessageFirst = !isDual && MESSAGE_FIRST_STEPS.includes(step);
+  // Phone choices: the card's own "ask" message is the question — one send button does both.
+  const appSpec = appChoiceSpec(step);
+  const appAskOnResultBox = !!appSpec && (!isDual || becameDemonTonight);
+  const appAskOnAskBox = !!appSpec && isDual && !becameDemonTonight;
+  const appAskSend = `appAskChoiceFromBox('${step.replace(/'/g,"\\'")}', '${p.id}', this)`;
   // Fortune Teller and Ravenkeeper: the result has no meaning at all until the relevant pick(s)
   // are made, so hide the whole box rather than show an empty placeholder.
   const ftPickForBox = game.ftPicks && game.ftPicks[game.nightNum];
@@ -6489,7 +6494,7 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
   const resultBoxHtml = (!isExorcisedDemon && step!=='Barista' && !hideResultBoxUntilPicked) ? `
         <div class="muted" style="font-size:11px;margin-top:6px;">${isDual ? (step==='Fortune Teller' ? '2 — Send the result once you\'ve entered their picks above' : '2 — Result (fills in once you pick their target above)') : ''}</div>
         <div class="muted" style="font-size:10px;">To ${escapeHtml(p.name)}</div>
-        ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${k}', this.innerText)" style="${cardAssetStyle('messageBox', p.character)}">${escapeHtmlBr(text)}</div>`, `copyStepMessage('${k}', this)`, p ? `sendStepMessageWA('${p.id}', this)` : null, cardAssetStyle('copyButton', p.character), cardAssetStyle('sendButton', p.character), p)}
+        ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${k}', this.innerText)" style="${cardAssetStyle('messageBox', p.character)}">${escapeHtmlBr(text)}</div>`, `copyStepMessage('${k}', this)`, p ? (appAskOnResultBox ? appAskSend : `sendStepMessageWA('${p.id}', this)`) : null, cardAssetStyle('copyButton', p.character), cardAssetStyle('sendButton', p.character), p)}
   ` : '';
   return `
     <div class="night-item ${done?'done':''}" style="${cardAssetStyle('border', p.isDrunk ? p.drunkCover : p.character)}">
@@ -6507,7 +6512,7 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
       ${isDual && !isExorcisedDemon ? `
         <div class="muted" style="font-size:11px;margin-top:6px;">1 — ${(step==='Fortune Teller' || step==='Chambermaid' || step==='Innkeeper') ? 'Ask which two players' : 'Ask who they choose'}</div>
         <div class="muted" style="font-size:10px;">To ${escapeHtml(p.name)}</div>
-        ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${askKey}', this.innerText)" style="${cardAssetStyle('messageBox', p.character)}">${escapeHtmlBr(askText)}</div>`, `copyStepMessage('${askKey}', this)`, p ? `sendStepMessageWA('${p.id}', this)` : null, cardAssetStyle('copyButton', p.character), cardAssetStyle('sendButton', p.character), p)}
+        ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${askKey}', this.innerText)" style="${cardAssetStyle('messageBox', p.character)}">${escapeHtmlBr(askText)}</div>`, `copyStepMessage('${askKey}', this)`, p ? (appAskOnAskBox ? appAskSend : `sendStepMessageWA('${p.id}', this)`) : null, cardAssetStyle('copyButton', p.character), cardAssetStyle('sendButton', p.character), p)}
         <div class="hr" style="margin:10px 0;"></div>
       ` : ''}
       ${isMessageFirst ? resultBoxHtml : ''}
@@ -10727,17 +10732,23 @@ function appPhoneAskStripHtml(step){
   const q = appFindQuestion(step, actor);
   const name = escapeHtml(actor.name);
   let body;
+  // Status only: asking happens through the message's own 📱 send button.
   if(q && q.answer){
     const names = q.answer.map(id=>{ const x=game.players.find(p=>p.id===id); return x ? escapeHtml(x.name) : '?'; }).join(' + ');
-    body = `<span style="color:#6fc58a;">📱 ${name} chose: <b>${names}</b></span> <button class="ghost small" onclick="appAskChoice('${step.replace(/'/g,"\\'")}', '${actor.id}')">Ask again</button>`;
+    body = `<span style="color:#6fc58a;">📱 ${name} chose: <b>${names}</b></span>`;
   } else if(q){
-    body = `<span class="muted">⏳ Waiting for ${name}'s answer on their phone…</span> <button class="ghost small" onclick="appAskChoice('${step.replace(/'/g,"\\'")}', '${actor.id}')">Ask again</button>`;
+    body = `<span class="muted">⏳ Waiting for ${name}'s answer on their phone… (press 📱 again to re-ask)</span>`;
   } else {
-    body = `<button class="ghost small" onclick="appAskChoice('${step.replace(/'/g,"\\'")}', '${actor.id}')" style="border-color:var(--gold);">📱 Ask ${name} to choose on their phone</button>`;
+    return '';
   }
   return `<div class="app-ask-strip" style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${body}</div>`;
 }
-async function appAskChoice(step, actorId){
+// The card's send button: its message text becomes the question on the phone.
+function appAskChoiceFromBox(step, actorId, btn){
+  const box = btn && btn.parentElement ? btn.parentElement.querySelector('.msg-box') : null;
+  appAskChoice(step, actorId, box ? box.innerText : '', btn);
+}
+async function appAskChoice(step, actorId, promptText, btn){
   const actor = game.players.find(p=>p.id===actorId);
   const spec = appChoiceSpec(step);
   if(!actor || !spec) return;
@@ -10755,9 +10766,10 @@ async function appAskChoice(step, actorId){
   const options = spec.eligible(actor).map(x=>({pid:x.id, name: x.id===actor.id ? (spec.selfLabel||'أنت') : x.name, dead: x.alive===false}));
   game.appQuestions[qid] = { qid, step, actorId, key: spec.key(), night: game.nightNum, n: spec.n, at: Date.now(), answer: null };
   const msg = { id: 'q_'+qid, qid, kind:'question', at: Date.now(), label:`ليلة ${game.nightNum}`,
-    text: spec.ask, n: spec.n, options };
+    text: (promptText && String(promptText).trim()) || spec.ask, n: spec.n, options };
   const status = await appDeliver(actorId, msg, null);
-  render();
+  appSendFeedback(btn, status, actor);
+  if(route==='play') refreshPlay(); else render();
   if(status==='queued') showInfo(`${actor.name} hasn't joined on their phone yet — the question will reach them the moment they join.`);
 }
 // An answer arrived from a phone: check it against the same rules the card uses, then feed it
