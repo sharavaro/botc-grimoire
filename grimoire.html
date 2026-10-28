@@ -866,7 +866,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.28';
+const APP_BUILD = '2026.10.28.32';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1385,6 +1385,19 @@ function godfatherOutsiderRevealText(){
   if(outsiders.length===0) return `لا يوجد غرباء في اللعبة.`;
   const uniqueChars = [...new Set(outsiders.map(o=>o.character))];
   return `الغرباء الموجودون في اللعبة هذه المرة: ${uniqueChars.map(c=>charBoth(c)).join('، ')}.`;
+}
+// The Storyteller's grimoire as data, frozen at this moment — sent only to the Spy's phone.
+const APP_MARKER_FALLBACK = {poisoned:'☠️', red_herring:'🐟', cursed:'🧙', cursed_barista_twice:'🧙', pukka_poison:'☠️'};
+function appGrimoireSnapshot(){
+  return { at: Date.now(), seats: seatedPlayers().map((p,i)=>({
+    seat: i, name: p.name, char: p.character || null, drunkCover: p.isDrunk ? (p.drunkCover||null) : null,
+    alive: p.alive!==false, ghostVoteUsed: !!p.ghostVoteUsed, evil: !!isEvil(p),
+    markers: (p.markers||[]).map(mid=>{ const m = markerById(mid); return m ? {label: m.label, icon: m.icon || APP_MARKER_FALLBACK[mid] || '•'} : null; }).filter(Boolean),
+  })) };
+}
+async function appSendSpyGrimoire(pid, btn){
+  const box = btn && btn.parentElement ? btn.parentElement.querySelector('.msg-box') : null;
+  await sendToPlayerText(pid, box ? box.innerText : withHeader('هذا هو دفتر الراوي.'), btn, 'night', {grimoire: appGrimoireSnapshot()});
 }
 function grimoireSummaryText(spyPlayer){
   const seated = seatedPlayers();
@@ -3527,7 +3540,7 @@ screens['seating'] = () => `
     ${!allSeated() ? `<p class="muted" style="color:var(--warn);margin-top:10px;">Seat every player before continuing.</p>` : ''}
     <div class="row between" style="margin-top:14px;">
       <button class="ghost" ${game.phase==='play' && !allSeated() ? 'disabled' : ''} onclick="pageTurnTransition(()=>go(game.phase==='play' ? 'play' : 'review'), true)">‹ Back</button>
-      ${game.phase!=='play' ? `<button class="primary" ${allSeated()?'':'disabled'} onclick="goToReveal()">Begin the game ›</button>` : ''}
+      ${game.phase!=='play' ? `<button class="primary" ${allSeated()?'':'disabled'} onclick="startFirstNight()" title="Starts the first night and sends every player their role card on their phone">Start first night ›</button>` : ''}
     </div>
   </div>
 `;
@@ -3870,7 +3883,16 @@ function goBackToSeating(){
   saveGame();
   pageTurnTransition(()=>go('seating'), true);
 }
-function beginGame(){
+// Seating done → straight into the first night; every phone gets its role card at the same moment.
+// Under the Tor Loric players must not know their characters, so nothing is sent automatically.
+function startFirstNight(){
+  assignLunaticFakeDemon(); // before the cards go out: the Lunatic's card must already show their fake Demon
+  beginGame(()=>{
+    if((game.activeLoric||[]).includes('Tor')){ showInfo('Tor is active — role cards were NOT sent to phones. (You can still send one from 📱 Phones if you need to.)'); return; }
+    appSendAllRoles();
+  });
+}
+function beginGame(after){
   game.phase='play'; game.subphase='night'; game.nightNum=1;
   assignRedHerring();
   assignLunaticFakeDemon();
@@ -3879,7 +3901,7 @@ function beginGame(){
     p.originalIsDrunk = p.isDrunk;
     p.originalDrunkCover = p.drunkCover;
   });
-  saveGame(); pageTurnTransition(()=>go('play'));
+  saveGame(); pageTurnTransition(()=>{ go('play'); if(typeof after==='function') after(); });
 }
 function assignLunaticFakeDemon(){
   const lunatic = game.players.find(p=>p.character==='Lunatic');
@@ -6563,7 +6585,7 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
   const resultBoxHtml = (!isExorcisedDemon && step!=='Barista' && step!=='Gossip' && !hideResultBoxUntilPicked) ? `
         <div class="muted" style="font-size:11px;margin-top:6px;">${isDual ? (step==='Fortune Teller' ? '2 — Send the result once you\'ve entered their picks above' : '2 — Result (fills in once you pick their target above)') : ''}</div>
         <div class="muted" style="font-size:10px;">To ${escapeHtml(p.name)}</div>
-        ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${k}', this.innerText)" style="${cardAssetStyle('messageBox', p.character)}">${escapeHtmlBr(text)}</div>`, `copyStepMessage('${k}', this)`, p ? (appAskOnResultBox ? appAskSend : `sendStepMessageWA('${p.id}', this)`) : null, cardAssetStyle('copyButton', p.character), cardAssetStyle('sendButton', p.character), p)}
+        ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${k}', this.innerText)" style="${cardAssetStyle('messageBox', p.character)}">${escapeHtmlBr(text)}</div>`, `copyStepMessage('${k}', this)`, p ? (appAskOnResultBox ? appAskSend : (step==='Spy' ? `appSendSpyGrimoire('${p.id}', this)` : `sendStepMessageWA('${p.id}', this)`)) : null, cardAssetStyle('copyButton', p.character), cardAssetStyle('sendButton', p.character), p)}
   ` : '';
   return `
     <div class="night-item ${done?'done':''}" style="${cardAssetStyle('border', p.isDrunk ? p.drunkCover : p.character)}">
@@ -9799,12 +9821,19 @@ function svJugglerHtml(isLastCard){
   }
   const completed = guesses.filter(g=>g && g.playerId && g.char);
   const nextIdx = completed.length;
+  // Every entered guess stays editable: if what the Juggler typed on the phone differs from what he
+  // called out at the table, the Storyteller corrects it here (the table call is what counts).
   const logHtml = completed.length>0 ? `
-    <div class="muted" style="font-size:11px;margin-bottom:8px;">
-      ${completed.map((g,i)=>{
-        const p = game.players.find(x=>x.id===g.playerId);
-        return `✓ Guess ${i+1}: ${p?escapeHtml(p.name):'?'} — ${g.char}`;
-      }).join('<br>')}
+    <div style="margin-bottom:8px;">
+      ${completed.map((g,i)=>`
+        <div class="row" style="flex-wrap:nowrap;align-items:center;gap:6px;margin-bottom:4px;">
+          <span class="muted" style="font-size:11px;min-width:16px;">${i+1}</span>
+          <select style="flex:1;width:auto;min-width:0;" onchange="setJugglerGuess(${i}, 'playerId', this.value)">
+            ${sortedByRoleType(game.players.filter(x=>x.id!==juggler.id)).map(x=>playerOptionHtml(x, g.playerId)).join('')}
+          </select>
+          <select style="flex:1;width:auto;min-width:0;" onchange="setJugglerGuess(${i}, 'char', this.value)">${charOptions(g.char)}</select>
+          <button class="ghost small" title="Remove this guess" onclick="removeJugglerGuess(${i})">✕</button>
+        </div>`).join('')}
     </div>
   ` : '';
   const currentGuess = guesses[nextIdx] || {playerId:'', char:''};
@@ -9835,6 +9864,13 @@ function svJugglerHtml(isLastCard){
       ${cardFooterButtonsHtml(`toggleDayCardCollapse('${dcKey}')`, null, null, isLastCard)}
     </div>
   `;
+}
+function removeJugglerGuess(idx){
+  const done = (game.jugglerGuesses||[]).filter(g=>g && g.playerId && g.char);
+  done.splice(idx,1);
+  game.jugglerGuesses = done;
+  saveGame();
+  refreshPlay();
 }
 function setJugglerGuess(idx, field, val){
   game.jugglerGuesses = game.jugglerGuesses || [];
@@ -10721,15 +10757,17 @@ function appSendFeedback(btn, status, p){
   btn.title = status==='sent' ? `Sent to ${p.name}'s phone` : `${p.name} hasn't joined yet — it will arrive when they join`;
   setTimeout(()=>{ btn.innerHTML = old; }, 1400);
 }
-async function sendToPlayerText(pid, text, btn, kind){
+async function sendToPlayerText(pid, text, btn, kind, extra){
   const p = game.players.find(x=>x.id===pid);
   if(!p) return;
   text = String(text||'').trim();
   if(!text){ showInfo('That message is empty.'); return; }
-  const msg = { id: appNewMsgId(), text, at: Date.now(), kind: kind||'info',
-    label: game.phase==='play' ? (game.subphase==='night' ? `ليلة ${game.nightNum}` : `يوم ${game.dayNum}`) : 'قبل اللعب' };
+  const msg = Object.assign({ id: appNewMsgId(), text, at: Date.now(), kind: kind||'info',
+    label: game.phase==='play' ? (game.subphase==='night' ? `ليلة ${game.nightNum}` : `يوم ${game.dayNum}`) : 'قبل اللعب' }, extra||{});
   try{
     const status = await appDeliver(pid, msg, null);
+    // Their character changed (the message on the card tells them so): the 🎭 role tab follows too.
+    if(appRoleOutOfDate(p)) await appSendRole(pid, null, text);
     appSendFeedback(btn, status, p);
     if(status==='queued' && !appState.attached) showInfo(`Saved for ${p.name}. Open 📱 Phones and start a room so it reaches their phone.`);
   }catch(e){ showInfo(`Couldn't send to ${p.name}'s phone: ${e && e.message ? e.message : e}`); }
@@ -10738,6 +10776,26 @@ async function sendToPlayerText(pid, text, btn, kind){
 function sendStepMessageWA(pid, btn){
   const box = btn && btn.parentElement ? btn.parentElement.querySelector('.msg-box') : null;
   sendToPlayerText(pid, box ? box.innerText : '', btn, 'night');
+}
+// ---- Character changes mid-game (Scarlet Woman, Imp → Minion, Pit-Hag, Snake Charmer, Fang Gu, Barber…) ----
+// What the phone's role card shows: the character the player believes they are, and their team.
+function appRoleSignature(p){ const r = appBuildRole(p, ''); return `${r.char||''}|${r.team||''}`; }
+// True when the player's role card on the phone no longer matches their character or team.
+function appRoleOutOfDate(p){
+  if(!p || !game || game.phase!=='play') return false;
+  const sent = (game.appRoleSent||{})[p.id];
+  return sent!==undefined && sent!==appRoleSignature(p);
+}
+function appRoleChangeText(p){
+  const r = appBuildRole(p, '');
+  return withHeader(`لقد تغيّرت شخصيتك. أنت الآن ${charBoth(r.char)}${r.team==='evil' ? ' — من فريق الأشرار' : ' — من فريق الأخيار'}.`);
+}
+// Safety net in the Phones window: tells the player (message + role card) if no change message was sent.
+async function appSendRoleUpdate(pid, btn){
+  const p = game.players.find(x=>x.id===pid);
+  if(!p) return;
+  await sendToPlayerText(pid, appRoleChangeText(p), btn, 'night');
+  appRefreshPanel && appRefreshPanel();
 }
 async function appSendRole(pid, btn, textOverride){
   const p = game.players.find(x=>x.id===pid);
@@ -10751,6 +10809,8 @@ async function appSendRole(pid, btn, textOverride){
     const status = await appDeliver(pid, null, role);
     game.waSentReveal = game.waSentReveal || {};
     game.waSentReveal[pid] = true;
+    game.appRoleSent = game.appRoleSent || {};
+    game.appRoleSent[pid] = appRoleSignature(p);
     saveGame();
     appSendFeedback(btn, status, p);
     return status;
@@ -10808,8 +10868,10 @@ const APP_PHONE_CHOICES = {
       apply:(k,ids)=>setThiefTarget(ids[0]), ask:'اختر لاعبًا (ليس أنت): صوته يُحسب سلبيًا غدًا.' },
   },
   sv: {
-    'Philosopher': { n:0, chars:appGoodChars, skip:true, manual:true, key:()=>keyFor('Philosopher'), eligible:a=>[],
-      apply:(k,ids,ch)=>choosePhilosopherAbility(ch), ask:'اختر شخصية خيّرة لتحصل على قدرتها، أو لا أحد.' },
+    // Applied straight away: the card records the chosen character and marks his ability as used;
+    // "nobody" marks the card skipped for tonight. (Changeable on the card, as with a dropdown pick.)
+    'Philosopher': { n:0, chars:appGoodChars, skip:true, key:()=>keyFor('Philosopher'), eligible:a=>[],
+      apply:(k,ids,ch)=>choosePhilosopherAbility(ch), onSkip:(k,a)=>skipPhilosopherTonight(a.id), ask:'اختر شخصية خيّرة لتحصل على قدرتها، أو لا أحد.' },
     'Snake Charmer': { n:1, key:a=>(a && a.extraAbilityChar==='Snake Charmer') ? `${keyFor('Snake Charmer')}-${a.id}` : keyFor('Snake Charmer'),
       eligible:a=>appAliveNotSelf(a), apply:(k,ids)=>setSnakeCharmerTarget(k, ids[0]), ask:'اختر لاعبًا حيًا: إذا كان العفريت، تتبادلان الشخصية والفريق.' },
     'Witch': { n:1, key:()=>keyFor('Witch'), eligible:a=>game.players.slice(),
@@ -11356,7 +11418,16 @@ function appRoomPanelHtml(){
       <button class="ghost small" onclick="showConfirm('Close this room? Every phone disconnects and players must scan a new code.', ()=>appCloseRoom())">Close room</button>
       ${game.testMode ? `<button class="ghost small" onclick="appTestModeOpenTabs()" style="border-color:#8a5fd6;">🧪 Open all player tabs</button>` : ''}
       ${game.players.some(p=>p.character) ? `<button class="ghost small" onclick="appSendAllRoles()">🎭 Send all roles</button>` : ''}
-    </div>`;
+    </div>
+    ${(()=>{
+      const stale = game.players.filter(appRoleOutOfDate);
+      if(!stale.length) return '';
+      return `<div class="panel" style="margin-top:12px;padding:10px 14px;border-color:#e0943f;">
+        <b style="color:#e0943f;">🎭 Character changed — phone not updated yet</b>
+        <div class="muted" style="font-size:11px;margin:2px 0 6px;">Sending their change message from the night card updates it automatically. Or send a short update here:</div>
+        ${stale.map(p=>`<div class="row" style="align-items:center;gap:8px;margin-top:4px;"><bdi style="flex:1;">${escapeHtml(p.name)} → ${escapeHtml(appBuildRole(p,'').char||'')}</bdi><button class="ghost small" onclick="appSendRoleUpdate('${p.id}', this)">${SEND_ICON} Send update</button></div>`).join('')}
+      </div>`;
+    })()}`;
 }
 function appRoomModalHtml(){
   return `

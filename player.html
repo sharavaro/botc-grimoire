@@ -150,7 +150,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.27';
+const PLAYER_BUILD = '2026.10.28.28';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -852,8 +852,35 @@ function inboxTab(){
     if(m.kind==='question') return pendingQuestions().includes(m) ? '' : questionCardHtml(m);
     const t = new Date(m.at||0);
     const time = isNaN(t) ? '' : `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
-    return `<div class="card msg ${i===0 && Date.now()-(m.at||0)<10*60*1000 ? 'new':''}"><div class="lbl"><span>${esc(m.label||'')}</span><span class="en">${time}</span></div><div class="msgtext">${fmt(m.text)}</div></div>`;
+    return `<div class="card msg ${i===0 && Date.now()-(m.at||0)<10*60*1000 ? 'new':''}"><div class="lbl"><span>${esc(m.label||'')}</span><span class="en">${time}</span></div><div class="msgtext">${fmt(m.text)}</div>${m.grimoire ? grimoireSnapshotHtml(m.grimoire) : ''}</div>`;
   }).join('');
+}
+// The Spy's view of the Storyteller's grimoire: every real character, who is dead, and the reminder markers.
+function grimoireSnapshotHtml(g){
+  const seats = (g && g.seats) || [];
+  const n = seats.length;
+  if(!n) return '';
+  const radius = 41;
+  const charName = c=>{ const i = charInfo(c); return i ? (i.nameAr || c) : c; };
+  const circle = seats.map((s,i)=>{
+    const {x,y} = seatPos(i, n, radius);
+    const shown = s.drunkCover ? 'Drunk' : s.char;
+    return `<div class="seat ${s.alive?'':'dead'}" style="left:${x}%;top:${y}%;">
+      <div class="av" style="border-color:${s.evil?'#e0483f':'#4a90d9'};background:#e9dfc4;">${iconHtml(shown,'')}${!s.alive?'<span class="shroud">⚰️</span>':''}</div>
+      <div class="nm"><bdi>${esc(s.name)}</bdi></div>
+      ${(s.markers||[]).length ? `<div class="gv" style="font-size:12px;">${s.markers.map(m=>`<span title="${esc(m.label)}">${esc(m.icon)}</span>`).join(' ')}</div>` : ''}
+    </div>`;
+  }).join('');
+  const rows = seats.map(s=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--line);">
+      <span style="width:26px;height:26px;flex:0 0 26px;border-radius:50%;background:#e9dfc4;overflow:hidden;display:flex;align-items:center;justify-content:center;border:2px solid ${s.evil?'#e0483f':'#4a90d9'};">${iconHtml(s.drunkCover ? 'Drunk' : s.char,'')}</span>
+      <span style="flex:1;line-height:1.35;"><b><bdi>${esc(s.name)}</bdi></b> — ${esc(s.drunkCover ? `${charName('Drunk')} (يظن أنه ${charName(s.drunkCover)})` : charName(s.char||'—'))}
+        ${s.alive ? '' : ` · <span style="color:var(--mist);">${s.ghostVoteUsed ? 'ميت، بلا صوت' : 'ميت'}</span>`}
+        ${(s.markers||[]).length ? `<br><span class="muted" style="font-size:12px;">${s.markers.map(m=>`${esc(m.icon)} ${esc(m.label)}`).join(' · ')}</span>` : ''}</span></div>`).join('');
+  return `<div style="margin-top:10px;">
+    <div class="muted" style="font-size:12px;">📖 دفتر الراوي (لحظة الإرسال) — الإطار الأحمر شرير، الأزرق خيّر</div>
+    <div class="circle">${hostMarkHtml(radius)}${circle}</div>
+    ${rows}
+  </div>`;
 }
 function boardTab(){
   const seats = sortedSeats().filter(s=>s.seat!==null && s.seat!==undefined);
