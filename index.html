@@ -859,7 +859,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.4';
+const APP_BUILD = '2026.10.28.5';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1857,7 +1857,7 @@ function topbarHtml(){
   if(route==='boot' || route==='resume-check' || route==='court' || route==='boot-error') return '';
   return `
     <div class="topbar">
-      <div class="brand">🕯️ Storyteller's Grimoire<div class="brand-build" title="Grimoire build">Build ${APP_BUILD}</div></div>
+      <div class="brand">🕯️ Storyteller's Grimoire<div class="brand-build" title="Grimoire build">Build ${APP_BUILD}</div>${game && game.testMode ? `<div onclick="openAppRoomPanel()" title="Testing mode: every player's phone runs as a Chrome tab" style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:9px;background:#3b2d6b;border:1px solid #8a5fd6;color:#d6c2ff;font-size:11px;font-family:system-ui;cursor:pointer;">🧪 TEST MODE</div>` : ''}</div>
       <div class="navlinks">
         <button class="ghost small" onclick="exportBackup()" title="Download everything — player names, phone numbers, custom icons, and the current game — as one portable file">💾 Backup</button>
         <button class="ghost small" onclick="triggerTopbarImportBackup()" title="Restore names, icons, and game state from a backup file made on another device">📥 Restore</button>
@@ -2220,6 +2220,11 @@ function confirmResetGame(){
 }
 function toggleAtheistMode(){
   game.atheistMode = !game.atheistMode;
+  saveGame();
+  render();
+}
+function toggleTestMode(){
+  game.testMode = !game.testMode;
   saveGame();
   render();
 }
@@ -3107,12 +3112,18 @@ screens['tokens'] = () => {
     <p class="muted">Choose exactly which characters are in the bag, or skip straight to a fully automatic pool. Either way, the app randomly assigns tokens to players.</p>
     <div id="manual-pool" class="${game.atheistMode ? 'atheist-red-water' : ''}" style="${game.atheistMode ? 'padding:10px;' : ''}">${manualPoolHtml(chart)}</div>
     <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-top:12px;">
-      <button class="primary" id="manual-pool-start-btn" onclick="assignFromManualPool()" disabled style="justify-self:start;">Start Game</button>
-      <div class="row" style="align-items:center;gap:8px;justify-self:center;">
-        <div class="checkbox ${game.atheistMode?'checked':''}" onclick="toggleAtheistMode()">${game.atheistMode?'✓':''}</div>
-        <span>🎭 Atheist Mode</span>
+      <button class="primary" id="manual-pool-start-btn" onclick="assignFromManualPool(); appTestModeOpenTabs()" disabled style="justify-self:start;">Start Game</button>
+      <div style="display:flex;flex-direction:column;gap:6px;justify-self:center;">
+        <div class="row" style="align-items:center;gap:8px;">
+          <div class="checkbox ${game.atheistMode?'checked':''}" onclick="toggleAtheistMode()">${game.atheistMode?'✓':''}</div>
+          <span>🎭 Atheist Mode</span>
+        </div>
+        <div class="row" style="align-items:center;gap:8px;" title="Play every role yourself: each player's phone opens as its own Chrome tab, linked automatically.">
+          <div class="checkbox ${game.testMode?'checked':''}" onclick="toggleTestMode()">${game.testMode?'✓':''}</div>
+          <span>🧪 Testing mode</span>
+        </div>
       </div>
-      <button class="primary" onclick="autoAssignEverything()" style="justify-self:end;">🎲 Auto-build &amp; assign</button>
+      <button class="primary" onclick="autoAssignEverything(); appTestModeOpenTabs()" style="justify-self:end;">🎲 Auto-build &amp; assign</button>
     </div>
     <div class="hr"></div>
     <button class="ghost" onclick="pageTurnTransition(()=>go('names'), true)">‹ Back to players</button>
@@ -10785,6 +10796,29 @@ function appOnAnswers(val){
   }
 }
 
+// ---- Testing mode: every player's phone as a Chrome tab ----
+// Tabs must be opened directly inside the click (browsers block pop-ups opened later), so blank
+// tabs open first and are pointed at the player app once the room is ready.
+function appTestTabUrl(pid){ return `${appPlayerUrl()}&as=${encodeURIComponent(pid)}&test=1`; }
+function appTestModeOpenTabs(){
+  if(!game || !game.testMode) return;
+  const players = game.players.slice();
+  if(!players.length) return;
+  const wins = players.map(p=>{ try{ return window.open('', 'botc-player-'+p.id); }catch(e){ return null; } });
+  const blocked = wins.filter(w=>!w).length;
+  (async()=>{
+    try{
+      if(!appState.code) await appStartRoom();
+      if(!appState.code) throw new Error(appState.error || 'Could not start a room.');
+      // Fresh tabs need free seats to link to.
+      for(const p of players){ if(appState.claims[appKey(p.id)]) await appUnlinkPlayer(p.id); }
+      players.forEach((p,i)=>{ const w = wins[i]; if(w){ try{ w.location.href = appTestTabUrl(p.id); }catch(e){} } });
+    }catch(e){ showInfo('Testing mode could not open the player tabs: ' + (e && e.message ? e.message : e)); return; }
+    if(blocked){
+      showInfo(`Chrome blocked ${blocked} of ${players.length} player tabs.\n\nClick the blocked pop-up icon at the right end of Chrome's address bar, choose "Always allow pop-ups" for this site, then open 📱 Phones and press "🧪 Open all player tabs".`);
+    }
+  })();
+}
 // ---- Storyteller panel ----
 function openAppRoomPanel(){ ui.modal = {type:'appRoom'}; render(); }
 function appRefreshPanel(){ if(ui && ui.modal && ui.modal.type==='appRoom') renderModal(); }
@@ -10849,6 +10883,7 @@ function appRoomPanelHtml(){
     <div>${rows || '<p class="muted">Add players first.</p>'}</div>
     <div class="row" style="justify-content:space-between;margin-top:12px;">
       <button class="ghost small" onclick="showConfirm('Close this room? Every phone disconnects and players must scan a new code.', ()=>appCloseRoom())">Close room</button>
+      ${game.testMode ? `<button class="ghost small" onclick="appTestModeOpenTabs()" style="border-color:#8a5fd6;">🧪 Open all player tabs</button>` : ''}
       ${game.players.some(p=>p.character) ? `<button class="ghost small" onclick="appSendAllRoles()">🎭 Send all roles</button>` : ''}
     </div>`;
 }

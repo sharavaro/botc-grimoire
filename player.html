@@ -115,7 +115,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.4';
+const PLAYER_BUILD = '2026.10.28.5';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -141,9 +141,14 @@ const S = {
 };
 
 /* ---------- storage helpers (per-device memory of which room/name this phone is) ---------- */
-function lsGet(k){ try{ const v = localStorage.getItem('botcp_'+k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
-function lsSet(k,v){ try{ localStorage.setItem('botcp_'+k, JSON.stringify(v)); }catch(e){} }
-function lsDel(k){ try{ localStorage.removeItem('botcp_'+k); }catch(e){} }
+// Testing mode (?test=1&as=<playerId>): the Storyteller runs every player as a Chrome tab.
+// Each tab then needs its own storage and its own sign-in, exactly like separate phones.
+const URLP = new URLSearchParams((typeof location!=='undefined' && location.search) || '');
+const TEST_AS = URLP.get('test')==='1' ? (URLP.get('as')||'') : '';
+const LS_PREFIX = 'botcp_' + (TEST_AS ? 't_'+TEST_AS+'_' : '');
+function lsGet(k){ try{ const v = localStorage.getItem(LS_PREFIX+k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(LS_PREFIX+k, JSON.stringify(v)); }catch(e){} }
+function lsDel(k){ try{ localStorage.removeItem(LS_PREFIX+k); }catch(e){} }
 
 /* ---------- network ---------- */
 function loadScriptOnce(src){
@@ -171,12 +176,15 @@ async function connect(){
   await loadScriptOnce(base+'firebase-app-compat.js');
   await loadScriptOnce(base+'firebase-auth-compat.js');
   await loadScriptOnce(base+'firebase-database-compat.js');
-  if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-  if(!firebase.auth().currentUser){
-    await new Promise(res=>{ const u = firebase.auth().onAuthStateChanged(()=>{ u(); res(); }); });
+  // A named Firebase app per test player keeps each tab's sign-in separate in the same browser.
+  const appName = TEST_AS ? 'test-'+TEST_AS : '[DEFAULT]';
+  const fbApp = firebase.apps.find(a=>a.name===appName) || (TEST_AS ? firebase.initializeApp(FIREBASE_CONFIG, appName) : firebase.initializeApp(FIREBASE_CONFIG));
+  const auth = fbApp.auth();
+  if(!auth.currentUser){
+    await new Promise(res=>{ const u = auth.onAuthStateChanged(()=>{ u(); res(); }); });
   }
-  if(!firebase.auth().currentUser) await firebase.auth().signInAnonymously();
-  NET = makeFirebaseNet(firebase.database(), firebase.auth().currentUser.uid);
+  if(!auth.currentUser) await auth.signInAnonymously();
+  NET = makeFirebaseNet(fbApp.database(), auth.currentUser.uid);
   return NET;
 }
 const R = sub => `rooms/${S.room}/${sub}`;
@@ -239,6 +247,7 @@ async function onPublic(){
       const sameName = Object.values(seats).find(s=>s.name===saved.name && !s.claimed);
       if(sameName && !seats[key]){ await claimSeat(sameName.pid, true); return; }
     }
+    if(TEST_AS && seats[appKey(TEST_AS)] && !seats[appKey(TEST_AS)].claimed){ await claimSeat(TEST_AS, true); return; }
     S.stage = 'join';
   }
   render();
@@ -556,7 +565,7 @@ function joinedScreen(){
   return `
     <div class="top">
       <div>
-        <div style="font-weight:700;font-size:17px;"><bdi>${esc(me ? me.name : '')}</bdi></div>
+        <div style="font-weight:700;font-size:17px;"><bdi>${esc(me ? me.name : '')}</bdi>${TEST_AS ? ' <span style="font-size:11px;padding:1px 7px;border-radius:9px;background:#3b2d6b;border:1px solid #8a5fd6;color:#d6c2ff;">🧪 اختبار</span>' : ''}</div>
         <div class="phase">${phaseLabel()}<span class="dot ${S.online?'':'off'}" title="${S.online?'متصل':'إعادة الاتصال…'}"></span></div>
       </div>
       <button class="ghost" style="padding:6px 10px;font-size:12px;" onclick="switchName()">لست أنا</button>
@@ -581,6 +590,7 @@ function render(){
   else if(S.stage==='join') html = joinScreen();
   else html = joinedScreen();
   app.innerHTML = html;
+  try{ const me = mySeat(); document.title = (TEST_AS ? '🧪 ' : '') + (me ? me.name : 'Clocktower Player'); }catch(e){}
   const ov = document.getElementById('overlay');
   if(ov){
     let o = '';
