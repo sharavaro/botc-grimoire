@@ -150,7 +150,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.26';
+const PLAYER_BUILD = '2026.10.28.27';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -375,7 +375,7 @@ function onPrivate(v){
     const isQuestion = fresh.some(id=>inbox[id].kind==='question');
     showBanner(isQuestion ? '❓ الراوي يطلب اختيارك الآن' : (isRole ? '🎭 وصلك دورك' : '✉️ رسالة جديدة من الراوي'));
     // A re-asked question starts fresh.
-    fresh.forEach(id=>{ if(inbox[id].kind==='question'){ delete S.qSent[inbox[id].qid]; delete S.qSel[inbox[id].qid]; } });
+    fresh.forEach(id=>{ if(inbox[id].kind==='question'){ const rq = inbox[id].qid; delete S.qSent[rq]; delete S.qSel[rq]; if(S.qPairs) delete S.qPairs[rq]; if(S.qDraft) delete S.qDraft[rq]; if(S.qText) delete S.qText[rq]; } });
     try{ navigator.vibrate && navigator.vibrate([180,80,180]); }catch(e){}
     if(isRole){ S.tab = 'role'; S.roleShown = false; }
   }
@@ -432,6 +432,8 @@ function pendingQuestions(){
 function findQuestion(qid){ return Object.values((S.priv && S.priv.inbox) || {}).find(m=>m.kind==='question' && m.qid===qid); }
 function qN(q){ return (q && typeof q.n==='number') ? q.n : 1; } // 0 = character only (e.g. Philosopher, Courtier)
 function qReady(q){
+  if(q.textInput) return !!String((S.qText||{})[q.qid]||'').trim();
+  if(q.pairs) return ((S.qPairs||{})[q.qid]||[]).length>=1;
   const sel = S.qSel[q.qid] || [];
   return sel.length===qN(q) && (!q.charOptions || !!(S.qChar||{})[q.qid]);
 }
@@ -464,8 +466,10 @@ async function qSend(qid, payload){
 async function qSubmit(qid){
   const q = findQuestion(qid);
   if(!q || !qReady(q)) return;
-  const payload = {picks: S.qSel[qid] || []};
-  if(q.charOptions) payload.char = S.qChar[qid];
+  let payload;
+  if(q.textInput) payload = {picks: [], text: String(S.qText[qid]||'').trim().slice(0,300)};
+  else if(q.pairs){ const pr = (S.qPairs||{})[qid] || []; payload = {picks: pr.map(x=>x.pid), pairs: pr.map(x=>({pid:x.pid, char:x.char}))}; }
+  else { payload = {picks: S.qSel[qid] || []}; if(q.charOptions) payload.char = S.qChar[qid]; }
   await qSend(qid, payload);
 }
 async function qSkip(qid){
@@ -473,6 +477,32 @@ async function qSkip(qid){
   if(!q || !q.skip) return;
   await qSend(qid, {picks: [], skip: true});
 }
+// Juggler-style questions: build up to N guesses, each a player plus a character.
+function qDraft(qid){ S.qDraft = S.qDraft || {}; return (S.qDraft[qid] = S.qDraft[qid] || {pid:null, char:null}); }
+function qPairPlayer(qid, pid){
+  const q = findQuestion(qid); if(!q || S.qSent[qid]) return;
+  const d = qDraft(qid); d.pid = d.pid===pid ? null : pid; render();
+}
+function qPairChar(qid, idx){
+  const q = findQuestion(qid); if(!q || S.qSent[qid] || !q.charOptions) return;
+  const c = q.charOptions[idx]; if(!c) return;
+  const d = qDraft(qid); d.char = d.char===c.name ? null : c.name; render();
+}
+function qPairAdd(qid){
+  const q = findQuestion(qid); if(!q || S.qSent[qid] || !q.pairs) return;
+  const d = qDraft(qid);
+  S.qPairs = S.qPairs || {};
+  const list = (S.qPairs[qid] = S.qPairs[qid] || []);
+  if(!d.pid || !d.char || list.length>=q.pairs || list.some(x=>x.pid===d.pid)) return;
+  list.push({pid:d.pid, char:d.char});
+  S.qDraft[qid] = {pid:null, char:null};
+  render();
+}
+function qPairRemove(qid, i){
+  const list = (S.qPairs||{})[qid]; if(!list || S.qSent[qid]) return;
+  list.splice(i,1); render();
+}
+function qTextInput(qid, v){ S.qText = S.qText || {}; S.qText[qid] = v; const b = document.getElementById('qsend-'+qid); if(b) b.disabled = !String(v).trim(); }
 function optionName(q, pid){ const o = (q.options||[]).find(x=>x.pid===pid); return o ? o.name : ''; }
 function charLabel(q, name){ const c = (q.charOptions||[]).find(x=>x.name===name); return c ? (c.nameAr || c.name) : name; }
 function questionCardHtml(q){
@@ -480,10 +510,11 @@ function questionCardHtml(q){
   const sent = S.qSent[q.qid];
   const n = qN(q);
   if(q.answeredNames || sent){
-    const names = q.answeredNames || (sent.skip ? ['لا أحد'] : (sent.picks||[]).map(pid=>optionName(q,pid)).concat(sent.char ? [charLabel(q, sent.char)] : []));
+    const names = q.answeredNames || (sent.skip ? ['لا أحد'] : sent.text ? [sent.text] : sent.pairs ? sent.pairs.map(x=>`${optionName(q,x.pid)} = ${charLabel(q,x.char)}`) : (sent.picks||[]).map(pid=>optionName(q,pid)).concat(sent.char ? [charLabel(q, sent.char)] : []));
     return `<div class="card msg"><div class="lbl"><span>${esc(q.label||'')}</span><span>اختيارك</span></div><div class="msgtext">${fmt(q.text)}</div>
       <div class="qdone">${q.answeredNames ? '✓ استلم الراوي اختيارك' : '✓ تم الإرسال'}: <b>${names.map(x=>`<bdi>${esc(x)}</bdi>`).join(' و ')}</b></div></div>`;
   }
+  if(q.pairs || q.textInput) return questionCardSpecialHtml(q);
   const chosenChar = (S.qChar||{})[q.qid] || null;
   const players = n>0 ? `
     <div class="muted" style="margin-top:6px;">${n===1 ? 'اختر لاعبًا واحدًا' : `اختر ${n} لاعبين`} (${sel.length}/${n})</div>
@@ -501,6 +532,38 @@ function questionCardHtml(q){
     <button class="primary" style="width:100%;margin-top:12px;" ${qReady(q)?'':'disabled'} onclick="qSubmit('${esc(q.qid)}')">إرسال الاختيار</button>
     ${q.skip ? `<button class="ghost" style="width:100%;margin-top:8px;" onclick="qSkip('${esc(q.qid)}')">لا أحد / ليس الليلة</button>` : ''}
   </div>`;
+}
+
+// The two question shapes that are not "pick N players": a list of guesses (Juggler) and typed text (Artist).
+function questionCardSpecialHtml(q){
+  const id = esc(q.qid);
+  const head = `<div class="lbl" style="font-size:12px;color:var(--gold);margin-bottom:6px;">❓ ${esc(q.label||'')}</div><div class="msgtext">${fmt(q.text)}</div>`;
+  const skipBtn = q.skip ? `<button class="ghost" style="width:100%;margin-top:8px;" onclick="qSkip('${id}')">${q.textInput ? 'لا — ليس اليوم' : 'لا أريد التخمين اليوم'}</button>` : '';
+  if(q.textInput){
+    const v = (S.qText||{})[q.qid] || '';
+    return `<div class="card qcard">${head}
+      <textarea id="qtext-${id}" dir="auto" maxlength="300" rows="3" placeholder="اكتب سؤالك هنا…" style="width:100%;margin-top:10px;font-size:16px;" oninput="qTextInput('${id}', this.value)">${esc(v)}</textarea>
+      <button id="qsend-${id}" class="primary" style="width:100%;margin-top:12px;" ${qReady(q)?'':'disabled'} onclick="qSubmit('${id}')">إرسال السؤال</button>${skipBtn}</div>`;
+  }
+  const list = (S.qPairs||{})[q.qid] || [];
+  const d = qDraft(q.qid);
+  const used = new Set(list.map(x=>x.pid));
+  const full = list.length>=q.pairs;
+  const rows = list.map((x,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;margin-top:6px;">
+      <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:#e9dfc4;overflow:hidden;display:flex;align-items:center;justify-content:center;">${iconHtml(x.char,'')}</span>
+      <span style="flex:1;"><bdi>${esc(optionName(q, x.pid))}</bdi> = <b>${esc(charLabel(q, x.char))}</b></span>
+      <button class="ghost" style="padding:2px 10px;" onclick="qPairRemove('${id}',${i})">✕</button></div>`).join('');
+  const picker = full ? `<div class="muted" style="margin-top:8px;">وصلت إلى الحد الأقصى (${q.pairs}).</div>` : `
+    <div class="muted" style="margin-top:10px;">التخمين ${list.length+1}: اختر لاعبًا${d.pid ? ` — <b style="color:var(--gold-bright);"><bdi>${esc(optionName(q,d.pid))}</bdi></b>` : ''}</div>
+    <div class="namegrid">${(q.options||[]).filter(o=>!used.has(o.pid)).map(o=>`<button class="${d.pid===o.pid?'sel':''} ${o.dead?'deadopt':''}" onclick="qPairPlayer('${id}','${esc(o.pid)}')"><bdi>${esc(o.name)}</bdi>${o.dead?' <span style="font-size:11px;">⚰️</span>':''}</button>`).join('')}</div>
+    <div class="muted" style="margin-top:10px;">ثم اختر شخصية ${d.char ? `— <b style="color:var(--gold-bright);">${esc(charLabel(q, d.char))}</b>` : ''}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">${(q.charOptions||[]).map((c,i)=>`<button class="${d.char===c.name?'sel':''}" style="display:flex;align-items:center;gap:6px;padding:6px 8px;text-align:start;${d.char===c.name?'background:var(--gold);color:#1a1405;border-color:var(--gold-bright);':''}" onclick="qPairChar('${id}',${i})">
+        <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:#e9dfc4;overflow:hidden;display:flex;align-items:center;justify-content:center;">${iconHtml(c.name,'')}</span>
+        <span style="line-height:1.2;"><span style="color:${d.char===c.name?'#1a1405':(TYPE_COLORS[c.type]||'inherit')};font-size:13px;">${esc(c.nameAr||c.name)}</span><br><span class="en" style="font-size:10px;opacity:.75;">${esc(c.name)}</span></span></button>`).join('')}</div>
+    <button class="ghost" style="width:100%;margin-top:10px;" ${d.pid&&d.char?'':'disabled'} onclick="qPairAdd('${id}')">➕ أضف هذا التخمين</button>`;
+  return `<div class="card qcard">${head}
+    <div class="muted" style="margin-top:8px;">تخميناتك (${list.length}/${q.pairs})</div>${rows}${picker}
+    <button class="primary" style="width:100%;margin-top:12px;" ${qReady(q)?'':'disabled'} onclick="qSubmit('${id}')">إرسال التخمينات</button>${skipBtn}</div>`;
 }
 
 /* ---------- formatting ---------- */
@@ -966,7 +1029,10 @@ function render(){
   else if(S.stage==='code') html = codeScreen();
   else if(S.stage==='join') html = joinScreen();
   else html = joinedScreen();
+  let keep = null;
+  try{ const a = document.activeElement; if(a && a.id && /^(qtext-|trav-name|code-input)/.test(a.id)) keep = {id:a.id, s:a.selectionStart, e:a.selectionEnd}; }catch(e){}
   app.innerHTML = html;
+  try{ if(keep){ const el = document.getElementById(keep.id); if(el){ el.focus(); if(keep.s!=null) el.setSelectionRange(keep.s, keep.e); } } }catch(e){}
   if(S.stage==='joined') ensureVoteTicker();
   try{ const me = mySeat(); document.title = (TEST_AS ? '🧪 ' : '') + (me ? me.name : 'Clocktower Player'); }catch(e){}
   const ov = document.getElementById('overlay');

@@ -866,7 +866,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.25';
+const APP_BUILD = '2026.10.28.27';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -6492,7 +6492,7 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
   // only the ask+result reveal message is shared between both scenarios.
   const becameDemonViaSelfKill = p.becameDemonViaSelfKillAtNight === game.nightNum;
   const godfatherKillCondition = step==='Godfather' && game.lastExecutedWasOutsiderAtDay === game.dayNum;
-  const isDual = becameDemonTonight || step==='Fortune Teller' || step==='Snake Charmer' || step==='Seamstress' || step==='Philosopher' || step==='Dreamer' || step==='Ravenkeeper' || step==='Chambermaid' || step==='Innkeeper' || step==='Moonchild' || godfatherKillCondition;
+  const isDual = becameDemonTonight || step==='Fortune Teller' || step==='Snake Charmer' || step==='Seamstress' || step==='Philosopher' || step==='Dreamer' || step==='Ravenkeeper' || step==='Chambermaid' || step==='Innkeeper' || step==='Moonchild' || step==='Harlot' || godfatherKillCondition;
   let askText = '', text;
   if(becameDemonTonight){
     askText = game.messageOverrides[askKey] !== undefined ? game.messageOverrides[askKey] : withHeader(`لقد أصبحت أنت العفريت.`);
@@ -6519,6 +6519,9 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
     text = game.messageOverrides[k] !== undefined ? game.messageOverrides[k] : withHeader(messageFor(step, p));
   } else if(step==='Innkeeper'){
     askText = game.messageOverrides[askKey] !== undefined ? game.messageOverrides[askKey] : withHeader(`اختر لاعبين: لا يمكن أن يموتا الليلة، لكن أحدهما يصبح مخمورًا حتى الغسق.`);
+    text = game.messageOverrides[k] !== undefined ? game.messageOverrides[k] : withHeader(messageFor(step, p));
+  } else if(step==='Harlot'){
+    askText = game.messageOverrides[askKey] !== undefined ? game.messageOverrides[askKey] : withHeader(`اختر لاعبًا حيًا: إذا وافق، ستعرف شخصيته، لكن قد تموتان أنتما الاثنان.`);
     text = game.messageOverrides[k] !== undefined ? game.messageOverrides[k] : withHeader(messageFor(step, p));
   } else if(step==='Moonchild'){
     askText = game.messageOverrides[askKey] !== undefined ? game.messageOverrides[askKey] : withHeader(`لقد مِتَّ — اختر لاعبًا حيًا واحدًا: الليلة، إذا كان من الأخيار، فإنه يموت.`);
@@ -6555,7 +6558,8 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
     (step==='Ravenkeeper' && !(rkPickForBox && rkPickForBox.target)) ||
     (step==='Chambermaid' && !((game.infoPicks[keyFor('Chambermaid')]||{}).p1 && (game.infoPicks[keyFor('Chambermaid')]||{}).p2)) ||
     (step==='Innkeeper' && !((game.infoPicks[keyFor('Innkeeper')]||{}).p1 && (game.infoPicks[keyFor('Innkeeper')]||{}).p2)) ||
-    (step==='Moonchild' && !((game.infoPicks[keyFor('Moonchild')]||{}).p1));
+    (step==='Moonchild' && !((game.infoPicks[keyFor('Moonchild')]||{}).p1)) ||
+    (step==='Harlot' && !((game.infoPicks[keyFor('Harlot')]||{}).target));
   const resultBoxHtml = (!isExorcisedDemon && step!=='Barista' && !hideResultBoxUntilPicked) ? `
         <div class="muted" style="font-size:11px;margin-top:6px;">${isDual ? (step==='Fortune Teller' ? '2 — Send the result once you\'ve entered their picks above' : '2 — Result (fills in once you pick their target above)') : ''}</div>
         <div class="muted" style="font-size:10px;">To ${escapeHtml(p.name)}</div>
@@ -8900,7 +8904,8 @@ function barberSwapCardHtml(step){
     <div class="hr" style="margin:10px 0;"></div>
     <div class="muted" style="font-size:11px;">Barber's swap ability</div>
     <div class="muted" style="font-size:10px;">To ${escapeHtml(demon.name)}</div>
-    ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${msgKey}', this.innerText)">${escapeHtmlBr(msgText)}</div>`, `copyStepMessage('${msgKey}', this)`, demon ? `sendStepMessageWA('${demon.id}', this)` : null)}
+    ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${msgKey}', this.innerText)">${escapeHtmlBr(msgText)}</div>`, `copyStepMessage('${msgKey}', this)`, demon ? (appChoiceSpec('Barber-swap', demon) ? `appAskChoiceFromBox('Barber-swap', '${demon.id}', this)` : `sendStepMessageWA('${demon.id}', this)`) : null)}
+    ${(()=>{ appCurrentActor = demon; return appPhoneAskStripHtml('Barber-swap'); })()}
     ${!pick.swapped ? `
       <div class="char-strip" style="margin-top:8px;">
         <select onchange="setBarberSwapPick('${k}','p1',this.value)">
@@ -9816,6 +9821,15 @@ function svJugglerHtml(isLastCard){
     <div class="panel">
       <h3 style="margin:0;">Juggler's Guesses — Day ${game.dayNum}</h3>
       <p class="muted" style="margin-top:-2px;">Enter who <bdi>${escapeHtml(juggler.name)}</bdi> publicly guessed and which character, one at a time. The correct count is calculated automatically for tonight's message. If they don't use this today, just continue — they'll get another chance on a later day.</p>
+      ${(()=>{
+        if(!appChoiceSpec('Juggler', juggler)) return '';
+        appCurrentActor = juggler;
+        const jk = `juggler-ask-${game.dayNum}`;
+        const jt = game.messageOverrides[jk] !== undefined ? game.messageOverrides[jk] : withHeader(`خمّن علنًا حتى 5 لاعبين وشخصياتهم: اختر لاعبًا ثم شخصية، وكرر. الليلة ستعرف كم تخمينًا أصبت.`);
+        return `<div class="muted" style="font-size:10px;">To ${escapeHtml(juggler.name)}</div>` +
+          msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${jk}', this.innerText)">${escapeHtmlBr(jt)}</div>`, `copyStepMessage('${jk}', this)`, `appAskChoiceFromBox('Juggler', '${juggler.id}', this)`) +
+          appPhoneAskStripHtml('Juggler');
+      })()}
       ${logHtml}
       ${currentRowHtml}
       ${cardFooterButtonsHtml(`toggleDayCardCollapse('${dcKey}')`, null, null, isLastCard)}
@@ -9917,6 +9931,7 @@ function reactiveDeadCardsHtml(isLastCard){
     const askText = game.messageOverrides[askKey] !== undefined ? game.messageOverrides[askKey] : withHeader(`لقد مِتَّ — اختر لاعبًا حيًا واحدًا: الليلة، إذا كان من الأخيار، فإنه يموت.`);
     const isMoonchild = step==='Moonchild';
     const moonchildPicked = !!(game.infoPicks[k] && game.infoPicks[k].p1);
+    appCurrentActor = p; // so the phone-answer strip and the ask button target this exact player
     return `
       <div class="panel">
         <div class="row between">
@@ -9929,7 +9944,7 @@ function reactiveDeadCardsHtml(isLastCard){
         ${isMoonchild ? `
           <div class="muted" style="font-size:11px;margin-top:6px;">1 — Ask who they choose</div>
           <div class="muted" style="font-size:10px;">To ${escapeHtml(p.name)}</div>
-          ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${askKey}', this.innerText)">${escapeHtmlBr(askText)}</div>`, `copyStepMessage('${askKey}', this)`, p ? `sendStepMessageWA('${p.id}', this)` : null)}
+          ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${askKey}', this.innerText)">${escapeHtmlBr(askText)}</div>`, `copyStepMessage('${askKey}', this)`, p ? (appChoiceSpec('Moonchild', p) ? `appAskChoiceFromBox('Moonchild', '${p.id}', this)` : `sendStepMessageWA('${p.id}', this)`) : null)}
           <div class="hr" style="margin:10px 0;"></div>
         ` : ''}
         ${pickControlsHtml(step)}
@@ -10005,7 +10020,8 @@ function artistRoundHtml(artist, round, isLastCard){
         : `
           <p class="muted" style="margin-top:-4px;">Once per game, by day, they may privately ask you a yes/no question. Click Continue below once they've used it.</p>
           <div class="muted" style="font-size:10px;">To ${escapeHtml(artist.name)}</div>
-          ${msgBoxWithButtons(`<div class="msg-box" id="artist-msg-box-${round}" contenteditable="true" dir="auto">${escapeHtmlBr(withHeader('بإمكانك سؤالي أي سؤال تكون اجابته بنعم أو لا, مرة واحدة فقط أثناء النهار, إذا أردت الاحتفاظ بالسؤال ليوم أخر رد بكلمة لا.'))}</div>`, `copyText(document.getElementById('artist-msg-box-${round}').innerText, this)`, artist ? `sendToPlayerText('${artist.id}', document.getElementById('artist-msg-box-${round}').innerText, this)` : null)}
+          ${msgBoxWithButtons(`<div class="msg-box" id="artist-msg-box-${round}" contenteditable="true" dir="auto">${escapeHtmlBr(withHeader('بإمكانك سؤالي أي سؤال تكون اجابته بنعم أو لا, مرة واحدة فقط أثناء النهار, إذا أردت الاحتفاظ بالسؤال ليوم أخر رد بكلمة لا.'))}</div>`, `copyText(document.getElementById('artist-msg-box-${round}').innerText, this)`, artist ? (appChoiceSpec('Artist', artist) ? `appAskChoiceFromBox('Artist', '${artist.id}', this)` : `sendToPlayerText('${artist.id}', document.getElementById('artist-msg-box-${round}').innerText, this)`) : null)}
+          ${(()=>{ appCurrentActor = artist; return appPhoneAskStripHtml('Artist'); })()}
           <div class="eyebrow" style="margin-top:12px;">Send your answer</div>
           <div class="muted" style="font-size:10px;">To ${escapeHtml(artist.name)}</div>
           <div class="row" style="gap:10px;align-items:flex-start;">
@@ -10762,6 +10778,7 @@ const appAliveNotSelf = a=>game.players.filter(x=>x.alive && x.id!==a.id);
 const appAnyNotSelf = a=>game.players.filter(x=>x.id!==a.id);
 const appGoodChars = ()=>[...CHARACTERS.townsfolk, ...CHARACTERS.outsider].map(c=>c.name);
 const appAllChars = ()=>[...CHARACTERS.townsfolk, ...CHARACTERS.outsider, ...CHARACTERS.minion, ...CHARACTERS.demon].map(c=>c.name);
+const appAllCharsWithTravellers = ()=>appAllChars().concat((TRAVELLER_CHARACTERS||[]).map(c=>c.name));
 const appDemonKill = (step, fn)=>({ n:1, key:()=>`${keyFor(step)}-kill`, eligible:a=>appAliveNotSelf(a), apply:(k,ids)=>fn(k, ids[0]), ask:'اختر لاعبًا ليموت الليلة.' });
 /* For each character who CHOOSES at night: how many players (n), which players or characters the
    card allows (never filtered by hidden information — e.g. the Pit-Hag may name any character),
@@ -10813,6 +10830,22 @@ const APP_PHONE_CHOICES = {
     'Vortox': appDemonKill('Vortox', (k,id)=>setDemonPendingKillTarget(k,id)),
     'Bone Collector': { n:1, skip:true, manual:true, key:()=>keyFor('Bone Collector'), eligible:a=>game.players.filter(x=>!x.alive),
       apply:(k,ids)=>setBoneCollectorTarget(ids[0]), ask:'مرة واحدة في اللعبة: اختر لاعبًا ميتًا ليستعيد قدرته حتى الغسق، أو لا أحد.' },
+    // Traveller: chooses a living player; the Storyteller then asks that player and records their answer.
+    'Harlot': { n:1, key:()=>keyFor('Harlot'), eligible:a=>appAliveNotSelf(a),
+      apply:(k,ids)=>setHarlotTarget(ids[0]), ask:'اختر لاعبًا حيًا: إذا وافق، ستعرف شخصيته، لكن قد تموتان أنتما الاثنان.' },
+    // The Demon's extra power after the Barber dies. Other living Demons can't be swapped; the acting Demon can.
+    'Barber-swap': { n:2, phase:'night', when:a=>!!(a.barberSwapPending && a.barberSwapAtNight===game.nightNum),
+      key:a=>`barber-swap-${a.id}-${game.nightNum}`,
+      eligible:a=>game.players.filter(x=>!(x.alive && x.id!==a.id && x.character && TYPE_OF[x.character]==='demon')),
+      apply:(k,ids)=>{ setBarberSwapPick(k,'p1',ids[0]); setBarberSwapPick(k,'p2',ids[1]); }, ask:'مات الحلاق: اختر لاعبين اثنين لتبديل شخصيتيهما.' },
+    // By day, up to 5 guesses (a player + a character each); fills the Juggler's guesses card.
+    'Juggler': { phase:'day', pairs:5, n:0, skip:true, chars:appAllCharsWithTravellers, key:()=>'juggler-guesses',
+      eligible:a=>game.players.filter(x=>x.id!==a.id),
+      apply:(k,ids,ch,ans)=>{ game.jugglerGuesses = ((ans&&ans.pairs)||[]).map(pr=>({playerId:pr.pid, char:pr.char})); },
+      ask:'خمّن علنًا حتى 5 لاعبين وشخصياتهم: اختر لاعبًا ثم شخصية، وكرر. الليلة ستعرف كم تخمينًا أصبت.' },
+    // By day, a private yes/no question to the Storyteller — typed on the phone, shown on the card.
+    'Artist': { phase:'day', text:true, n:0, skip:true, key:()=>'artist-question', eligible:a=>[],
+      ask:'اكتب سؤالك (جوابه نعم أو لا) مرة واحدة فقط، أو اضغط "لا" لتحتفظ به ليوم آخر.' },
   },
   bmr: {
     'Sailor': { n:1, key:()=>keyFor('Sailor'), eligible:a=>appAliveNotSelf(a),
@@ -10825,6 +10858,9 @@ const APP_PHONE_CHOICES = {
       apply:(k,ids)=>{ setInnkeeperPendingTarget(k,'p1',ids[0]); setInnkeeperPendingTarget(k,'p2',ids[1]); }, ask:'اختر لاعبين: لا يمكن أن يموتا الليلة، لكن أحدهما يصبح مخمورًا حتى الغسق.' },
     'Gambler': { n:1, chars:appAllChars, manual:true, key:()=>keyFor('Gambler'), eligible:a=>game.players.slice(),
       apply:(k,ids,ch)=>{ setGamblerGuess(k,'player',ids[0]); setGamblerGuess(k,'char',ch); }, ask:'اختر لاعبًا وخمّن شخصيته: إذا أخطأت تموت.' },
+    // A dead Moonchild publicly names a living player (night or day). Nothing happens until the Storyteller applies it.
+    'Moonchild': { phase:'any', n:1, manual:true, key:()=>keyFor('Moonchild'), eligible:a=>appAliveNotSelf(a),
+      apply:(k,ids)=>setMoonchildTarget(k, ids[0]), ask:'لقد مِتَّ — اختر لاعبًا حيًا واحدًا: الليلة، إذا كان من الأخيار، فإنه يموت.' },
     'Courtier': { n:0, chars:appAllChars, skip:true, manual:true, key:()=>keyFor('Courtier'), eligible:a=>[],
       apply:(k,ids,ch)=>setCourtierTarget(ch), ask:'مرة واحدة في اللعبة: اختر شخصية تصبح مخمورة لثلاث ليالٍ وثلاثة أيام، أو لا أحد.' },
     'Professor': { n:1, skip:true, manual:true, key:()=>keyFor('Professor'), eligible:a=>game.players.filter(x=>!x.alive),
@@ -10859,23 +10895,31 @@ function appChoiceSpec(step, actor){
   const bucket = APP_PHONE_CHOICES[game.script||'tb'];
   const spec = bucket ? bucket[step] || null : null;
   if(!spec) return null;
+  const ph = spec.phase || 'night';           // 'night' (default), 'day', or 'any'
+  if(ph!=='any' && game.subphase!==ph) return null;
   if(spec.when && actor && !spec.when(actor)) return null;
   return spec;
 }
+// A question belongs to the phase it was asked in: once night turns to day (or the next night), it is stale.
+function appQuestionCurrent(q){
+  return (q.phase||'night')===game.subphase && q.night===game.nightNum && (q.day===undefined || q.day===game.dayNum);
+}
 function appNewQid(){ return 'q'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 function appFindQuestion(step, actor){
-  const all = Object.values(game.appQuestions||{}).filter(q=>q.step===step && q.actorId===actor.id && q.night===game.nightNum && !q.superseded);
+  const all = Object.values(game.appQuestions||{}).filter(q=>q.step===step && q.actorId===actor.id && appQuestionCurrent(q) && !q.superseded);
   return all.sort((a,b)=>b.at-a.at)[0] || null;
 }
 function appAnswerText(q){
   if(q.answer && q.answer.skip) return 'nobody (skip)';
+  if(q.answer && typeof q.answer.text==='string') return `«${escapeHtml(q.answer.text)}»`;
+  if(q.answer && Array.isArray(q.answer.pairs)) return q.answer.pairs.map(pr=>{ const x=game.players.find(p=>p.id===pr.pid); return `${x?escapeHtml(x.name):'?'} = <i>${escapeHtml(pr.char)}</i>`; }).join(', ');
   const names = (q.answer && q.answer.picks || []).map(id=>{ const x=game.players.find(p=>p.id===id); return x ? escapeHtml(x.name) : '?'; });
   if(q.answer && q.answer.char) names.push(`<i>${escapeHtml(q.answer.char)}</i>`);
   return names.join(' + ');
 }
 function appPhoneAskStripHtml(step){
   const actor = appCurrentActor;
-  if(!actor || !game || game.phase!=='play' || game.subphase!=='night') return '';
+  if(!actor || !game || game.phase!=='play' || !['night','day'].includes(game.subphase)) return '';
   const spec = appChoiceSpec(step, actor);
   if(!spec) return '';
   game.appQuestions = game.appQuestions || {};
@@ -10918,10 +10962,13 @@ async function appAskChoice(step, actorId, promptText, btn){
   const options = spec.eligible(actor).map(x=>({pid:x.id, name: x.id===actor.id ? (spec.selfLabel||'أنت') : x.name, dead: x.alive===false}));
   const charOptions = spec.chars ? spec.chars().map(c=>{ const i = CHAR_LOOKUP[c]; return {name:c, nameAr: i ? (i.nameAr||'') : '', type: TYPE_OF[c]||''}; }) : null;
   const skip = !!appSpecVal(spec.skip, actor);
-  game.appQuestions[qid] = { qid, step, actorId, key: spec.key(actor), night: game.nightNum, n, at: Date.now(), answer: null, manual: !!spec.manual };
-  const msg = { id: 'q_'+qid, qid, kind:'question', at: Date.now(), label:`ليلة ${game.nightNum}`,
+  const isDay = game.subphase==='day';
+  game.appQuestions[qid] = { qid, step, actorId, key: spec.key(actor), night: game.nightNum, day: game.dayNum, phase: isDay ? 'day' : 'night', n, at: Date.now(), answer: null, manual: !!spec.manual };
+  const msg = { id: 'q_'+qid, qid, kind:'question', at: Date.now(), label: isDay ? `يوم ${game.dayNum}` : `ليلة ${game.nightNum}`,
     text: (promptText && String(promptText).trim()) || appSpecVal(spec.ask, actor), n, options, skip };
   if(charOptions) msg.charOptions = charOptions;
+  if(spec.pairs) msg.pairs = spec.pairs;
+  if(spec.text) msg.textInput = true;
   const status = await appDeliver(actorId, msg, null);
   appSendFeedback(btn, status, actor);
   if(route==='play') refreshPlay(); else render();
@@ -10933,15 +10980,31 @@ function appApplyAnswer(pid, qid, ans){
   game.appQuestions = game.appQuestions || {};
   const q = game.appQuestions[qid];
   if(!q || q.actorId!==pid || q.answer || q.superseded) return false;
-  if(q.night!==game.nightNum || game.subphase!=='night') return false; // a stale answer from an earlier night
+  if(!appQuestionCurrent(q)) return false; // a stale answer from an earlier night or day
   const actor = game.players.find(p=>p.id===pid);
   const spec = appChoiceSpec(q.step, actor);
   if(!actor || !spec) return false;
   const isSkip = !!(ans && ans.skip);
-  const picks = Array.isArray(ans && ans.picks) ? ans.picks.map(String) : [];
+  let picks = Array.isArray(ans && ans.picks) ? ans.picks.map(String) : [];
   const ch = ans && ans.char ? String(ans.char) : null;
+  let pairs = null, text = null;
   if(isSkip){
     if(!appSpecVal(spec.skip, actor)) return false;
+  } else if(spec.text){
+    // A typed question (Artist): plain text only, short.
+    text = ans && typeof ans.text==='string' ? ans.text.trim().slice(0,300) : '';
+    if(!text) return false;
+    picks = [];
+  } else if(spec.pairs){
+    // Up to N guesses: each a different eligible player plus a character from the script's list.
+    const allowed = new Set(spec.eligible(actor).map(x=>x.id));
+    const chars = spec.chars ? spec.chars() : [];
+    const raw = Array.isArray(ans && ans.pairs) ? ans.pairs : [];
+    pairs = raw.map(pr=>({pid:String(pr && pr.pid), char:String(pr && pr.char)}));
+    if(pairs.length<1 || pairs.length>spec.pairs) return false;
+    if(new Set(pairs.map(pr=>pr.pid)).size!==pairs.length) return false;
+    if(!pairs.every(pr=>allowed.has(pr.pid) && chars.includes(pr.char))) return false;
+    picks = pairs.map(pr=>pr.pid);
   } else {
     const allowed = new Set(spec.eligible(actor).map(x=>x.id));
     const n = appSpecVal(spec.n, actor);
@@ -10950,13 +11013,15 @@ function appApplyAnswer(pid, qid, ans){
     if(!spec.chars && ch) return false;
   }
   q.answer = {picks, char: ch, skip: isSkip}; q.answeredAt = Date.now();
+  if(pairs) q.answer.pairs = pairs;
+  if(text!==null) q.answer.text = text;
   if(q.step==='Pit-Hag' && ch && game.players.some(x=>x.character===ch)) q.note = 'that character is already in play — nothing happens';
   if(isSkip){
     if(spec.onSkip){ try{ spec.onSkip(q.key, actor); }catch(e){ console.warn('skip', e); } }
   } else if(!spec.manual){
-    try{ spec.apply(q.key, picks, ch); }catch(e){ console.warn('apply answer', e); }
+    try{ if(spec.apply) spec.apply(q.key, picks, ch, q.answer); }catch(e){ console.warn('apply answer', e); }
   }
-  const names = isSkip ? ['لا أحد'] : picks.map(id=>{ const x=game.players.find(p=>p.id===id); return x ? x.name : '?'; }).concat(ch ? [(CHAR_LOOKUP[ch] && CHAR_LOOKUP[ch].nameAr) || ch] : []);
+  const names = isSkip ? ['لا أحد'] : text!==null ? [text] : pairs ? pairs.map(pr=>{ const x=game.players.find(p=>p.id===pr.pid); return `${x?x.name:'?'} = ${(CHAR_LOOKUP[pr.char] && CHAR_LOOKUP[pr.char].nameAr) || pr.char}`; }) : picks.map(id=>{ const x=game.players.find(p=>p.id===id); return x ? x.name : '?'; }).concat(ch ? [(CHAR_LOOKUP[ch] && CHAR_LOOKUP[ch].nameAr) || ch] : []);
   logAction(`📱 ${actor.name} (${q.step}) chose on their phone: ${isSkip ? 'nobody' : names.join(', ')}.`);
   const msgId = 'q_'+qid;
   if(game.appInbox && game.appInbox[pid] && game.appInbox[pid][msgId]) game.appInbox[pid][msgId].answeredNames = names;
@@ -10974,7 +11039,7 @@ function appApplyStoredAnswer(qid){
   const spec = appChoiceSpec(q.step, actor);
   if(!spec) return;
   q.applied = true;
-  try{ spec.apply(q.key, q.answer.picks, q.answer.char); }catch(e){ console.warn('apply', e); }
+  try{ if(spec.apply) spec.apply(q.key, q.answer.picks, q.answer.char, q.answer); }catch(e){ console.warn('apply', e); }
   saveGame();
   if(route==='play') refreshPlay(); else render();
 }
