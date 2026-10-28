@@ -150,7 +150,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.25';
+const PLAYER_BUILD = '2026.10.28.26';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -509,9 +509,27 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;
 function fmt(s){
   return esc(s).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/(^|[\s(،:])_([^_\n]+)_(?=$|[\s).,،:])/g,'$1<span class="hl">$2</span>').replace(/\n/g,'<br>');
 }
+// Sharp character icons, loaded straight from the official Blood on the Clocktower wiki (not copied
+// into this site). If one doesn't load, the phone falls back to the Storyteller's own icon.
+const WIKI_ICON_BASE = 'https://wiki.bloodontheclocktower.com/images/';
+const WIKI_ICONS = {"Artist": "1/1a/Icon_artist.png", "Assassin": "4/49/Icon_assassin.png", "Barber": "1/16/Icon_barber.png", "Barista": "2/24/Icon_barista.png", "Baron": "6/6d/Icon_baron.png", "Beggar": "e/e3/Icon_beggar.png", "Bone Collector": "9/9e/Icon_bonecollector.png", "Bureaucrat": "b/b1/Icon_bureaucrat.png", "Butcher": "e/e3/Icon_butcher.png", "Butler": "1/19/Icon_butler.png", "Cerenovus": "4/45/Icon_cerenovus.png", "Chambermaid": "8/87/Icon_chambermaid.png", "Chef": "d/d5/Icon_chef.png", "Clockmaker": "3/3d/Icon_clockmaker.png", "Courtier": "e/e0/Icon_courtier.png", "Deviant": "a/a5/Icon_deviant.png", "Devil's Advocate": "0/09/Icon_devilsadvocate.png", "Dreamer": "f/f2/Icon_dreamer.png", "Drunk": "4/4a/Icon_drunk.png", "Empath": "1/13/Icon_empath.png", "Evil Twin": "f/f4/Icon_eviltwin.png", "Exorcist": "c/c2/Icon_exorcist.png", "Fang Gu": "0/0e/Icon_fanggu.png", "Flowergirl": "a/ac/Icon_flowergirl.png", "Fool": "d/d9/Icon_fool.png", "Fortune Teller": "9/97/Icon_fortuneteller.png", "Gambler": "f/fd/Icon_gambler.png", "Godfather": "d/d0/Icon_godfather.png", "Goon": "6/6f/Icon_goon.png", "Gossip": "c/c7/Icon_gossip.png", "Grandmother": "2/26/Icon_grandmother.png", "Gunslinger": "1/1c/Icon_gunslinger.png", "Harlot": "6/60/Icon_harlot.png", "Imp": "5/5c/Icon_imp.png", "Innkeeper": "0/0c/Icon_innkeeper.png", "Investigator": "a/ad/Icon_investigator.png", "Juggler": "4/42/Icon_juggler.png", "Klutz": "b/bc/Icon_klutz.png", "Librarian": "e/e0/Icon_librarian.png", "Lunatic": "6/64/Icon_lunatic.png", "Mastermind": "d/d5/Icon_mastermind.png", "Mathematician": "f/f1/Icon_mathematician.png", "Mayor": "a/a1/Icon_mayor.png", "Minstrel": "2/24/Icon_minstrel.png", "Monk": "7/7c/Icon_monk.png", "Moonchild": "d/dc/Icon_moonchild.png", "Mutant": "2/2e/Icon_mutant.png", "No Dashii": "e/eb/Icon_nodashii.png", "Oracle": "b/bb/Icon_oracle.png", "Pacifist": "5/5d/Icon_pacifist.png", "Philosopher": "5/5d/Icon_philosopher.png", "Pit-Hag": "6/6b/Icon_pithag.png", "Po": "b/b2/Icon_po.png", "Poisoner": "b/b1/Icon_poisoner.png", "Professor": "6/65/Icon_professor.png", "Pukka": "f/f4/Icon_pukka.png", "Ravenkeeper": "e/ef/Icon_ravenkeeper.png", "Recluse": "6/60/Icon_recluse.png", "Sage": "a/a0/Icon_sage.png", "Sailor": "1/16/Icon_sailor.png", "Saint": "c/c9/Icon_saint.png", "Savant": "d/d5/Icon_savant.png", "Scapegoat": "3/3a/Icon_scapegoat.png", "Scarlet Woman": "1/13/Icon_scarletwoman.png", "Seamstress": "5/53/Icon_seamstress.png", "Shabaloth": "1/1f/Icon_shabaloth.png", "Slayer": "d/d3/Icon_slayer.png", "Snake Charmer": "0/08/Icon_snakecharmer.png", "Soldier": "c/c3/Icon_soldier.png", "Spy": "5/54/Icon_spy.png", "Sweetheart": "6/6a/Icon_sweetheart.png", "Tea Lady": "1/16/Icon_tealady.png", "Thief": "7/77/Icon_thief.png", "Tinker": "9/98/Icon_tinker.png", "Town Crier": "e/ef/Icon_towncrier.png", "Undertaker": "0/05/Icon_undertaker.png", "Vigormortis": "1/1a/Icon_vigormortis.png", "Virgin": "d/d3/Icon_virgin.png", "Vortox": "8/89/Icon_vortox.png", "Washerwoman": "8/85/Icon_washerwoman.png", "Witch": "7/7b/Icon_witch.png", "Zombuul": "1/15/Icon_zombuul.png"};
+const iconBroken = {};
 function iconHtml(name, cls){
-  const src = name ? S.icons[appKey(name)] : null;
-  return src ? `<img src="${src}" alt="">` : `<span class="${cls||'fallback'}">🎭</span>`;
+  if(!name) return `<span class="${cls||'fallback'}">🎭</span>`;
+  const own = S.icons[appKey(name)] || null;
+  const wiki = WIKI_ICONS[name] && !iconBroken[name] ? WIKI_ICON_BASE + WIKI_ICONS[name] : null;
+  const src = wiki || own;
+  return src ? `<img src="${src}" alt="" loading="lazy" data-n="${esc(name)}" onerror="iconErr(this)">` : `<span class="${cls||'fallback'}">🎭</span>`;
+}
+function iconErr(img){
+  img.onerror = null;
+  const name = img.dataset ? img.dataset.n : '';
+  const wasWiki = String(img.src||'').indexOf(WIKI_ICON_BASE)===0;
+  if(wasWiki) iconBroken[name] = true;
+  const own = name ? S.icons[appKey(name)] : null;
+  if(wasWiki && own){ img.src = own; return; }
+  const span = document.createElement('span'); span.className = 'fallback'; span.textContent = '🎭';
+  if(img.parentNode) img.parentNode.replaceChild(span, img);
 }
 function charInfo(name){
   if(!S.script || !name) return null;
