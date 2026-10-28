@@ -859,7 +859,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.8';
+const APP_BUILD = '2026.10.28.9';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -10387,7 +10387,7 @@ function appBuildPublicState(){
     const isTraveller = p.character && TYPE_OF[p.character]==='traveller';
     seats[appKey(p.id)] = {
       pid: p.id, name: p.name, seat: circleOrder.indexOf(p.id)>=0 ? circleOrder.indexOf(p.id) : null,
-      seatLocked: !!game.seatLocks[p.id],
+      seatLocked: !!game.seatLocks[p.id] || appSeatingFinal(),
       alive: p.alive!==false, ghostVoteUsed: !!p.ghostVoteUsed,
       traveller: isTraveller ? p.character : null,
       claimed: !!appState.claims[appKey(p.id)],
@@ -10879,8 +10879,12 @@ function appOnVotes(val){
 function appNomKey(nom){ return `${game.dayNum}-${nom.nominatorId}-${nom.nomineeId}-${(courtHistoryForToday()||[]).length}`; }
 
 // ---- Self-seating: each phone picks its own seat once; after that only the Storyteller moves people ----
+// Players choose seats only before the game starts; from the reveal on, seats are final
+// (the Storyteller can still move people from the seating screen).
+function appSeatingFinal(){ return !!game && ['reveal','play'].includes(game.phase); }
 function appOnSeatRequests(val){
   val = val || {};
+  if(appSeatingFinal()) return;
   game.seatLocks = game.seatLocks || {};
   let changed = false;
   for(const uidOf of Object.keys(val)){
