@@ -150,7 +150,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.33';
+const PLAYER_BUILD = '2026.10.28.34';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -582,7 +582,7 @@ function iconHtml(name, cls){
   const own = S.icons[appKey(name)] || null;
   const wiki = WIKI_ICONS[name] && !iconBroken[name] ? WIKI_ICON_BASE + WIKI_ICONS[name] : null;
   const src = wiki || own;
-  return src ? `<img src="${src}" alt="" loading="lazy" data-n="${esc(name)}" onerror="iconErr(this)">` : `<span class="${cls||'fallback'}">🎭</span>`;
+  return src ? `<img src="${src}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;display:block;" data-n="${esc(name)}" onerror="iconErr(this)">` : `<span class="${cls||'fallback'}">🎭</span>`;
 }
 function iconErr(img){
   img.onerror = null;
