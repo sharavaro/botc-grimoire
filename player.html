@@ -161,7 +161,7 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.11.12.3';
+const PLAYER_BUILD = '2026.11.12.4';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -258,7 +258,14 @@ async function enterRoom(code){
     await connect();
     S.uid = NET.uid;
     const owner = await NET.get(R('owner'));
-    if(!owner){ S.stage = 'code'; S.error = 'لم يتم العثور على هذه الغرفة. تأكد من الرمز مع الراوي.'; render(); return; }
+    if(!owner){ forgetRoom('لم يتم العثور على هذه الغرفة. تأكد من الرمز مع الراوي.'); return; }
+    let meta = null; try{ meta = await NET.get(R('meta')); }catch(e){ meta = true; }
+    if(!meta){
+      // The Storyteller may be opening the room this very second: look once more before giving up.
+      await new Promise(r=>setTimeout(r, 1200));
+      try{ meta = await NET.get(R('meta')); }catch(e){ meta = true; }
+    }
+    if(!meta){ forgetRoom('هذه الغرفة أُغلقت. أدخل رمز الغرفة الجديد من الراوي.'); return; }
     lsSet('room', {code:S.room});
     loadReads();
     subscribeShared();
@@ -270,8 +277,27 @@ async function enterRoom(code){
     if(TEST_AS){ S.testRetries = (S.testRetries||0) + 1; if(S.testRetries<=8) setTimeout(()=>enterRoom(S.room), 2500); }
   }
 }
+// Leave the current room completely and go back to the "enter room code" screen.
+function forgetRoom(message){
+  S.unsubs.forEach(u=>u()); S.unsubs = [];
+  if(S.trav && S.trav.unsub){ S.trav.unsub(); }
+  if(S.pid || S.privUnsub || S.chatUnsub) leaveSeat();
+  lsDel('room'); lsDel('join');
+  S.room = null; S.pub = null; S.script = null; S.icons = {}; S.notes = null; S.metaSeen = false; S.nudgeKey = undefined;
+  S.trav = {open:false, name:'', prefer:'', sent:false, unsub:null};
+  S.stage = 'code'; S.error = message || null;
+  // Drop ?room=… from the address so reopening the page doesn't go back to the old room.
+  try{ if(typeof history!=='undefined' && history.replaceState && location.search) history.replaceState(null, '', location.pathname); }catch(e){}
+  render();
+}
+function changeRoom(){ forgetRoom(null); }
 function subscribeShared(){
   S.unsubs.forEach(u=>u()); S.unsubs = [];
+  S.metaSeen = false;
+  S.unsubs.push(NET.on(R('meta'), v=>{
+    if(v){ S.metaSeen = true; return; }
+    if(S.metaSeen) forgetRoom('أغلق الراوي هذه الغرفة. أدخل رمز الغرفة الجديد.');   // the room was open and has just been closed
+  }));
   if(NET.onConnected) S.unsubs.push(NET.onConnected(ok=>{ S.online = ok; if(ok && S.pid) setPresence(); render(); }));
   S.unsubs.push(NET.on(R('public'), v=>{ S.pub = v; onPublic(); }));
   S.unsubs.push(NET.on(R('script'), v=>{ S.script = v; render(); }));
@@ -704,6 +730,8 @@ function notesSync(){
     S.notes = {gid, free:'', players:{}}; notesSave();
     S.chat = {}; S.chatReadAt = 0; S.chatDraft = ''; lsSet('chatread_'+S.room, 0);
     S.view = null; S.roleDot = false; lsSet('roledot_'+S.room, false);
+    S.reads = {}; S.qSent = {}; S.qSel = {}; S.myVote = {}; lsSet('reads_'+S.room, {}); lsSet('qsent_'+S.room, {});
+    if(S.stage==='joined'){ S.tab = 'board'; S.roleShown = false; showBanner('🆕 لعبة جديدة — بانتظار الراوي'); }
   } else if(!n.gid){ n.gid = gid; notesSave(); }
 }
 function playerNote(pid){ return (notesLoad().players[pid]||''); }
@@ -936,7 +964,7 @@ function normalJoinOpen(){ return !!(S.pub && S.pub.joinOpen); }
 function joinKind(){ return normalJoinOpen() ? (S.trav.kind || 'player') : 'traveller'; }
 function setJoinKind(k){ const el = document.getElementById('trav-name'); if(el) S.trav.name = el.value; S.trav.kind = k; render(); }
 function joinScreen(){
-  if(!S.pub) return `<div class="card" style="text-align:center;margin-top:30px;"><p>بانتظار الراوي…</p><p class="muted">الغرفة ${esc(S.room)}</p></div>`;
+  if(!S.pub) return `<div class="card" style="text-align:center;margin-top:30px;"><p>بانتظار الراوي…</p><p class="muted">الغرفة ${esc(S.room)}</p><button class="ghost" style="margin-top:8px;" onclick="changeRoom()">تغيير الغرفة</button></div>`;
   const T = S.trav;
   if(T.name===undefined || T.name===null || (T.name==='' && !T.touched)){ const saved = lsGet('myname'); if(saved) T.name = saved; }
   if(T.sent){
@@ -944,7 +972,7 @@ function joinScreen(){
       <p>${T.sentKind==='traveller' ? 'تم إرسال طلبك إلى الراوي.' : 'جارٍ الانضمام…'}</p>
       <p class="muted">${T.sentKind==='traveller' ? 'انتظر قليلًا — سيتم ربطك تلقائيًا عندما يضيفك الراوي.' : 'لحظة واحدة.'}</p>
       <button class="ghost" style="margin-top:6px;" onclick="cancelJoinRequest()">إلغاء</button></div>
-      <p class="muted" style="text-align:center;">الغرفة <span class="en">${esc(S.room)}</span></p>`;
+      <p class="muted" style="text-align:center;">الغرفة <span class="en">${esc(S.room)}</span> · <a href="#" onclick="changeRoom();return false;" style="color:var(--gold-bright);">تغيير الغرفة</a></p>`;
   }
   const kind = joinKind();
   const list = travellersOffered();
@@ -966,7 +994,7 @@ function joinScreen(){
       <p class="muted" style="margin:4px 0 0;">اضغط عليه بدل كتابته.</p>
       <div class="namegrid">${free.map(s=>`<button onclick="askClaim('${esc(s.pid)}')"><bdi>${esc(s.name)}</bdi></button>`).join('')}</div>
     </div>` : ''}
-    <p class="muted" style="text-align:center;">الغرفة <span class="en">${esc(S.room)}</span></p>`;
+    <p class="muted" style="text-align:center;">الغرفة <span class="en">${esc(S.room)}</span> · <a href="#" onclick="changeRoom();return false;" style="color:var(--gold-bright);">تغيير الغرفة</a></p>`;
 }
 function travellerJoinHtml(){ return ''; }
 function openTravellerJoin(){ S.trav.open = true; render(); }

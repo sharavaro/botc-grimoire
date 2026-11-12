@@ -872,7 +872,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.12.3';
+const APP_BUILD = '2026.11.12.4';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -2198,13 +2198,19 @@ function confirmReset(){
       alive:true, ghostVoteUsed:false,
       character:null, isDrunk:false, drunkCover:null,
       markers:[],
+      selfJoined: !!p.selfJoined,
+      // Last game's Travellers stay Travellers; the Storyteller picks their character again at token setup.
+      wantsTraveller: !!(p.wantsTraveller || (p.character && TYPE_OF[p.character]==='traveller')),
     }));
+    const prevSeatLocks = Object.assign({}, game.seatLocks||{});
+    const prevSeatsLocked = !!game.seatsLockedByHost;
     const prevScript = game.script || 'tb';
     const prevSeatingLayout = game.seatingLayout || 'circle';
     const prevTelegramToken = game.telegramBotToken;
     const prevTelegramOffset = game.telegramUpdateOffset;
     const newGame = freshGame();
     newGame.players = keepPlayers;
+    newGame.seatLocks = prevSeatLocks; newGame.seatsLockedByHost = prevSeatsLocked;
     newGame.script = prevScript;
     newGame.seatingLayout = prevSeatingLayout;
     newGame.telegramBotToken = prevTelegramToken;
@@ -2233,13 +2239,16 @@ function confirmResetGame(){
       isDrunk: p.originalCharacter!==undefined ? (p.originalIsDrunk||false) : (p.isDrunk||false),
       drunkCover: p.originalCharacter!==undefined ? (p.originalDrunkCover||null) : (p.drunkCover||null),
       markers:[],
+      selfJoined: !!p.selfJoined, wantsTraveller: !!p.wantsTraveller, alignmentOverride: p.alignmentOverride,
     }));
+    const prevSeatLocks = Object.assign({}, game.seatLocks||{});
     const prevScript = game.script || 'tb';
     const prevSeatingLayout = game.seatingLayout || 'circle';
     const prevTelegramToken = game.telegramBotToken;
     const prevTelegramOffset = game.telegramUpdateOffset;
     const newGame = freshGame();
     newGame.players = keepPlayers;
+    newGame.seatLocks = prevSeatLocks;
     newGame.script = prevScript;
     newGame.seatingLayout = prevSeatingLayout;
     newGame.telegramBotToken = prevTelegramToken;
@@ -10846,17 +10855,25 @@ async function appWritePrivate(pid){
 // A new game (fresh player ids) in the same room: clear old links so phones re-join by name.
 async function appResetForNewGame(){
   const gid = appEnsureGameId();
-  await NET.remove(appRoomPath('claims'));
+  // Players carried into the new game keep their phone link, so nobody has to join again.
+  let cur = {};
+  try{ cur = (await NET.get(appRoomPath('claims'))) || {}; }catch(e){ cur = Object.assign({}, appState.claims); }
+  const keep = {};
+  Object.keys(cur).forEach(k=>{ if(game.players.some(p=>appKey(p.id)===k)) keep[k] = cur[k]; });
+  for(const k of Object.keys(cur)){
+    if(keep[k]) continue;
+    await NET.remove(appRoomPath('claims/'+k));
+    await NET.remove(appRoomPath('presence/'+k));
+  }
   await NET.remove(appRoomPath('private'));
   await NET.remove(appRoomPath('reads'));
-  await NET.remove(appRoomPath('presence'));
   await NET.remove(appRoomPath('answers'));
   await NET.remove(appRoomPath('votes'));
   await NET.remove(appRoomPath('seatReq'));
   await NET.remove(appRoomPath('joinReq'));
   await NET.remove(appRoomPath('chat'));
   appState.chat = {};
-  appState.claims = {}; appState.presence = {}; appState.reads = {};
+  appState.claims = keep; appState.reads = {};
   appState.gameId = gid; appState.lastPublicJson = null;
   appSaveRoomRecord();
 }
@@ -10936,10 +10953,16 @@ async function appResumeRoom(){
   }catch(e){ appState.error = e && e.message==='not-configured' ? 'not-configured' : (e && e.message || String(e)); }
   appRefreshPanel();
 }
+// One tap: close this room (old code and QR stop working) and open a brand-new one.
+async function appNewRoom(){
+  await appCloseRoom();
+  await appStartRoom();
+  if(ui && ui.modal && ui.modal.type==='appRoom') renderModal(); else render();
+}
 async function appCloseRoom(){
   if(!appState.code) return;
   try{
-    for(const sub of ['public','script','icons','claims','private','reads','presence','answers','votes','seatReq','joinReq','meta']) await NET.remove(appRoomPath(sub));
+    for(const sub of ['meta','public','script','icons','claims','private','reads','presence','answers','votes','seatReq','joinReq','chat']) await NET.remove(appRoomPath(sub));
   }catch(e){}
   appDetach();
   appState.code = null; appState.claims = {}; appState.presence = {}; appState.reads = {};
@@ -11892,6 +11915,7 @@ function appRoomPanelHtml(){
     <div>${rows || '<p class="muted">Add players first.</p>'}</div>
     <div class="row" style="justify-content:space-between;margin-top:12px;">
       <button class="ghost small" onclick="showConfirm('Close this room? Every phone disconnects and players must scan a new code.', ()=>appCloseRoom())">Close room</button>
+      <button class="ghost small" onclick="showConfirm('Open a brand-new room? The current code and QR stop working, every phone disconnects, and players scan the new code.', ()=>appNewRoom())" title="Close this room and open a new one with a new code and QR">🆕 New room</button>
       ${seatsLockButtonHtml()}
       ${game.testMode ? `<button class="ghost small" onclick="appTestModeOpenTabs()" style="border-color:#8a5fd6;">🧪 Open all player tabs</button>` : ''}
       ${game.players.some(p=>p.character) ? `<button class="ghost small" onclick="appSendAllRoles()">🎭 Send all roles</button>` : ''}
