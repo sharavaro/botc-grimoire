@@ -872,7 +872,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.12.1';
+const APP_BUILD = '2026.11.12.2';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1791,7 +1791,9 @@ function messageFor(step, player){
         const target = game.players.find(x=>x.id===g.playerId);
         if(target && target.character===g.char) correct++;
       });
-      const shown = isUnreliable(p) ? fakeCount(correct, guesses.length) : correct;
+      const auto = isUnreliable(p) ? fakeCount(correct, guesses.length) : correct;
+      const ov = game.jugglerShown && game.jugglerShown.night===game.nightNum ? game.jugglerShown.val : null;
+      const shown = (ov===null || ov===undefined) ? auto : ov;
       return `عدد تخميناتك الصحيح هو: ${shown}`;
     }
     case 'Grandmother': {
@@ -1900,7 +1902,7 @@ function topbarHtml(){
         ${game && game.phase==='play' ? `<button class="ghost small" onclick="openNightOrder()">🌙 Night Order</button>` : ''}
         ${game && game.phase==='play' ? `<button class="ghost small" onclick="pageTurnTransition(()=>go('seating'))">Seating</button>` : ''}
         ${game && game.phase==='play' && game.activeLoric && game.activeLoric.length>0 ? `<button class="ghost small" onclick="showLoricReminder()" style="border-color:var(--gold);color:var(--gold-bright);" title="Active Loric rule reminders">🌀 Loric (${game.activeLoric.length})</button>` : ''}
-        ${appState.code ? appChatButtonHtml() : ''}
+        ${appState.code ? appNudgeButtonHtml() + appChatButtonHtml() : ''}
         <button class="ghost small" onclick="openAppRoomPanel()" title="Players' phones: room code, QR, who has joined">📱 Phones${appState.code ? ` <span style="color:${appState.online?'#4caf6a':'#e0943f'};">●</span>` : ''}${appState.code && appPendingJoinRequests().length ? ` <span style="background:${TYPE_COLORS.traveller};color:#fff;border-radius:9px;padding:0 6px;font-size:11px;" title="Someone wants to join as a Traveller">🧳 ${appPendingJoinRequests().length}</span>` : ''}</button>
         ${game && (game.phase==='play' || (game.scriptConfirmed && ['tokens','review','seating','reveal'].includes(route))) ? `<button class="ghost small" onclick="openAddTravellerModal()" title="Add a Traveller (during setup they wake on the first night like everyone else)" style="border-color:${TYPE_COLORS.traveller};">➕ Add Traveller</button>` : ''}
         ${game && (game.phase==='play' || game.phase==='reveal') ? `<button class="ghost small" onclick="confirmResetGame()">Reset game</button>` : ''}
@@ -4081,7 +4083,7 @@ function courtScreenHtml(){
       <div class="court-topbar">
         <button class="ghost small" onclick="ui.courtHistoryMobileVisible=false;pageTurnTransition(()=>go('play'), true)">→ العودة إلى دفتر الراوي</button>
         <div class="court-title" id="court-storyteller-target">⚖️ المحكمة — اليوم ${game.dayNum}</div>
-        ${appState.code ? appChatButtonHtml() : ''}
+        ${appState.code ? appNudgeButtonHtml() + appChatButtonHtml() : ''}
         <button class="ghost small court-history-toggle-btn" onclick="toggleCourtHistoryMobile()">📜 السجل</button>
       </div>
       <div class="court-board-area">
@@ -7504,6 +7506,25 @@ function pickControlsHtmlInner(step){
       </div>
     `;
   }
+  if(step==='Juggler'){
+    // Same idea as the Mathematician's count: the Storyteller can override the number in the message.
+    const jp = game.players.find(x=>x.character==='Juggler' || (x.isDrunk && x.drunkCover==='Juggler'));
+    const guesses = (game.jugglerGuesses || []).filter(g=>g.playerId && g.char);
+    if(!guesses.length) return '';
+    let correct = 0;
+    guesses.forEach(g=>{ const t = game.players.find(x=>x.id===g.playerId); if(t && t.character===g.char) correct++; });
+    const auto = jp && isUnreliable(jp) ? fakeCount(correct, guesses.length) : correct;
+    const ov = game.jugglerShown && game.jugglerShown.night===game.nightNum ? game.jugglerShown.val : null;
+    return `
+      <div class="char-strip">
+        <select onchange="setJugglerShown(this.value)" title="Number shown in the Juggler's message">
+          <option value="">Auto (${auto})</option>
+          ${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${ov===n?'selected':''}>${n}</option>`).join('')}
+        </select>
+        <span class="muted" style="font-size:11px;margin-inline-start:6px;">Number in the message</span>
+      </div>
+    `;
+  }
   if(step==='Mathematician'){
     const pick = game.mathPicks[game.nightNum];
     const opts = Array.from({length:11}, (_,i)=>i);
@@ -9512,6 +9533,12 @@ function confirmChooseNewImp(){
   saveGame();
   closeModal();
 }
+function setJugglerShown(val){
+  game.jugglerShown = val==='' ? null : {night: game.nightNum, val: parseInt(val,10)};
+  const jp = game.players.find(x=>x.character==='Juggler' || (x.isDrunk && x.drunkCover==='Juggler'));
+  if(jp) delete game.messageOverrides[`${keyFor('Juggler')}-${jp.id}`];
+  saveGame(); refreshPlay();
+}
 function setMathPick(val){
   game.mathPicks[game.nightNum] = val===''? null : parseInt(val,10);
   const mathPlayer = game.players.find(x=>x.character==='Mathematician');
@@ -10666,6 +10693,7 @@ function appBuildPublicState(){
     phase: game.phase || 'names', subphase: game.subphase || null,
     nightNum: game.nightNum || 0, dayNum: game.dayNum || 0,
     joinOpen: appNormalJoinOpen(), seatsOpen: !game.seatsLockedByHost,
+    nudge: game.nudge || null,
     seats,
     court: { nomination, history, leadingIds: leading, publicMessage: (court.publicMessage && court.publicMessage===court.deathMsgText) ? null : (court.publicMessage || null),
              openSeq: court.openSeq || 0, hostInCourt: route==='court',
@@ -10707,7 +10735,10 @@ function appScriptIcons(scriptData){
 function appSyncSoon(){
   if(!appState.attached) return;
   clearTimeout(appState.syncTimer);
-  appState.syncTimer = setTimeout(()=>{ appPublish().catch(e=>console.warn('sync publish', e)); }, 250);
+  appState.syncTimer = setTimeout(()=>{
+    appPublish().catch(e=>console.warn('sync publish', e));
+    appAutoRoleUpdates().catch(e=>console.warn('auto role update', e));
+  }, 250);
 }
 async function appPublish(){
   if(!appState.attached || !NET || !game) return;
@@ -10915,6 +10946,23 @@ function appRoleOutOfDate(p){
 function appRoleChangeText(p){
   const r = appBuildRole(p, '');
   return withHeader(`لقد تغيّرت شخصيتك. أنت الآن ${charBoth(r.char)}${r.team==='evil' ? ' — من فريق الأشرار' : ' — من فريق الأخيار'}.`);
+}
+// A character or team change reaches the player's phone by itself: new role card + a short message.
+// Each change is tried once; if that fails, the Phones window still lists the player with "Send update".
+async function appAutoRoleUpdates(){
+  if(!game || game.phase!=='play' || !appState.attached || appState.roleAutoBusy) return;
+  appState.roleAutoBusy = true;
+  appState.roleAutoTried = appState.roleAutoTried || {};
+  try{
+    for(const p of game.players.filter(appRoleOutOfDate)){
+      const sig = appRoleSignature(p);
+      if(appState.roleAutoTried[p.id]===sig) continue;
+      appState.roleAutoTried[p.id] = sig;
+      await sendToPlayerText(p.id, appRoleChangeText(p), null, 'night');
+      logAction(`📱 ${p.name}'s phone now shows the new character (${appBuildRole(p,'').char||''}).`);
+    }
+  } finally { appState.roleAutoBusy = false; }
+  appRefreshPanel();
 }
 // Safety net in the Phones window: tells the player (message + role card) if no change message was sent.
 async function appSendRoleUpdate(pid, btn){
@@ -11346,6 +11394,18 @@ function appChatMarkSeen(pid){
   const th = appChatThread(pid);
   const last = th.length ? Math.max(...th.map(m=>m.at||0)) : 0;
   if((game.chatSeen[pid]||0) < last){ game.chatSeen[pid] = last; saveGame(); }
+}
+// Nudge: every phone vibrates, plays a sound and shows "pick up your phone".
+function appNudgeAll(btn){
+  if(!appState.attached){ showInfo('Open the room first (📱 Phones) — there are no phones to nudge yet.'); return; }
+  const now = Date.now();
+  if(game.nudge && now - game.nudge.at < 3000) return;
+  game.nudge = {seq: ((game.nudge && game.nudge.seq) || 0) + 1, at: now};
+  saveGame(); appSyncSoon();
+  if(btn){ const old = btn.innerHTML; btn.innerHTML = '✓ Nudged'; btn.disabled = true; setTimeout(()=>{ btn.innerHTML = old; btn.disabled = false; }, 3000); }
+}
+function appNudgeButtonHtml(){
+  return `<button class="ghost small" onclick="appNudgeAll(this)" title="Every player's phone vibrates and plays a sound: pick up your phone">🔔 Nudge</button>`;
 }
 function appChatButtonHtml(){
   const n = appChatUnreadTotal();

@@ -161,7 +161,7 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.11.12.1';
+const PLAYER_BUILD = '2026.11.12.2';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -296,9 +296,39 @@ function courtAutoJump(pub){
   }
   if(S.stage==='joined') S.courtSeen = {seq, nk};
 }
+/* ---------- nudge from the Storyteller: vibrate + sound + a big "pick up your phone" ---------- */
+let AC = null;
+function unlockAudio(){ try{ const C = window.AudioContext || window.webkitAudioContext; if(!C) return; AC = AC || new C(); if(AC.state==='suspended') AC.resume(); }catch(e){} }
+try{ if(document.addEventListener){ document.addEventListener('touchstart', unlockAudio, {passive:true}); document.addEventListener('click', unlockAudio); } }catch(e){}
+function playNudgeSound(){
+  try{
+    unlockAudio(); if(!AC) return;
+    const t = AC.currentTime;
+    [[880,0],[1175,0.2],[880,0.4],[1175,0.6],[1568,0.8]].forEach(([f,d])=>{
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t+d); g.gain.exponentialRampToValueAtTime(0.6, t+d+0.02); g.gain.exponentialRampToValueAtTime(0.0001, t+d+0.18);
+      o.connect(g); g.connect(AC.destination); o.start(t+d); o.stop(t+d+0.2);
+    });
+  }catch(e){}
+}
+function fireNudge(){
+  S.nudgeOn = true;
+  try{ navigator.vibrate && navigator.vibrate([400,150,400,150,700]); }catch(e){}
+  playNudgeSound();
+  clearTimeout(fireNudge._t); fireNudge._t = setTimeout(()=>{ S.nudgeOn = false; render(); }, 20000);
+}
+function dismissNudge(){ S.nudgeOn = false; clearTimeout(fireNudge._t); render(); }
+function checkNudge(pub){
+  const nd = pub && pub.nudge;
+  const key = nd && nd.seq ? (pub.gameId||'')+':'+nd.seq : null;
+  if(S.nudgeKey===undefined){ S.nudgeKey = key; return; }   // first look after opening the app: an old nudge is not replayed
+  if(key && key!==S.nudgeKey){ S.nudgeKey = key; if(S.stage==='joined') fireNudge(); }
+}
 async function onPublic(){
   const pub = S.pub;
   try{ notesSync(); }catch(e){}
+  try{ checkNudge(pub); }catch(e){}
   courtAutoJump(pub);
   if(S.seatPending!==null && S.pid && pub && pub.seats){
     const mine = pub.seats[appKey(S.pid)];
@@ -1228,6 +1258,9 @@ function render(){
   if(ov){
     let o = '';
     if(S.banner) o += `<div class="banner" onclick="${S.banner.includes('💬') ? 'openChat()' : `setTab('${S.banner.includes('دور')?'role':'inbox'}')`}">${esc(S.banner)}</div>`;
+    if(S.nudgeOn){
+      o += `<div class="modal" onclick="dismissNudge()"><div class="card" style="text-align:center;border-color:var(--gold);"><div style="font-size:64px;">🔔</div><p style="font-size:22px;font-weight:700;margin:6px 0;">الراوي ينبّهك</p><p style="font-size:17px;margin:0 0 14px;">أمسك هاتفك وانتبه للعبة</p><button class="primary" style="width:100%;" onclick="dismissNudge()">حاضر</button></div></div>`;
+    }
     if(S.confirmSeat!==null && S.confirmSeat!==undefined){
       const near = seatNeighbourText(S.confirmSeat);
       o += `<div class="modal"><div class="card"><p style="font-size:18px;">المقعد رقم <b>${S.confirmSeat+1}</b>${near ? `<br><span class="muted" style="font-size:14px;">${esc(near)}</span>` : ''}</p><p class="muted">يبقى ترتيب بقية اللاعبين كما هو. يمكنك تغيير مقعدك لاحقًا.</p>
