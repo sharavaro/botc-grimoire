@@ -161,7 +161,7 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.11.12.2';
+const PLAYER_BUILD = '2026.11.12.3';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -874,6 +874,7 @@ function myCurrentVote(v){
 }
 async function castVote(yes){
   const v = liveVote(); if(!v || !voteEligible(v.nom)) return;
+  if(v.nom.forcedYesId && v.nom.forcedYesId===S.pid) return;   // the nominator's Yes is fixed
   S.myVote[v.key] = !!yes; render();
   try{ await NET.set(R('votes/'+S.uid), {round:v.nom.voteRound, nomKey:v.nom.nomKey, yes:!!yes, at:Date.now()}); }
   catch(e){ showErr('تعذّر إرسال صوتك', e, 'votes'); }
@@ -886,6 +887,14 @@ function voteCardHtml(){
   const secs = Math.ceil(v.left/1000);
   const timeNote = v.left<=0 ? '⏳ انتهى الوقت المقترح — التصويت ما زال مفتوحًا حتى يغلقه الراوي' : '';
   if(!voteEligible(nom)) return `<div class="card votecard"><div>⚖️ تصويت على <b><bdi>${esc(nom.nomineeName)}</bdi></b></div><p class="muted">لقد استخدمت صوت الشبح، لا يمكنك التصويت.</p><div class="countdown">${secs}</div></div>`;
+  if(nom.forcedYesId && nom.forcedYesId===S.pid){
+    return `<div class="card votecard">
+      <div style="font-size:15px;">${nom.isExile ? 'نفي' : 'إعدام'} <b style="color:#ff8c90;"><bdi>${esc(nom.nomineeName)}</bdi></b>؟ <span class="muted">(أنت من رشّحه)</span></div>
+      <div class="countdown">${secs}</div>
+      <div class="votebtns"><button class="yes on" disabled>✋ نعم</button></div>
+      <p class="muted" style="margin:8px 0 0;">أنت المرشِّح، لذلك صوتك <b>نعم</b> ولا يمكن تغييره في هذا التصويت.</p>
+    </div>`;
+  }
   const yes = myCurrentVote(v);
   const ghostNote = me && !me.alive && !nom.isExile ? '<p class="muted" style="margin:6px 0 0;">👻 التصويت بنعم يستخدم صوت الشبح الوحيد لديك.</p>' : '';
   return `<div class="card votecard">
@@ -948,12 +957,9 @@ function joinScreen(){
       <input id="trav-name" dir="auto" maxlength="40" placeholder="اسمك" style="letter-spacing:normal;text-transform:none;font-size:17px;" value="${esc(T.name||'')}" oninput="S.trav.name=this.value;S.trav.touched=true;" onkeydown="if(event.key==='Enter') sendJoin()">
       <div style="display:flex;gap:10px;margin-top:10px;">${kindBtn('player','🙂','لاعب عادي')}${kindBtn('traveller','🧳','مسافر')}</div>
       ${!normalJoinOpen() ? `<p class="muted" style="font-size:12px;margin:8px 0 0;">تم توزيع الأدوار — يمكنك الانضمام الآن كمسافر فقط.</p>` : ''}
-      ${kind==='traveller' ? `
-        <p class="muted" style="margin:10px 0 6px;">اختر المسافر الذي تفضّل أن تلعب به. هذا تفضيل فقط — الراوي يقرر.</p>
-        <div>${list.length ? list.map((c,i)=>`<button class="chr" style="width:100%;text-align:start;background:${T.prefer===c.name?'#3b2d6b':'transparent'};border:1px solid ${T.prefer===c.name?'#c9394a':'transparent'};border-radius:10px;padding:8px;margin-bottom:4px;" onclick="pickTravellerIdx(${i})">
-          <div class="ic">${iconHtml(c.name,'')}</div><div style="flex:1;"><div class="t" style="color:var(--traveller);">${esc(c.nameAr||c.name)}<span class="en">${esc(c.name)}</span></div><div class="a">${esc(c.abilityAr||'')}</div></div></button>`).join('') : '<p class="muted">لا يوجد مسافرون متاحون لهذا النص — أرسل اسمك فقط.</p>'}</div>` : ''}
+      ${kind==='traveller' ? `<p class="muted" style="margin:10px 0 0;">🧳 ستنضم كمسافر. الراوي هو من يختار شخصيتك${seatingFinal() ? ' ويوافق على انضمامك' : ' عند تجهيز اللعبة'}.</p>` : ''}
       ${T.error ? `<p class="err" style="margin:10px 0 0;">${esc(T.error)}</p>` : ''}
-      <button class="primary" style="width:100%;margin-top:12px;" onclick="sendJoin()">${kind==='traveller' ? 'إرسال الطلب للراوي' : 'انضمام'}</button>
+      <button class="primary" style="width:100%;margin-top:12px;" onclick="sendJoin()">${kind==='traveller' ? (seatingFinal() ? 'إرسال الطلب للراوي' : 'انضمام كمسافر') : 'انضمام'}</button>
     </div>
     ${free.length ? `<div class="card">
       <h3 style="font-size:15px;">اسمك موجود في القائمة؟</h3>
@@ -975,10 +981,11 @@ async function sendJoin(){
   S.trav.error = null;
   lsSet('myname', name.slice(0,40));
   try{
-    const req = {name: name.slice(0,40), prefer: kind==='traveller' ? (S.trav.prefer||'') : '', at: Date.now()};
-    if(kind==='player') req.kind = 'player';
+    const req = {name: name.slice(0,40), kind, at: Date.now()};
     await NET.set(R('joinReq/'+S.uid), req);
-    S.trav.sent = true; S.trav.sentKind = kind;
+    // Before the game a Traveller is added at once; during the game the Storyteller approves first.
+    S.trav.sent = true; S.trav.sentKind = (kind==='traveller' && seatingFinal()) ? 'traveller' : 'player';
+    S.trav.asTraveller = kind==='traveller';
     watchTravellerJoin();
   }catch(e){ showErr('تعذّر إرسال الطلب', e, 'joinReq'); }
   render();
@@ -995,14 +1002,14 @@ function watchTravellerJoin(){
     const res = v && v.result;
     if(!res) return;
     if(S.trav.unsub){ S.trav.unsub(); S.trav.unsub = null; }
-    const wasTraveller = S.trav.sentKind==='traveller';
+    const wasTraveller = !!S.trav.asTraveller;
     const keepName = S.trav.name || '';
     if(res.pid){
       lsSet('join', {room:S.room, pid:res.pid, name:(v && v.name) || ''});
       S.trav = {open:false, name:'', prefer:'', sent:false, unsub:null};
       S.joinGraceUntil = Date.now() + 8000;
       takeSeat(res.pid);
-      showBanner(wasTraveller ? '🧳 أضافك الراوي إلى اللعبة' : '✓ انضممت إلى اللعبة — اختر مقعدك');
+      showBanner(wasTraveller ? '🧳 انضممت كمسافر — اختر مقعدك' : '✓ انضممت إلى اللعبة — اختر مقعدك');
     } else if(res.dup){
       S.trav = {open:false, name:keepName, touched:true, prefer:'', sent:false, unsub:null, error:'هذا الاسم مستخدم من لاعب آخر — اكتب اسمًا مختلفًا.'};
     } else if(res.closed){
@@ -1088,9 +1095,9 @@ function boardTab(){
     const cls = ['seat', s.alive?'':'dead', s.pid===S.pid?'me':'', s.traveller?'trav':'',
       nom && nom.nomineeId===s.pid ? 'nominee':'', voters.has(s.pid)?'voted':''].join(' ');
     return `<div class="${cls}" style="left:${x}%;top:${y}%;" onclick="openNote('${esc(s.pid)}')">
-      <div class="av">${s.traveller ? iconHtml(s.traveller) : `<span style="font-size:20px;">${s.alive?'🙂':''}</span>`}${!s.alive?'<span class="shroud">⚰️</span>':''}</div>
+      <div class="av">${s.traveller ? iconHtml(s.traveller) : `<span style="font-size:20px;">${s.alive?(s.travPending?'🧳':'🙂'):''}</span>`}${!s.alive?'<span class="shroud">⚰️</span>':''}</div>
       <div class="nm"><bdi>${esc(s.name)}</bdi>${playerNote(s.pid)?'<span class="notemark">📝</span>':''}</div>
-      ${!s.alive ? `<div class="gv">${s.ghostVoteUsed?'بلا صوت':'👻 صوت شبح'}</div>` : (s.traveller ? `<div class="gv" style="color:#e88;">${esc((charInfo(s.traveller)||{}).nameAr||s.traveller)}</div>` : '')}
+      ${!s.alive ? `<div class="gv">${s.ghostVoteUsed?'بلا صوت':'👻 صوت شبح'}</div>` : (s.traveller ? `<div class="gv" style="color:#e88;">${esc((charInfo(s.traveller)||{}).nameAr||s.traveller)}</div>` : (s.travPending ? `<div class="gv" style="color:#e88;">مسافر</div>` : ''))}
     </div>`;
   }).join('');
   return `

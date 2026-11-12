@@ -872,7 +872,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.12.2';
+const APP_BUILD = '2026.11.12.3';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -2969,7 +2969,7 @@ function nameListHtml(){
   return `<div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;">` + seatedPlayers().map((p,i)=>`
     <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
       <span class="seat-num">${i+1}</span>
-      <bdi style="flex:1;min-width:40px;">${escapeHtml(p.name)}${p.character && TYPE_OF[p.character]==='traveller' ? ' 🧳' : ''}</bdi>
+      <bdi style="flex:1;min-width:40px;">${escapeHtml(p.name)}${isTravellerPlayer(p) ? ' 🧳' : ''}</bdi>
       ${appState.claims[appKey(p.id)] ? '<span title="Joined from their phone" style="font-size:12px;">📱</span>' : ''}
       <button class="ghost small" onclick="removePlayerName('${p.id}')" style="padding:4px 8px;">✕</button>
     </div>
@@ -3165,7 +3165,64 @@ async function translateAndCopyBar(btn){
 // adding or removing one should never shift what this table says. Every setup-chart lookup
 // must count only non-Traveller players.
 function nonTravellerPlayerCount(){
-  return game.players.filter(p=>!(p.character && TYPE_OF[p.character]==='traveller')).length;
+  return game.players.filter(p=>!isTravellerPlayer(p)).length;
+}
+// A Traveller: either already holding a Traveller character, or joined as one and still waiting
+// for the Storyteller to choose the character (the script may not even be picked yet).
+function isTravellerPlayer(p){
+  return !!p && ((p.character && TYPE_OF[p.character]==='traveller') || (p.wantsTraveller && !p.character));
+}
+function travellersWithoutCharacter(){ return game.players.filter(p=>p.wantsTraveller && !p.character); }
+function setJoinedTravellerCharacter(pid, charName){
+  const p = game.players.find(x=>x.id===pid);
+  if(!p) return;
+  p.character = charName && TRAVELLER_LOOKUP[charName] ? charName : null;
+  p.isDrunk = false; p.drunkCover = null;
+  if(!p.alignmentOverride) p.alignmentOverride = 'good';
+  saveGame(); render();
+}
+function setJoinedTravellerAlignment(pid, val){
+  const p = game.players.find(x=>x.id===pid);
+  if(!p) return;
+  p.alignmentOverride = val==='evil' ? 'evil' : 'good';
+  saveGame(); render();
+}
+function makeJoinedTravellerNormal(pid){
+  const p = game.players.find(x=>x.id===pid);
+  if(!p) return;
+  delete p.wantsTraveller; delete p.alignmentOverride; p.character = null;
+  saveGame(); render();
+}
+// Token setup: the Storyteller gives each self-joined Traveller a character and an alignment.
+function joinedTravellersPanelHtml(){
+  const list = game.players.filter(p=>p.wantsTraveller && (!p.character || TYPE_OF[p.character]==='traveller'));
+  if(!list.length) return '';
+  const used = new Set(game.players.filter(p=>p.character && TYPE_OF[p.character]==='traveller').map(p=>p.character));
+  const missing = list.filter(p=>!p.character).length;
+  return `<div class="panel" style="border-color:${TYPE_COLORS.traveller};">
+    <h2 style="margin-top:0;color:${TYPE_COLORS.traveller};">🧳 Travellers</h2>
+    <p class="muted" style="margin-top:-6px;">These players joined as Travellers. Choose each one's character and alignment — they are extra to the ${nonTravellerPlayerCount()}-player split.</p>
+    ${TRAVELLER_CHARACTERS.length===0 ? `<p class="muted" style="color:var(--warn);">This script has no Travellers built yet — make them normal players, or remove them.</p>` : ''}
+    ${list.map(p=>`<div class="row" style="align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+      <b style="min-width:110px;"><bdi>${escapeHtml(p.name)}</bdi></b>
+      <select onchange="setJoinedTravellerCharacter('${p.id}', this.value)" style="max-width:200px;${p.character?'':'border-color:var(--warn);'}">
+        <option value="">Choose a Traveller...</option>
+        ${TRAVELLER_CHARACTERS.filter(c=>c.name===p.character || !used.has(c.name)).map(c=>`<option value="${c.name}" ${p.character===c.name?'selected':''}>${c.name}</option>`).join('')}
+      </select>
+      <select onchange="setJoinedTravellerAlignment('${p.id}', this.value)" style="max-width:110px;">
+        <option value="good" ${(p.alignmentOverride||'good')==='good'?'selected':''}>Good</option>
+        <option value="evil" ${p.alignmentOverride==='evil'?'selected':''}>Evil</option>
+      </select>
+      <button class="ghost small" onclick="makeJoinedTravellerNormal('${p.id}')" title="Count them as a normal player instead">Make normal player</button>
+    </div>`).join('')}
+    ${missing ? `<p class="muted" style="color:var(--warn);margin-bottom:0;">${missing} Traveller${missing===1?'':'s'} still need${missing===1?'s':''} a character before the game can start.</p>` : ''}
+  </div>`;
+}
+function blockIfTravellersUnassigned(){
+  const t = travellersWithoutCharacter();
+  if(!t.length) return false;
+  showInfo(`Choose a Traveller character for ${t.map(p=>p.name).join(', ')} first (🧳 Travellers, on the token setup screen) — or make them normal players.`);
+  return true;
 }
 function effectiveSetupChart(n){
   let chart = SETUP_CHART[n] || SETUP_CHART[n<5?5:15];
@@ -3210,6 +3267,7 @@ screens['tokens'] = () => {
       </div>
     </div>
   </div>
+  ${chosen ? joinedTravellersPanelHtml() : ''}
   ${chosen ? `
   <div class="panel reveal-swift">
     <h2 style="margin-top:0;">Choose your token pool</h2>
@@ -3251,6 +3309,8 @@ function setScript(key){
   game.script = key;
   game.scriptConfirmed = true;
   applyScript(key);
+  // A Traveller character from the previous script does not exist in this one: choose again.
+  game.players.forEach(p=>{ if(p.wantsTraveller && p.character && !TRAVELLER_LOOKUP[p.character]) p.character = null; });
   saveGame();
   render();
 }
@@ -3405,9 +3465,10 @@ function syncDrunkEffectMarker(p){
   }
 }
 function finalizeAssignment(pool){
+  if(blockIfTravellersUnassigned()) return;
   const shuffled = shuffle(pool);
   // Travellers added during setup keep their Traveller character; only everyone else gets a token.
-  game.players.filter(p=>!(p.character && TYPE_OF[p.character]==='traveller')).forEach((p,i)=>{
+  game.players.filter(p=>!isTravellerPlayer(p)).forEach((p,i)=>{
     const charName = shuffled[i] || null;
     p.character = charName;
     p.isDrunk = charName === 'Drunk';
@@ -3941,6 +4002,7 @@ function goBackToSeating(){
 // Seating done → straight into the first night; every phone gets its role card at the same moment.
 // Under the Tor Loric players must not know their characters, so nothing is sent automatically.
 function startFirstNight(){
+  if(blockIfTravellersUnassigned()) return;
   assignLunaticFakeDemon(); // before the cards go out: the Lunatic's card must already show their fake Demon
   beginGame(()=>{
     if((game.activeLoric||[]).includes('Tor')){ showInfo('Tor is active — role cards were NOT sent to phones. (You can still send one from 📱 Phones if you need to.)'); return; }
@@ -4476,9 +4538,21 @@ function beginTrial(){
   saveGame();
   refreshCourt();
 }
+// House rule: a living nominator always votes Yes on their own nomination (execution or exile).
+// A dead nominator keeps the choice, because a Yes would spend their ghost vote.
+function courtForcedYesId(nom){
+  if(!nom || !nom.nominatorId) return null;
+  const n = game.players.find(x=>x.id===nom.nominatorId);
+  return n && n.alive ? n.id : null;
+}
 function courtVoteClick(pid){
   const nom = game.court.nomination;
   if(!nom || !nom.trialActive || nom.readyToConfirm) return;
+  if(pid===courtForcedYesId(nom)){
+    if(nom.votes[pid]!==true){ nom.votes[pid] = true; saveGame(); refreshCourt(); }
+    else showInfo('المرشِّح يصوّت بنعم دائمًا على ترشيحه — لا يمكن إلغاء صوته.');
+    return;
+  }
   const voter = game.players.find(x=>x.id===pid);
   if(!voter) return;
   if(!nom.isExile && !voter.alive && voter.ghostVoteUsed && nom.votes[pid]!==true) return; // exhausted ghost vote can't newly vote (exile: everyone may vote regardless)
@@ -10658,7 +10732,7 @@ function appBuildPublicState(){
       pid: p.id, name: p.name, seat: circleOrder.indexOf(p.id)>=0 ? circleOrder.indexOf(p.id) : null,
       seatLocked: !!game.seatLocks[p.id],
       alive: appShownAlive(p), ghostVoteUsed: appShownAlive(p) ? false : !!p.ghostVoteUsed,
-      traveller: isTraveller ? p.character : null,
+      traveller: isTraveller ? p.character : null, travPending: !!(p.wantsTraveller && !p.character),
       claimed: !!appState.claims[appKey(p.id)],
     };
   });
@@ -10672,6 +10746,7 @@ function appBuildPublicState(){
       nominatorName: courtNomineeName(nom.nominatorId), nomineeName: courtNomineeName(nom.nomineeId),
       isExile: !!nom.isExile, trialActive: !!nom.trialActive, locked: !!nom.readyToConfirm,
       voters, count: courtVoteCount(nom, false), threshold: appShownThreshold(),
+      forcedYesId: nom.trialActive ? courtForcedYesId(nom) : null,
       voteOpen: appVoteWindowOpen(nom), voteRound: nom.voteOpenRound || null, nomKey: appNomKey(nom),
       voteRemainingMs: appVoteWindowOpen(nom) ? Math.max(0, nom.voteOpenedAt + (nom.voteWindowMs||APP_VOTE_WINDOW_MS) - Date.now()) : 0,
     };
@@ -11367,6 +11442,7 @@ function appOnVotes(val){
     const pidKey = Object.keys(appState.claims).find(k=>appState.claims[k]===uidOf);
     const voter = pidKey ? game.players.find(x=>appKey(x.id)===pidKey) : null;
     if(!voter || !appVoterEligible(nom, voter)) continue;
+    if(voter.id===courtForcedYesId(nom)){ if(nom.votes[voter.id]!==true){ nom.votes[voter.id] = true; changed = true; } continue; }  // the nominator's Yes is fixed
     const now = nom.votes[voter.id]===true;
     if(v.yes && !now){ nom.votes[voter.id] = true; changed = true; }
     if(!v.yes && now){ delete nom.votes[voter.id]; changed = true; }
@@ -11578,6 +11654,7 @@ function seatsLockButtonHtml(){
 
 // ---- Self-join: a phone types its own name and joins as a normal player (before roles are dealt) ----
 // Normal players can join until characters are handed out; after that only Travellers can.
+function appGameStarted(){ return !!game && ['reveal','play'].includes(game.phase); }
 function appNormalJoinOpen(){
   return !!game && !['reveal','play'].includes(game.phase) && !game.players.some(p=>p.character && TYPE_OF[p.character]!=='traveller');
 }
@@ -11589,21 +11666,24 @@ async function appProcessSelfJoins(){
   try{
     for(const uidOf of Object.keys(appState.joinReqs||{})){
       const r = appState.joinReqs[uidOf];
-      if(!r || r.kind!=='player' || r.result || r.release) continue;
+      const asTraveller = r && r.kind==='traveller';
+      if(!r || r.result || r.release) continue;
+      if(r.kind!=='player' && !(asTraveller && !appGameStarted())) continue;   // mid-game Travellers wait for approval
       const name = String(r.name||'').trim().replace(/\s+/g,' ').slice(0,40);
       const linkedKey = Object.keys(appState.claims).find(k=>appState.claims[k]===uidOf);
       const linked = linkedKey ? game.players.find(x=>appKey(x.id)===linkedKey) : null;
       let res = null, target = null;
       if(linked) res = {pid: linked.id};
       else if(!name) res = {dismissed:true};
-      else if(!appNormalJoinOpen()) res = {closed:true};
+      else if(!asTraveller && !appNormalJoinOpen()) res = {closed:true};
       else {
         const same = game.players.find(x=>x.name.trim().toLowerCase()===name.toLowerCase());
         if(same && appState.claims[appKey(same.id)]) res = {dup:true};
-        else if(same) target = same;                                       // a name the Storyteller typed in: link to it
+        else if(same){ target = same; if(asTraveller && !same.character){ same.wantsTraveller = true; added = true; } }   // a name the Storyteller typed in: link to it
         else {
           target = {id:'p-'+uid(), name, phone:'', seat: Math.max(-1, ...game.players.map(x=>(typeof x.seat==='number' ? x.seat : -1))) + 1,
             alive:true, ghostVoteUsed:false, character:null, isDrunk:false, drunkCover:null, markers:[], selfJoined:true};
+          if(asTraveller){ target.wantsTraveller = true; target.alignmentOverride = 'good'; }
           game.players.push(target);
           added = true;
         }
@@ -11631,7 +11711,7 @@ function appPendingJoinRequests(){
   const out = [];
   Object.keys(appState.joinReqs||{}).forEach(uidOf=>{
     const r = appState.joinReqs[uidOf];
-    if(!r || !r.name || r.result || r.kind==='player') return;
+    if(!r || !r.name || r.result || r.kind==='player' || (r.kind==='traveller' && !appGameStarted())) return;
     // Never hide a request: a phone still linked to someone (e.g. they pressed "not me") is shown with a note.
     const linkedKey = Object.keys(appState.claims).find(k=>appState.claims[k]===uidOf);
     const linked = linkedKey ? game.players.find(x=>appKey(x.id)===linkedKey) : null;
@@ -11650,7 +11730,7 @@ function appOnJoinRequests(val){
       if(appState.claims[key]===uidOf){
         const p = game.players.find(x=>appKey(x.id)===key);
         appUnlinkPlayer(r.release).catch(()=>{});
-        if(p && p.selfJoined && appNormalJoinOpen()){
+        if(p && p.selfJoined && (appNormalJoinOpen() || (p.wantsTraveller && !appGameStarted()))){
           // They typed themselves in and left before the game started: take the name off the list.
           game.players = game.players.filter(x=>x.id!==p.id);
           seatedPlayers().forEach((x,i)=>{ x.seat = i; });
