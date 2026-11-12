@@ -872,7 +872,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.10.28.34';
+const APP_BUILD = '2026.11.12.1';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -2301,7 +2301,9 @@ function toggleLoricFromDetail(name){
 }
 function resetAllPlayers(){
   showConfirm('Remove all players from this game and start completely from scratch?', ()=>{
+    if(appState.code) game.players.forEach(p=>{ if(appState.claims[appKey(p.id)]) appUnlinkPlayer(p.id).catch(()=>{}); });
     game.players = [];
+    game.seatLocks = {};
     game.keepSeating = false;
     saveGame();
     render();
@@ -2831,24 +2833,32 @@ function startFreshAfterBootError(){
 screens['names'] = () => `
   <div class="panel">
     <h2 style="margin-top:0;">Who's playing tonight?</h2>
-    <p class="muted">Add each player's name — English or Arabic both work. Players join from their own phones later with a QR code (📱 Phones).</p>
+    <p class="muted">Players add themselves from their own phones: they scan the QR code (or type the room code), enter their name, choose to play as a normal player or a Traveller, and pick their seat. You don't need to type any names.</p>
+    ${namesRoomBlockHtml()}
+    <div class="hr"></div>
+    <div class="row between" style="align-items:center;">
+      <div class="eyebrow">Players in the game</div>
+      ${appState.code ? seatsLockButtonHtml() : ''}
+    </div>
+    <div id="name-list" class="stack" style="margin-top:8px;">${nameListHtml()}</div>
+    <div class="hr"></div>
+    <button class="ghost small" onclick="ui.showManualAdd=!ui.showManualAdd; render();">${ui.showManualAdd ? '▾' : '▸'} Add a player yourself (optional)</button>
+    ${ui.showManualAdd ? `
     <div class="row" style="margin-top:12px;flex-wrap:nowrap;">
       <input id="name-input" dir="auto" placeholder="Player name..." style="width:140px;flex:0 0 140px;min-width:0;margin-right:10px;" onkeydown="if(event.key==='Enter') addPlayerName();">
       <button class="primary" onclick="addPlayerName()" style="flex-shrink:0;">Add</button>
     </div>
+    <p class="muted" style="font-size:12px;margin:6px 0 0;">A name you add here appears on the phones too, so that player can just tap it.</p>
     ${roster.length ? `
-    <div class="hr"></div>
-    <div class="row between">
+    <div class="row between" style="margin-top:10px;">
       <div class="eyebrow">Your regulars</div>
       <button class="ghost small" onclick="addAllRoster()">Add everyone</button>
     </div>
     <div id="roster-chips" class="row" style="margin-top:8px;gap:8px;">${rosterChipsHtml()}</div>
-    ` : ''}
-    <div class="hr"></div>
-    <div id="name-list" class="stack">${nameListHtml()}</div>
+    ` : ''}` : ''}
     <div class="hr"></div>
     <div class="row between">
-      <span class="muted">${game.players.length} player${game.players.length===1?'':'s'} added</span>
+      <span class="muted">${game.players.length} player${game.players.length===1?'':'s'} in the game</span>
       <div class="row">
         ${game.players.length>0 ? `<button class="ghost small" onclick="resetAllPlayers()">Reset players</button>` : ''}
         <button class="primary" ${game.players.length<5?'disabled':''} onclick="pageTurnTransition(()=>go('tokens'))">Continue to token setup ›</button>
@@ -2857,6 +2867,39 @@ screens['names'] = () => `
     ${game.players.length>0 && game.players.length<5 ? `<p class="muted" style="color:var(--warn);">You'll need at least 5 players.</p>` : ''}
   </div>
 `;
+// The room's QR code and number, right on the first screen: showing it is all the Storyteller has to do.
+function namesRoomBlockHtml(){
+  if(!FIREBASE_CONFIG && !(typeof window!=='undefined' && window.BOTC_NET_FACTORY)){
+    return `<p class="muted" style="color:var(--warn);">The phone app isn't connected to a Firebase project yet.</p>`;
+  }
+  if(!appState.code){
+    return `<div style="margin-top:12px;">
+      <button class="primary" ${appState.connecting?'disabled':''} onclick="appStartRoomFromNames()">${appState.connecting ? 'Opening the room…' : '📱 Open the room — show the QR code'}</button>
+      ${appState.error ? `<p class="muted" style="color:var(--warn);margin:8px 0 0;">${escapeHtml(appState.error)}</p>` : ''}
+    </div>`;
+  }
+  const url = appPlayerUrl();
+  const joined = game.players.filter(p=>appState.claims[appKey(p.id)]).length;
+  return `<div class="row" style="gap:16px;align-items:center;flex-wrap:wrap;margin-top:12px;">
+    <div style="background:#fff;border-radius:8px;padding:6px;width:190px;height:190px;">${appQrSvg(url) || '<div style="color:#333;font-size:12px;padding:20px;">Loading QR…</div>'}</div>
+    <div style="flex:1;min-width:200px;">
+      <div class="eyebrow">Room code</div>
+      <div style="font-family:'Cinzel',serif;font-size:40px;letter-spacing:0.3em;color:var(--gold-bright);direction:ltr;">${appState.code}</div>
+      <div class="muted" style="font-size:12px;word-break:break-all;margin-top:4px;">${escapeHtml(url)}</div>
+      <div class="row" style="margin-top:8px;align-items:center;">
+        <button class="ghost small" onclick="copyText('${url}', this)">📋 Copy link</button>
+        <span class="muted" style="font-size:12px;">${appState.online ? '● connected' : '○ reconnecting…'}</span>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:6px;">${joined} phone${joined===1?'':'s'} joined</div>
+    </div>
+  </div>`;
+}
+async function appStartRoomFromNames(){
+  const pr = appStartRoom();
+  render();
+  try{ await pr; }catch(e){}
+  render();
+}
 function rosterChipsHtml(){
   const inGame = name => game.players.some(p=>p.name.toLowerCase()===name.toLowerCase());
   const editing = !!ui.rosterEditMode;
@@ -2920,11 +2963,12 @@ function addAllRoster(){
   render();
 }
 function nameListHtml(){
-  if(game.players.length===0) return '<p class="muted">No players yet.</p>';
-  return `<div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;">` + game.players.map((p,i)=>`
+  if(game.players.length===0) return `<p class="muted">${appState.code ? 'Nobody has joined yet — show the players the QR code.' : 'No players yet.'}</p>`;
+  return `<div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;">` + seatedPlayers().map((p,i)=>`
     <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
       <span class="seat-num">${i+1}</span>
-      <bdi style="flex:1;min-width:40px;">${escapeHtml(p.name)}</bdi>
+      <bdi style="flex:1;min-width:40px;">${escapeHtml(p.name)}${p.character && TYPE_OF[p.character]==='traveller' ? ' 🧳' : ''}</bdi>
+      ${appState.claims[appKey(p.id)] ? '<span title="Joined from their phone" style="font-size:12px;">📱</span>' : ''}
       <button class="ghost small" onclick="removePlayerName('${p.id}')" style="padding:4px 8px;">✕</button>
     </div>
   `).join('') + `</div>`;
@@ -2949,8 +2993,9 @@ function addPlayerName(){
   document.getElementById('name-input').focus();
 }
 function removePlayerName(pid){
+  if(appState.code && appState.claims[appKey(pid)]) appUnlinkPlayer(pid).catch(()=>{});
   game.players = game.players.filter(p=>p.id!==pid);
-  game.players.forEach((p,i)=>p.seat=i);
+  seatedPlayers().forEach((p,i)=>{ p.seat = i; });
   saveGame(); render();
 }
 
@@ -10584,7 +10629,7 @@ function appBuildPublicState(){
     const isTraveller = p.character && TYPE_OF[p.character]==='traveller';
     seats[appKey(p.id)] = {
       pid: p.id, name: p.name, seat: circleOrder.indexOf(p.id)>=0 ? circleOrder.indexOf(p.id) : null,
-      seatLocked: !!game.seatLocks[p.id] || appSeatingFinal(),
+      seatLocked: !!game.seatLocks[p.id],
       alive: appShownAlive(p), ghostVoteUsed: appShownAlive(p) ? false : !!p.ghostVoteUsed,
       traveller: isTraveller ? p.character : null,
       claimed: !!appState.claims[appKey(p.id)],
@@ -10620,6 +10665,7 @@ function appBuildPublicState(){
     script: game.script || 'tb', scriptLabel: (SCRIPTS[game.script]||SCRIPTS.tb).label,
     phase: game.phase || 'names', subphase: game.subphase || null,
     nightNum: game.nightNum || 0, dayNum: game.dayNum || 0,
+    joinOpen: appNormalJoinOpen(), seatsOpen: !game.seatsLockedByHost,
     seats,
     court: { nomination, history, leadingIds: leading, publicMessage: (court.publicMessage && court.publicMessage===court.deathMsgText) ? null : (court.publicMessage || null),
              openSeq: court.openSeq || 0, hostInCourt: route==='court',
@@ -11417,40 +11463,107 @@ function appSeatTrackerHtml(full){
     ${waiting.length || notJoined.length ? `<div class="muted" style="font-size:11px;margin-top:4px;">⏳ joined, choosing a seat · ○ not joined yet</div>` : ''}
   </div>`;
 }
+// Moves p to position `target` of the circle; everyone else keeps their relative order.
+function appMoveSeat(p, target){
+  const order = seatedPlayers();
+  const rest = order.filter(x=>x.id!==p.id);
+  rest.splice(target, 0, p);
+  if(game.seatingLayout==='free'){
+    // Keep the table's shape: the k-th spot of the layout goes to the k-th player of the new order.
+    const spots = order.map(x=>({x:x.freeX, y:x.freeY}));
+    rest.forEach((x,i)=>{ x.freeX = spots[i].x; x.freeY = spots[i].y; });
+  }
+  rest.forEach((x,i)=>{ x.seat = i; });
+}
+// Players may pick or change their seat from their phone at any time, unless the Storyteller locks seats.
 function appOnSeatRequests(val){
   val = val || {};
-  if(appSeatingFinal()) return;
+  if(!game) return;
   game.seatLocks = game.seatLocks || {};
+  game.seatReqAt = game.seatReqAt || {};
   let changed = false;
   for(const uidOf of Object.keys(val)){
     const req = val[uidOf];
     if(!req || req.seat===undefined) continue;
     const pidKey = Object.keys(appState.claims).find(k=>appState.claims[k]===uidOf);
     const p = pidKey ? game.players.find(x=>appKey(x.id)===pidKey) : null;
-    if(!p || req.pid!==p.id || game.seatLocks[p.id]) continue;        // only your own seat, only once
+    if(!p || req.pid!==p.id) continue;                                   // only your own seat
+    const at = Number(req.at) || 0;
+    if(game.seatReqAt[p.id] && at<=game.seatReqAt[p.id]) continue;       // already handled
+    game.seatReqAt[p.id] = at || Date.now();
+    changed = true;
+    if(NET) NET.remove(appRoomPath('seatReq/'+uidOf)).catch(()=>{});
+    if(game.seatsLockedByHost) continue;
     const order = seatedPlayers();
     const n = order.length;
     const target = Number(req.seat);
     if(!Number.isInteger(target) || target<0 || target>=n) continue;
-    const occupant = order[target];
-    if(occupant && occupant.id!==p.id && game.seatLocks[occupant.id]) continue; // someone already sat there
-    // Move p into position `target` of the circle; everyone else keeps their relative order.
-    const rest = order.filter(x=>x.id!==p.id);
-    rest.splice(target, 0, p);
-    // Locked players must not be pushed around by this move: keep them where they are.
-    const locked = order.map((x,i)=>game.seatLocks[x.id] ? [x,i] : null).filter(Boolean);
-    const result = new Array(n).fill(null);
-    locked.forEach(([x,i])=>{ result[i] = x; });
-    result[target] = p;
-    const others = rest.filter(x=>x.id!==p.id && !game.seatLocks[x.id]);
-    for(let i=0;i<n;i++) if(!result[i]) result[i] = others.shift();
-    result.forEach((x,i)=>{ x.seat = i; });
-    game.seatingLayout = game.seatingLayout==='free' ? 'circle' : game.seatingLayout;
+    const from = order.findIndex(x=>x.id===p.id);
+    const first = !game.seatLocks[p.id];
+    appMoveSeat(p, target);
     game.seatLocks[p.id] = true;
-    logAction(`📱 ${p.name} chose seat ${target+1} on their phone.`);
-    changed = true;
+    if(first || from===target) logAction(`📱 ${p.name} chose seat ${target+1} on their phone.`);
+    else logAction(`📱 ${p.name} moved from seat ${from+1} to seat ${target+1} on their phone.`);
   }
-  if(changed){ saveGame(); render(); }
+  if(changed){ saveGame(); appSyncSoon(); if(route==='play') refreshPlay(); else if(route==='court') refreshCourt(); else render(); }
+}
+function toggleSeatsLock(){
+  game.seatsLockedByHost = !game.seatsLockedByHost;
+  saveGame(); appSyncSoon();
+  if(ui && ui.modal && ui.modal.type==='appRoom') renderModal(); else render();
+}
+function seatsLockButtonHtml(){
+  return `<button class="ghost small" onclick="toggleSeatsLock()" title="${game.seatsLockedByHost ? 'Players cannot change seats right now' : 'Players can change their seat from their phone at any time'}">${game.seatsLockedByHost ? '🔒 Seats locked — unlock' : '🔓 Seats open — lock'}</button>`;
+}
+
+// ---- Self-join: a phone types its own name and joins as a normal player (before roles are dealt) ----
+// Normal players can join until characters are handed out; after that only Travellers can.
+function appNormalJoinOpen(){
+  return !!game && !['reveal','play'].includes(game.phase) && !game.players.some(p=>p.character && TYPE_OF[p.character]!=='traveller');
+}
+async function appProcessSelfJoins(){
+  if(!game || !NET || !appState.code) return;
+  if(appState.joinBusy){ appState.joinAgain = true; return; }
+  appState.joinBusy = true;
+  let added = false;
+  try{
+    for(const uidOf of Object.keys(appState.joinReqs||{})){
+      const r = appState.joinReqs[uidOf];
+      if(!r || r.kind!=='player' || r.result || r.release) continue;
+      const name = String(r.name||'').trim().replace(/\s+/g,' ').slice(0,40);
+      const linkedKey = Object.keys(appState.claims).find(k=>appState.claims[k]===uidOf);
+      const linked = linkedKey ? game.players.find(x=>appKey(x.id)===linkedKey) : null;
+      let res = null, target = null;
+      if(linked) res = {pid: linked.id};
+      else if(!name) res = {dismissed:true};
+      else if(!appNormalJoinOpen()) res = {closed:true};
+      else {
+        const same = game.players.find(x=>x.name.trim().toLowerCase()===name.toLowerCase());
+        if(same && appState.claims[appKey(same.id)]) res = {dup:true};
+        else if(same) target = same;                                       // a name the Storyteller typed in: link to it
+        else {
+          target = {id:'p-'+uid(), name, phone:'', seat: Math.max(-1, ...game.players.map(x=>(typeof x.seat==='number' ? x.seat : -1))) + 1,
+            alive:true, ghostVoteUsed:false, character:null, isDrunk:false, drunkCover:null, markers:[], selfJoined:true};
+          game.players.push(target);
+          added = true;
+        }
+      }
+      r.result = res || {pid: target.id};
+      try{
+        if(target){
+          saveGame();
+          await NET.set(appRoomPath('claims/'+appKey(target.id)), uidOf);
+          appState.claims[appKey(target.id)] = uidOf;
+          await appPublish();                                              // the phone must see its seat before it is told it joined
+        }
+        await NET.set(appRoomPath(`joinReq/${uidOf}/result`), r.result);
+      }catch(e){ console.warn('self-join', e); }
+    }
+  } finally {
+    appState.joinBusy = false;
+    if(added){ if(APP_PREGAME_ROUTES.includes(route) && !(ui && ui.modal)) render(); else appRefreshPanel(); }
+    if(appState.joinAgain){ appState.joinAgain = false; appProcessSelfJoins(); }
+  }
 }
 
 // ---- Late joiners: a phone asks to join as a Traveller (with a preferred character) ----
@@ -11458,7 +11571,7 @@ function appPendingJoinRequests(){
   const out = [];
   Object.keys(appState.joinReqs||{}).forEach(uidOf=>{
     const r = appState.joinReqs[uidOf];
-    if(!r || !r.name || r.result) return;
+    if(!r || !r.name || r.result || r.kind==='player') return;
     // Never hide a request: a phone still linked to someone (e.g. they pressed "not me") is shown with a note.
     const linkedKey = Object.keys(appState.claims).find(k=>appState.claims[k]===uidOf);
     const linked = linkedKey ? game.players.find(x=>appKey(x.id)===linkedKey) : null;
@@ -11477,11 +11590,18 @@ function appOnJoinRequests(val){
       if(appState.claims[key]===uidOf){
         const p = game.players.find(x=>appKey(x.id)===key);
         appUnlinkPlayer(r.release).catch(()=>{});
-        if(p) logAction(`📱 ${p.name}'s phone was unlinked from their own phone ("not me").`);
+        if(p && p.selfJoined && appNormalJoinOpen()){
+          // They typed themselves in and left before the game started: take the name off the list.
+          game.players = game.players.filter(x=>x.id!==p.id);
+          seatedPlayers().forEach((x,i)=>{ x.seat = i; });
+          saveGame(); appSyncSoon();
+          if(APP_PREGAME_ROUTES.includes(route) && !(ui && ui.modal)) render();
+        } else if(p) logAction(`📱 ${p.name}'s phone was unlinked from their own phone ("not me").`);
       }
       NET.set(appRoomPath(`joinReq/${uidOf}/release`), null).catch(()=>{});
     }
   });
+  appProcessSelfJoins();
   const after = appPendingJoinRequests().length;
   if(after>before && !(ui && ui.modal)){
     // A new Traveller request: open the Phones window so it can't be missed.
@@ -11521,6 +11641,8 @@ async function appLinkTravellerRequest(reqUid, pid){
       }
     }
     await NET.set(appRoomPath('claims/'+appKey(pid)), reqUid);
+    appState.claims[appKey(pid)] = reqUid;
+    await appPublish();   // the phone must see its seat before it is told it joined
     await NET.set(appRoomPath(`joinReq/${reqUid}/result`), {pid});
   }catch(e){ console.warn('link traveller', e); }
 }
@@ -11630,6 +11752,7 @@ function appRoomPanelHtml(){
     <div>${rows || '<p class="muted">Add players first.</p>'}</div>
     <div class="row" style="justify-content:space-between;margin-top:12px;">
       <button class="ghost small" onclick="showConfirm('Close this room? Every phone disconnects and players must scan a new code.', ()=>appCloseRoom())">Close room</button>
+      ${seatsLockButtonHtml()}
       ${game.testMode ? `<button class="ghost small" onclick="appTestModeOpenTabs()" style="border-color:#8a5fd6;">🧪 Open all player tabs</button>` : ''}
       ${game.players.some(p=>p.character) ? `<button class="ghost small" onclick="appSendAllRoles()">🎭 Send all roles</button>` : ''}
     </div>

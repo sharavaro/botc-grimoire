@@ -120,6 +120,7 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
 .slot.free{background:#2a2240;border:2px solid var(--gold);color:var(--gold-bright);}
 .slot.taken{background:#1a1626;border:1px solid var(--line);color:var(--mist);font-size:11px;font-weight:400;line-height:1.2;}
 .slot.pick{background:var(--gold);color:#1a1405;}
+.slot.taken.tap{color:var(--text);font-size:13px;font-weight:700;}
 .votecard{border:2px solid #e0483f;box-shadow:0 0 22px #e0483f44;text-align:center;}
 .votebtns{display:flex;gap:10px;margin-top:12px;}
 .votebtns button{flex:1;padding:18px 8px;font-size:18px;font-weight:700;}
@@ -160,7 +161,7 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.10.28.35';
+const PLAYER_BUILD = '2026.11.12.1';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -301,13 +302,23 @@ async function onPublic(){
   courtAutoJump(pub);
   if(S.seatPending!==null && S.pid && pub && pub.seats){
     const mine = pub.seats[appKey(S.pid)];
-    if(mine && mine.seatLocked){ S.seatPending = null; }
-    else if(pub.seats && Object.values(pub.seats).some(s=>s.seat===S.seatPending && s.seatLocked && s.pid!==S.pid)){ S.seatPending = null; showBanner('سبقك أحد إلى هذا المقعد، اختر غيره'); }
+    if(mine && mine.seatLocked && mine.seat===S.seatPending){
+      S.seatPending = null; clearTimeout(S.seatTimer);
+      if(S.view && S.view.type==='seat') S.view = null;
+      showBanner('✓ تم حفظ مقعدك');
+    } else if(pub.seatsOpen===false){ S.seatPending = null; clearTimeout(S.seatTimer); }
   }
-  if(!pub || !pub.seats){ if(S.stage!=='joined'){ S.stage = 'join'; } render(); return; }
+  const grace = Date.now() < (S.joinGraceUntil||0);   // just added by the Storyteller: the board may be a moment behind
+  if(!pub || !pub.seats){
+    if(S.pid && !grace) leaveSeat();
+    if(S.stage!=='joined'){ S.stage = 'join'; }
+    render(); return;
+  }
   const seats = pub.seats;
   if(S.pid){
     const mine = seats[appKey(S.pid)];
+    if(mine && mine.claimed) S.joinGraceUntil = 0;   // confirmed on the board: no more waiting
+    if((!mine || !mine.claimed) && grace){ render(); return; }
     if(!mine || !mine.claimed){
       // Unlinked by the Storyteller, or a new game started: forget this seat and pick again.
       if(mine && !mine.claimed){ lsDel('join'); }
@@ -744,60 +755,68 @@ function askSeat(i){ S.confirmSeat = i; render(); }
 function cancelSeat(){ S.confirmSeat = null; render(); }
 async function chooseSeat(i){
   S.confirmSeat = null; S.seatPending = i; render();
+  clearTimeout(S.seatTimer);
+  S.seatTimer = setTimeout(()=>{ if(S.seatPending!==null){ S.seatPending = null; showBanner('لم يتم حفظ المقعد — حاول مرة أخرى'); } }, 8000);
   try{ await NET.set(R('seatReq/'+S.uid), {pid:S.pid, seat:i, at:Date.now()}); }
-  catch(e){ S.seatPending = null; showErr('تعذّر حجز المقعد', e, 'seatReq'); }
+  catch(e){ S.seatPending = null; clearTimeout(S.seatTimer); showErr('تعذّر حجز المقعد', e, 'seatReq'); }
   render();
 }
+// The circle as it will be once I sit in position i: everyone else keeps their order.
+function seatOrderAfterMove(i){
+  const order = seatOrder().filter(Boolean);
+  const me = order.find(s=>s.pid===S.pid);
+  const rest = order.filter(s=>s.pid!==S.pid);
+  if(me) rest.splice(Math.min(i, rest.length), 0, me);
+  return rest;
+}
 function seatNeighbourText(i){
-  const order = seatOrder(); const n = order.length;
-  const name = j=>{ if(j===-1 || j===n) return 'الراوي'; const s = order[j]; return s && s.seatLocked ? s.name : null; };
+  const order = seatOrderAfterMove(i); const n = order.length;
+  const name = j=>{ if(j===-1 || j===n) return 'الراوي'; const s = order[j]; return s ? s.name : null; };
   const before = name(i-1), after = name(i+1);
   if(before && after) return `بين ${before} و${after}`;
   if(before || after) return `بجانب ${before || after}`;
   return '';
 }
 function seatingFinal(){ return !!(S.pub && ['reveal','play'].includes(S.pub.phase)); }
+function seatsOpen(){ return !!(S.pub && S.pub.seatsOpen!==false); }
+function openSeatChange(){ S.view = {type:'seat'}; render(); window.scrollTo(0,0); }
+// The circle with everyone's name; tap a place to sit there (the others shift, keeping their order).
+function seatCircleHtml(){
+  const me = mySeat();
+  const order = seatOrder(); const n = order.length;
+  const radius = 40;
+  const busy = S.seatPending!==null;
+  const slots = order.map((s,i)=>{
+    const {x,y} = seatPos(i, n, radius);
+    const mine = s && s.pid===S.pid;
+    const label = mine ? `<span>أنت</span><span>${i+1}</span>` : `${i+1}${s ? `<bdi style="font-size:11px;font-weight:400;max-width:58px;overflow:hidden;white-space:nowrap;">${esc(s.name.length>9 ? s.name.slice(0,8)+'…' : s.name)}</bdi>` : ''}`;
+    const cls = S.seatPending===i ? 'slot pick' : mine ? (me.seatLocked ? 'slot pick' : 'slot free') : (s && s.seatLocked ? 'slot taken tap' : 'slot free');
+    return `<button class="${cls}" style="left:${x}%;top:${y}%;width:64px;height:64px;flex-direction:column;font-size:14px;line-height:1.15;${mine && !me.seatLocked ? 'border-style:dashed;' : ''}" ${busy?'disabled':''} onclick="askSeat(${i})">${label}</button>`;
+  }).join('');
+  return `<div class="circle" style="margin-top:4px;">${hostMarkHtml(radius)}${slots}
+      <div class="center-info"><div class="stat">${busy ? 'جارٍ الحفظ…' : (me && me.seatLocked ? `مقعدك ${me.seat+1}` : 'اضغط على مكانك')}</div></div>
+    </div>`;
+}
+// Before the game starts: shown on the main screen.
 function seatPickerCard(){
   const me = mySeat();
   if(!me || seatingFinal()) return '';
-  if(me.seatLocked) return seatWatchCard(me);
-  const order = seatOrder(); const n = order.length;
-  const radius = 40;
-  const slots = order.map((s,i)=>{
-    const {x,y} = seatPos(i, n, radius);
-    const taken = s && s.seatLocked && s.pid!==S.pid;
-    if(taken) return `<div class="slot taken" style="left:${x}%;top:${y}%;"><bdi>${esc(s.name)}</bdi></div>`;
-    const cls = S.seatPending===i ? 'slot pick' : 'slot free';
-    return `<button class="${cls}" style="left:${x}%;top:${y}%;" ${S.seatPending!==null?'disabled':''} onclick="askSeat(${i})">${i+1}</button>`;
-  }).join('');
-  return `<div class="card qcard">
-    <h3 style="font-size:17px;">🪑 اختر مقعدك</h3>
-    <p class="muted" style="margin:4px 0 0;">الراوي في الأسفل. اختر الرقم الذي يطابق مكان جلوسك بالنسبة للراوي. لا يمكنك تغييره بعد الاختيار.</p>
-    <div class="circle" style="margin-top:4px;">${hostMarkHtml(radius)}${slots}
-      <div class="center-info"><div class="stat">${S.seatPending!==null ? 'جارٍ الحجز…' : 'اضغط على رقم'}</div></div>
-    </div>
+  if(S.view && S.view.type==='seat') return '';
+  if(!seatsOpen()) return `<div class="card"><p class="muted" style="margin:0;">🔒 الراوي أقفل تغيير المقاعد${me.seatLocked ? ` — مقعدك رقم ${me.seat+1}` : ''}.</p></div>`;
+  return `<div class="card ${me.seatLocked ? '' : 'qcard'}">
+    <h3 style="font-size:17px;">${me.seatLocked ? `✓ مقعدك رقم ${me.seat+1}` : '🪑 اختر مقعدك'}</h3>
+    <p class="muted" style="margin:4px 0 0;">${me.seatLocked ? 'لتغيير مقعدك اضغط على مكان آخر في الدائرة — يمكنك تغييره في أي وقت.' : 'الراوي في الأسفل. اضغط على المكان الذي تجلس فيه بالنسبة للراوي واللاعبين. يمكنك تغييره لاحقًا.'}</p>
+    ${seatCircleHtml()}
     ${S.lastError && S.lastError.node==='seatReq' ? `<div class="muted en" dir="ltr" style="font-size:11px;text-align:left;margin-top:4px;word-break:break-all;">Error: ${esc(S.lastError.msg)}</div>` : ''}
-    <div>
-    </div>
   </div>`;
 }
-// After choosing: keep watching the circle fill up (read-only) until the game starts.
-function seatWatchCard(me){
-  const order = seatOrder(); const n = order.length;
-  const radius = 40;
-  const seated = order.filter(s=>s && s.seatLocked).length;
-  const slots = order.map((s,i)=>{
-    const {x,y} = seatPos(i, n, radius);
-    if(s && s.pid===S.pid) return `<div class="slot pick" style="left:${x}%;top:${y}%;font-size:11px;font-weight:700;line-height:1.2;">أنت<br>${i+1}</div>`;
-    if(s && s.seatLocked) return `<div class="slot taken" style="left:${x}%;top:${y}%;"><bdi>${esc(s.name)}</bdi></div>`;
-    return `<div class="slot free" style="left:${x}%;top:${y}%;opacity:.55;border-style:dashed;">${i+1}</div>`;
-  }).join('');
+// During the game: opened from the board with "change my seat".
+function seatChangeView(){
+  const me = mySeat();
   return `<div class="card">
-    <h3 style="font-size:16px;">✓ مقعدك رقم ${me.seat+1}</h3>
-    <p class="muted" style="margin:4px 0 0;">${seated<n ? `بانتظار البقية (${seated}/${n})` : `جلس الجميع (${n}/${n}) — بانتظار بدء اللعبة`}</p>
-    <div class="circle" style="margin-top:4px;">${hostMarkHtml(radius)}${slots}
-      <div class="center-info"><div class="stat">${seated}/${n}</div></div>
-    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><button class="ghost" style="padding:6px 12px;" onclick="closeView()">→ رجوع</button><b style="font-size:16px;">🪑 تغيير مقعدي</b></div>
+    ${seatsOpen() ? `<p class="muted" style="margin:0;">اضغط على المكان الذي انتقلت إليه. يبقى ترتيب بقية اللاعبين كما هو.${seatingFinal() ? ' اللعبة جارية: غيّر مقعدك فقط إذا غيّرت مكان جلوسك فعلًا.' : ''}</p>${seatCircleHtml()}`
+      : `<p class="muted" style="margin:0;">🔒 الراوي أقفل تغيير المقاعد${me ? ` — مقعدك رقم ${me.seat+1}` : ''}.</p>`}
   </div>`;
 }
 
@@ -868,58 +887,77 @@ function codeScreen(){
       <button class="primary" style="width:100%;margin-top:12px;" onclick="submitCode()">دخول</button>
     </div>`;
 }
-function joinScreen(){
-  const seats = sortedSeats();
-  if(!seats.length) return `<div class="card" style="text-align:center;margin-top:30px;"><p>بانتظار الراوي لإضافة اللاعبين…</p><p class="muted">الغرفة ${esc(S.room)}</p></div>`;
-  return `
-    <div class="card" style="margin-top:10px;">
-      <h2>من أنت؟</h2>
-      <p class="muted">اضغط على اسمك. لا يمكن لأحد غيرك رؤية دورك أو رسائلك بعد ذلك.</p>
-      <div class="namegrid">
-        ${seats.map(s=>`<button class="${s.claimed?'taken':''}" ${s.claimed?'disabled':''} onclick="askClaim('${esc(s.pid)}')"><bdi>${esc(s.name)}</bdi>${s.claimed?'<div class="muted" style="font-size:11px;">انضم</div>':''}</button>`).join('')}
-      </div>
-    </div>
-    ${travellerJoinHtml()}
-    <p class="muted" style="text-align:center;">الغرفة <span class="en">${esc(S.room)}</span></p>`;
-}
-/* ---------- joining late as a Traveller (the choice is only a preference) ---------- */
+/* ---------- joining: type your name, choose normal player or Traveller ---------- */
 function travellersOffered(){
   const all = (S.script && S.script.characters && S.script.characters.traveller) || [];
   const inPlay = new Set(Object.values((S.pub && S.pub.seats) || {}).map(s=>s.traveller).filter(Boolean));
   return all.filter(c=>!inPlay.has(c.name));
 }
-function travellerJoinHtml(){
-  // Available during setup too, once the Storyteller has added players: a Traveller who joins before
-  // the game starts wakes on the first night like everyone else.
-  if(!S.pub || !S.pub.seats || !Object.keys(S.pub.seats).length) return '';
+function normalJoinOpen(){ return !!(S.pub && S.pub.joinOpen); }
+function joinKind(){ return normalJoinOpen() ? (S.trav.kind || 'player') : 'traveller'; }
+function setJoinKind(k){ const el = document.getElementById('trav-name'); if(el) S.trav.name = el.value; S.trav.kind = k; render(); }
+function joinScreen(){
+  if(!S.pub) return `<div class="card" style="text-align:center;margin-top:30px;"><p>بانتظار الراوي…</p><p class="muted">الغرفة ${esc(S.room)}</p></div>`;
   const T = S.trav;
-  if(T.sent) return `<div class="card" style="text-align:center;"><div style="font-size:34px;">🧳</div><p>تم إرسال طلبك إلى الراوي.</p><p class="muted">انتظر قليلًا — سيتم ربطك تلقائيًا عندما يضيفك الراوي.</p></div>`;
-  if(!T.open) return `<div class="card" style="text-align:center;"><p style="margin:0 0 8px;">اسمك غير موجود؟</p><button class="primary" style="width:100%;" onclick="openTravellerJoin()">🧳 انضممت متأخرًا؟ انضم كمسافر</button></div>`;
+  if(T.name===undefined || T.name===null || (T.name==='' && !T.touched)){ const saved = lsGet('myname'); if(saved) T.name = saved; }
+  if(T.sent){
+    return `<div class="card" style="text-align:center;margin-top:20px;"><div style="font-size:34px;">${T.sentKind==='traveller' ? '🧳' : '⏳'}</div>
+      <p>${T.sentKind==='traveller' ? 'تم إرسال طلبك إلى الراوي.' : 'جارٍ الانضمام…'}</p>
+      <p class="muted">${T.sentKind==='traveller' ? 'انتظر قليلًا — سيتم ربطك تلقائيًا عندما يضيفك الراوي.' : 'لحظة واحدة.'}</p>
+      <button class="ghost" style="margin-top:6px;" onclick="cancelJoinRequest()">إلغاء</button></div>
+      <p class="muted" style="text-align:center;">الغرفة <span class="en">${esc(S.room)}</span></p>`;
+  }
+  const kind = joinKind();
   const list = travellersOffered();
-  return `<div class="card qcard">
-    <h3 style="font-size:17px;">🧳 الانضمام كمسافر</h3>
-    <p class="muted" style="margin:4px 0 10px;">اختر المسافر الذي تفضّل أن تلعب به. هذا تفضيل فقط — الراوي يقرر.</p>
-    <input id="trav-name" dir="auto" placeholder="اسمك" style="letter-spacing:normal;text-transform:none;font-size:17px;" value="${esc(T.name)}" oninput="S.trav.name=this.value">
-    <div style="margin-top:10px;">${list.length ? list.map((c,i)=>`<button class="chr" style="width:100%;text-align:start;background:${T.prefer===c.name?'#3b2d6b':'transparent'};border:1px solid ${T.prefer===c.name?'#c9394a':'transparent'};border-radius:10px;padding:8px;margin-bottom:4px;" onclick="pickTravellerIdx(${i})">
-        <div class="ic">${iconHtml(c.name,'')}</div><div style="flex:1;"><div class="t" style="color:var(--traveller);">${esc(c.nameAr||c.name)}<span class="en">${esc(c.name)}</span></div><div class="a">${esc(c.abilityAr||'')}</div></div></button>`).join('') : '<p class="muted">لا يوجد مسافرون متاحون لهذا النص — أرسل اسمك فقط.</p>'}</div>
-    <div style="display:flex;gap:10px;margin-top:10px;"><button class="ghost" style="flex:1;" onclick="closeTravellerJoin()">رجوع</button>
-      <button class="primary" style="flex:2;" onclick="sendTravellerJoin()">إرسال الطلب</button></div>
-  </div>`;
+  const free = sortedSeats().filter(s=>!s.claimed);
+  const kindBtn = (k, ic, label)=>`<button class="${kind===k?'primary':'ghost'}" style="flex:1;padding:12px 6px;" ${k==='player' && !normalJoinOpen() ? 'disabled' : ''} onclick="setJoinKind('${k}')">${ic} ${label}</button>`;
+  return `
+    <div class="card qcard" style="margin-top:10px;">
+      <h2 style="margin-bottom:4px;">انضم إلى اللعبة</h2>
+      <p class="muted" style="margin:0 0 10px;">اكتب اسمك ثم اختر كيف تريد أن تلعب.</p>
+      <input id="trav-name" dir="auto" maxlength="40" placeholder="اسمك" style="letter-spacing:normal;text-transform:none;font-size:17px;" value="${esc(T.name||'')}" oninput="S.trav.name=this.value;S.trav.touched=true;" onkeydown="if(event.key==='Enter') sendJoin()">
+      <div style="display:flex;gap:10px;margin-top:10px;">${kindBtn('player','🙂','لاعب عادي')}${kindBtn('traveller','🧳','مسافر')}</div>
+      ${!normalJoinOpen() ? `<p class="muted" style="font-size:12px;margin:8px 0 0;">تم توزيع الأدوار — يمكنك الانضمام الآن كمسافر فقط.</p>` : ''}
+      ${kind==='traveller' ? `
+        <p class="muted" style="margin:10px 0 6px;">اختر المسافر الذي تفضّل أن تلعب به. هذا تفضيل فقط — الراوي يقرر.</p>
+        <div>${list.length ? list.map((c,i)=>`<button class="chr" style="width:100%;text-align:start;background:${T.prefer===c.name?'#3b2d6b':'transparent'};border:1px solid ${T.prefer===c.name?'#c9394a':'transparent'};border-radius:10px;padding:8px;margin-bottom:4px;" onclick="pickTravellerIdx(${i})">
+          <div class="ic">${iconHtml(c.name,'')}</div><div style="flex:1;"><div class="t" style="color:var(--traveller);">${esc(c.nameAr||c.name)}<span class="en">${esc(c.name)}</span></div><div class="a">${esc(c.abilityAr||'')}</div></div></button>`).join('') : '<p class="muted">لا يوجد مسافرون متاحون لهذا النص — أرسل اسمك فقط.</p>'}</div>` : ''}
+      ${T.error ? `<p class="err" style="margin:10px 0 0;">${esc(T.error)}</p>` : ''}
+      <button class="primary" style="width:100%;margin-top:12px;" onclick="sendJoin()">${kind==='traveller' ? 'إرسال الطلب للراوي' : 'انضمام'}</button>
+    </div>
+    ${free.length ? `<div class="card">
+      <h3 style="font-size:15px;">اسمك موجود في القائمة؟</h3>
+      <p class="muted" style="margin:4px 0 0;">اضغط عليه بدل كتابته.</p>
+      <div class="namegrid">${free.map(s=>`<button onclick="askClaim('${esc(s.pid)}')"><bdi>${esc(s.name)}</bdi></button>`).join('')}</div>
+    </div>` : ''}
+    <p class="muted" style="text-align:center;">الغرفة <span class="en">${esc(S.room)}</span></p>`;
 }
+function travellerJoinHtml(){ return ''; }
 function openTravellerJoin(){ S.trav.open = true; render(); }
 function closeTravellerJoin(){ S.trav.open = false; render(); }
 function pickTravellerIdx(i){ const c = travellersOffered()[i]; if(c) pickTraveller(c.name); }
 function pickTraveller(name){ const el = document.getElementById('trav-name'); if(el) S.trav.name = el.value; S.trav.prefer = S.trav.prefer===name ? '' : name; render(); }
-async function sendTravellerJoin(){
+async function sendJoin(){
   const el = document.getElementById('trav-name'); if(el) S.trav.name = el.value;
-  const name = String(S.trav.name||'').trim();
-  if(!name){ showBanner('اكتب اسمك أولًا'); return; }
+  const name = String(S.trav.name||'').trim().replace(/\s+/g,' ');
+  if(!name){ S.trav.error = 'اكتب اسمك أولًا'; render(); return; }
+  const kind = joinKind();
+  S.trav.error = null;
+  lsSet('myname', name.slice(0,40));
   try{
-    await NET.set(R('joinReq/'+S.uid), {name: name.slice(0,40), prefer: S.trav.prefer||'', at: Date.now()});
-    S.trav.sent = true;
+    const req = {name: name.slice(0,40), prefer: kind==='traveller' ? (S.trav.prefer||'') : '', at: Date.now()};
+    if(kind==='player') req.kind = 'player';
+    await NET.set(R('joinReq/'+S.uid), req);
+    S.trav.sent = true; S.trav.sentKind = kind;
     watchTravellerJoin();
   }catch(e){ showErr('تعذّر إرسال الطلب', e, 'joinReq'); }
   render();
+}
+async function sendTravellerJoin(){ S.trav.kind = 'traveller'; return sendJoin(); }
+function cancelJoinRequest(){
+  if(S.trav.unsub){ S.trav.unsub(); S.trav.unsub = null; }
+  NET.set(R('joinReq/'+S.uid), null).catch(()=>{});
+  S.trav.sent = false; render();
 }
 function watchTravellerJoin(){
   if(S.trav.unsub) return;
@@ -927,13 +965,20 @@ function watchTravellerJoin(){
     const res = v && v.result;
     if(!res) return;
     if(S.trav.unsub){ S.trav.unsub(); S.trav.unsub = null; }
+    const wasTraveller = S.trav.sentKind==='traveller';
+    const keepName = S.trav.name || '';
     if(res.pid){
       lsSet('join', {room:S.room, pid:res.pid, name:(v && v.name) || ''});
       S.trav = {open:false, name:'', prefer:'', sent:false, unsub:null};
+      S.joinGraceUntil = Date.now() + 8000;
       takeSeat(res.pid);
-      showBanner('🧳 أضافك الراوي إلى اللعبة');
+      showBanner(wasTraveller ? '🧳 أضافك الراوي إلى اللعبة' : '✓ انضممت إلى اللعبة — اختر مقعدك');
+    } else if(res.dup){
+      S.trav = {open:false, name:keepName, touched:true, prefer:'', sent:false, unsub:null, error:'هذا الاسم مستخدم من لاعب آخر — اكتب اسمًا مختلفًا.'};
+    } else if(res.closed){
+      S.trav = {open:false, name:keepName, touched:true, prefer:'', sent:false, unsub:null, kind:'traveller', error:'تم توزيع الأدوار — يمكنك الانضمام كمسافر فقط.'};
     } else if(res.dismissed){
-      S.trav = {open:false, name:'', prefer:'', sent:false, unsub:null};
+      S.trav = {open:false, name:keepName, touched:true, prefer:'', sent:false, unsub:null};
       showBanner('لم يضفك الراوي هذه المرة');
     }
     render();
@@ -1030,6 +1075,7 @@ function boardTab(){
         </div>
       </div>
       ${!seats.length && unseated.length ? '<p class="muted" style="text-align:center;">لم يتم ترتيب المقاعد بعد</p>' : ''}
+      ${seatingFinal() && seatsOpen() && mySeat() ? `<div style="text-align:center;margin-top:6px;"><button class="ghost" style="padding:6px 14px;font-size:13px;" onclick="openSeatChange()">🪑 تغيير مقعدي</button></div>` : ''}
     </div>`;
 }
 // The Courthouse, as on the Storyteller's screen: same circle, rope, hands and count — everyone's votes visible live.
@@ -1141,7 +1187,7 @@ function joinedScreen(){
   const unread = unreadIds().length;
   const nom = S.pub && S.pub.court && S.pub.court.nomination;
   const deadBar = me && !me.alive ? `<div class="deadbar">⚰️ أنت ميت. ${me.ghostVoteUsed ? 'لقد استخدمت صوت الشبح.' : 'لديك صوت شبح واحد.'} يمكنك الاستمرار في الكلام.</div>` : '';
-  const body = S.view ? (S.view.type==='chat' ? chatView() : noteView()) : S.tab==='notes' ? notesTab() : S.tab==='role' ? roleTab() : S.tab==='inbox' ? inboxTab() : S.tab==='board' ? (courtActive() ? voteTab() : boardTab()) : referenceTab();
+  const body = S.view ? (S.view.type==='chat' ? chatView() : S.view.type==='seat' ? seatChangeView() : noteView()) : S.tab==='notes' ? notesTab() : S.tab==='role' ? roleTab() : S.tab==='inbox' ? inboxTab() : S.tab==='board' ? (courtActive() ? voteTab() : boardTab()) : referenceTab();
   const tab = (id, ic, label, extra)=>`<button class="${S.tab===id?'on':''} ${extra||''}" onclick="setTab('${id}')"><span class="ic">${ic}</span>${label}${id==='inbox' && unread ? `<span class="badge">${unread}</span>` : ''}${id==='role' && S.roleDot ? `<span class="badge" style="min-width:11px;width:11px;height:11px;padding:0;top:6px;"></span>` : ''}${id==='board' && chatUnread() ? `<span class="badge" style="min-width:11px;width:11px;height:11px;padding:0;top:6px;"></span>` : ''}</button>`;
   return `
     <div class="top">
@@ -1184,7 +1230,7 @@ function render(){
     if(S.banner) o += `<div class="banner" onclick="${S.banner.includes('💬') ? 'openChat()' : `setTab('${S.banner.includes('دور')?'role':'inbox'}')`}">${esc(S.banner)}</div>`;
     if(S.confirmSeat!==null && S.confirmSeat!==undefined){
       const near = seatNeighbourText(S.confirmSeat);
-      o += `<div class="modal"><div class="card"><p style="font-size:18px;">المقعد رقم <b>${S.confirmSeat+1}</b>${near ? `<br><span class="muted" style="font-size:14px;">${esc(near)}</span>` : ''}</p><p class="muted">لا يمكنك تغيير المقعد بعد التأكيد.</p>
+      o += `<div class="modal"><div class="card"><p style="font-size:18px;">المقعد رقم <b>${S.confirmSeat+1}</b>${near ? `<br><span class="muted" style="font-size:14px;">${esc(near)}</span>` : ''}</p><p class="muted">يبقى ترتيب بقية اللاعبين كما هو. يمكنك تغيير مقعدك لاحقًا.</p>
         <div style="display:flex;gap:10px;"><button class="ghost" style="flex:1;" onclick="cancelSeat()">رجوع</button><button class="primary" style="flex:1;" onclick="chooseSeat(${S.confirmSeat})">تأكيد</button></div></div></div>`;
     }
     if(S.confirmPid && S.pub && S.pub.seats){
