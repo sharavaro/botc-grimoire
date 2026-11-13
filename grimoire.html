@@ -564,6 +564,22 @@ bdi{unicode-bidi:isolate;}
 .st-host-mark{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none;z-index:2;}
 .st-host-mark .st-av{width:44px;height:44px;border-radius:50%;background:#3b2d6b;border:2px dashed #b99cff;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 12px #8a5fd655;}
 .st-host-mark .st-nm{font-size:11px;color:#d6c2ff;margin-top:2px;letter-spacing:.04em;}
+
+.trav-pick{background:var(--bg-panel-2);border:1px solid var(--gold);color:inherit;padding:10px 12px;border-radius:3px;font-family:'Spectral','Noto Naskh Arabic',serif;font-size:16px;letter-spacing:0;text-transform:none;cursor:pointer;min-width:200px;max-width:100%;display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:start;}
+.trav-pick small{color:var(--mist);font-size:13px;}
+.trav-cards{flex-basis:100%;width:100%;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:8px;margin-top:6px;}
+.trav-card{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;width:100%;background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:6px;padding:10px 12px;cursor:pointer;text-align:start;color:inherit;font-family:'Spectral','Noto Naskh Arabic',serif;letter-spacing:0;text-transform:none;font-weight:400;}
+.trav-card:hover{border-color:var(--gold);}
+.trav-card.sel{border-color:var(--gold-bright);background:rgba(212,169,58,.12);box-shadow:0 0 0 2px rgba(212,169,58,.25);}
+.trav-card[disabled]{opacity:.4;cursor:not-allowed;}
+.tc-hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px;flex-wrap:wrap;}
+.tc-name{font-size:16px;font-weight:600;color:var(--gold-bright);}
+.tc-namear{font-size:16px;color:#ff9aa6;}
+.tc-en{font-size:13.5px;line-height:1.45;}
+.tc-ar{font-size:14.5px;line-height:1.6;color:var(--mist);margin-top:4px;}
+.tc-taken{font-size:12px;color:var(--warn);margin-top:5px;}
+.trav-one{flex-basis:100%;width:100%;border-left:3px solid #c9394a;background:rgba(0,0,0,.22);border-radius:4px;padding:8px 12px;margin-top:6px;}
+@media(max-width:600px){ .trav-pick{flex:1 1 100%;} }
 </style>
 </head>
 <body>
@@ -872,7 +888,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.13.3';
+const APP_BUILD = '2026.11.13.4';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -3477,6 +3493,7 @@ function syncDrunkEffectMarker(p){
   }
 }
 function finalizeAssignment(pool){
+  delete ui.travPick;
   const shuffled = shuffle(pool);
   // Travellers added during setup keep their Traveller character; only everyone else gets a token.
   game.players.filter(p=>!isTravellerPlayer(p)).forEach((p,i)=>{
@@ -3569,18 +3586,42 @@ function refreshReview(){
   const l = document.getElementById('review-list'); if(l) l.innerHTML = reviewListHtml();
   const pl = document.getElementById('review-pills'); if(pl) pl.innerHTML = reviewPillsHtml();
 }
+// Which Traveller's cards are open: the one the Storyteller tapped, otherwise the first Traveller still without a character.
+function travPickOpenId(){
+  if(ui.travPick!==undefined) return ui.travPick;
+  const first = game.players.find(p=>isTravellerPlayer(p) && !p.character);
+  return first ? first.id : null;
+}
+function toggleTravPick(pid){ ui.travPick = travPickOpenId()===pid ? null : pid; refreshReview(); }
+function pickTraveller(pid, i){
+  const c = TRAVELLER_CHARACTERS[i]; if(!c) return;
+  if(game.players.some(x=>x.id!==pid && x.character===c.name)) return;
+  const p = game.players.find(x=>x.id===pid); if(!p) return;
+  p.character = c.name;                       // set first so the "next" lookup below sees it
+  const next = game.players.find(x=>isTravellerPlayer(x) && !x.character);
+  ui.travPick = next ? next.id : null;        // move on to the next Traveller who still needs one
+  setJoinedTravellerCharacter(pid, c.name);
+}
 function reviewListHtml(){
-  const usedTrav = new Set(game.players.filter(p=>p.character && TYPE_OF[p.character]==='traveller').map(p=>p.character));
   return game.players.map(p=>{
     if(isTravellerPlayer(p)){
       // A Traveller: only Traveller characters, plus the alignment (the Storyteller's call).
+      // The character is chosen from cards that show what each Traveller does (English + Arabic).
+      const cur = p.character ? TRAVELLER_LOOKUP[p.character] : null;
+      const open = travPickOpenId()===p.id;
+      const desc = c=>`<div class="tc-en">${escapeHtml(c.ability||'')}</div><div class="tc-ar" dir="rtl">${escapeHtml(c.abilityAr||'')}</div>`;
+      const cards = open ? `<div class="trav-cards">${TRAVELLER_CHARACTERS.map((c,i)=>{
+          const holder = game.players.find(x=>x.id!==p.id && x.character===c.name);
+          return `<button class="trav-card ${p.character===c.name?'sel':''}" ${holder?'disabled':''} onclick="pickTraveller('${p.id}', ${i})">
+            <div class="tc-hd"><span class="tc-name">${escapeHtml(c.name)}</span><span class="tc-namear" dir="rtl">${escapeHtml(c.nameAr||'')}</span></div>
+            ${desc(c)}${holder?`<div class="tc-taken">Taken by ${escapeHtml(holder.name)}</div>`:''}</button>`;
+        }).join('')}</div>` : (cur ? `<div class="trav-one">${desc(cur)}</div>` : '');
       return `
       <div class="seat-row" style="flex-wrap:wrap;border-color:${TYPE_COLORS.traveller};">
         <bdi style="min-width:110px;">${escapeHtml(p.name)}</bdi>
-        <select style="max-width:220px;${p.character?'':'border-color:var(--warn);'}" onchange="setJoinedTravellerCharacter('${p.id}', this.value)">
-          <option value="">Choose a Traveller...</option>
-          ${TRAVELLER_CHARACTERS.filter(c=>c.name===p.character || !usedTrav.has(c.name)).map(c=>`<option value="${c.name}" ${p.character===c.name?'selected':''}>${c.name}</option>`).join('')}
-        </select>
+        <button class="trav-pick" style="${p.character?'':'border-color:var(--warn);'}" onclick="toggleTravPick('${p.id}')" title="Show the Travellers and what each one does">
+          <span>${cur ? `${escapeHtml(cur.name)} <small>· ${escapeHtml(cur.nameAr||'')}</small>` : 'Choose a Traveller...'}</span><span>${open?'▴':'▾'}</span>
+        </button>
         <select style="max-width:110px;" onchange="setJoinedTravellerAlignment('${p.id}', this.value)">
           <option value="good" ${(p.alignmentOverride||'good')==='good'?'selected':''}>Good</option>
           <option value="evil" ${p.alignmentOverride==='evil'?'selected':''}>Evil</option>
@@ -3588,6 +3629,7 @@ function reviewListHtml(){
         <span class="tag traveller">traveller</span>
         ${TRAVELLER_CHARACTERS.length===0 ? `<span class="muted" style="font-size:12px;color:var(--warn);">This script has no Travellers built yet</span>` : ''}
         <button class="ghost small" style="margin-left:auto;" onclick="reviewMakeNormal('${p.id}')" title="Count this player as a normal player">🙂 Make normal player</button>
+        ${cards}
       </div>`;
     }
     const opts = reviewTypes().flatMap(type=>
@@ -3625,6 +3667,7 @@ function reviewMakeTraveller(pid){
   if(!p) return;
   p.character = null; p.isDrunk = false; p.drunkCover = null;
   p.wantsTraveller = true; p.alignmentOverride = 'good';
+  ui.travPick = pid;                          // open this player's Traveller cards straight away
   syncDrunkEffectMarker(p);
   reconcileBluffsWithDrunkCovers();
   saveGame(); appSyncSoon();
