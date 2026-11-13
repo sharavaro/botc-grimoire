@@ -872,7 +872,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.13.1';
+const APP_BUILD = '2026.11.13.2';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -2872,6 +2872,7 @@ screens['names'] = () => `
     <div class="row between">
       <span class="muted">${game.players.length} player${game.players.length===1?'':'s'} in the game</span>
       <div class="row">
+        <button class="ghost small" onclick="openTestGameModal()" style="border-color:#8a5fd6;" title="Play as every player yourself, each one in its own browser tab">🧪 Test game</button>
         ${game.players.length>0 ? `<button class="ghost small" onclick="resetAllPlayers()">Reset players</button>` : ''}
         <button class="primary" ${game.players.length<5?'disabled':''} onclick="pageTurnTransition(()=>go('tokens'))">Continue to token setup ›</button>
       </div>
@@ -5168,6 +5169,10 @@ function renderModal(){
         </div>
       </div>
     `;
+    return;
+  }
+  if(ui.modal.type==='testGame'){
+    host.innerHTML = testGameModalHtml();
     return;
   }
   if(ui.modal.type==='confirm'){
@@ -11889,6 +11894,73 @@ function appJoinRequestsHtml(){
 // Tabs must be opened directly inside the click (browsers block pop-ups opened later), so blank
 // tabs open first and are pointed at the player app once the room is ready.
 function appTestTabUrl(pid, slot){ return `${appPlayerUrl()}&as=${encodeURIComponent(pid)}&slot=${slot}&test=1`; }
+// ---- Test game: the Storyteller plays every seat alone, each player in its own browser tab ----
+const TEST_FALLBACK_NAMES = ['أحمد','محمد','علي','فهد','خالد','سالم','يوسف','عبدالله','ناصر','بدر','مشعل','طلال','سعود','حمد','جاسم','فيصل','عمر','سارة','نورة','مريم','فاطمة','دانة','ريم','هيا','لولوة'];
+function openTestGameModal(){
+  ui.modal = {type:'testGame', players: 8, travellers: 0, error: null};
+  renderModal();
+}
+function testGameModalHtml(){
+  const m = ui.modal;
+  return `<div class="modal-overlay" onclick="if(event.target===this) closeModal();">
+    <div class="modal" style="max-width:440px;">
+      <h3 style="margin-top:0;">🧪 Test game</h3>
+      <p class="muted" style="margin-top:-4px;">Creates test players so you can play every seat yourself. When you start the game, each player opens in its own browser tab.</p>
+      <div class="row" style="align-items:center;gap:10px;margin-top:10px;">
+        <label style="flex:1;">Number of players</label>
+        <input id="test-n" type="number" min="5" max="20" value="${m.players}" style="width:90px;" onkeydown="if(event.key==='Enter') confirmTestGame();">
+      </div>
+      <div class="row" style="align-items:center;gap:10px;margin-top:10px;">
+        <label style="flex:1;">How many of them are Travellers</label>
+        <input id="test-t" type="number" min="0" max="5" value="${m.travellers}" style="width:90px;" onkeydown="if(event.key==='Enter') confirmTestGame();">
+      </div>
+      <p class="muted" style="font-size:12px;margin:10px 0 0;">Names are picked at random from your regulars list. No phone numbers are attached, so nothing can reach a real person.${game.players.length ? ' <b style="color:var(--warn);">This replaces the ' + game.players.length + ' player' + (game.players.length===1?'':'s') + ' currently in the list.</b>' : ''}</p>
+      ${m.error ? `<p style="color:var(--warn);margin:8px 0 0;">${escapeHtml(m.error)}</p>` : ''}
+      <div class="row" style="justify-content:flex-end;margin-top:14px;">
+        <button class="ghost" onclick="closeModal()">Cancel</button>
+        <button class="primary" onclick="confirmTestGame()">Create test game</button>
+      </div>
+    </div></div>`;
+}
+function readTestGameFields(){
+  const n = document.getElementById('test-n'), t = document.getElementById('test-t');
+  return {players: n ? parseInt(n.value,10) : ui.modal.players, travellers: t ? parseInt(t.value,10) : ui.modal.travellers};
+}
+function confirmTestGame(){
+  const f = readTestGameFields();
+  const n = f.players, t = f.travellers || 0;
+  const fail = msg=>{ ui.modal = {type:'testGame', players: Number.isFinite(n) ? n : 8, travellers: Number.isFinite(t) ? t : 0, error: msg}; renderModal(); };
+  if(!Number.isInteger(n) || n<5 || n>20) return fail('Enter a number of players between 5 and 20.');
+  if(!Number.isInteger(t) || t<0 || t>5) return fail('Travellers must be between 0 and 5.');
+  if(n - t < 5) return fail(`With ${t} Traveller${t===1?'':'s'} you need at least ${5+t} players, so that 5 are normal players.`);
+  createTestGame(n, t);
+}
+function testGameNames(n){
+  const seen = new Set(); const out = [];
+  const take = list=>{ for(const raw of shuffle(list.slice())){ const name = String(raw||'').trim(); if(!name || seen.has(name.toLowerCase())) continue; seen.add(name.toLowerCase()); out.push(name); if(out.length>=n) return; } };
+  take((roster||[]).map(r=>r && r.name));
+  if(out.length<n) take(TEST_FALLBACK_NAMES);
+  for(let i=1; out.length<n; i++){ const name = 'لاعب '+i; if(!seen.has(name)){ seen.add(name); out.push(name); } }
+  return out;
+}
+function createTestGame(n, t){
+  if(appState.code) game.players.forEach(p=>{ if(appState.claims[appKey(p.id)]) appUnlinkPlayer(p.id).catch(()=>{}); });
+  const names = testGameNames(n);
+  game.players = names.map((name,i)=>{
+    const p = {id:'p-'+uid(), name, phone:'', seat:i, alive:true, ghostVoteUsed:false, character:null, isDrunk:false, drunkCover:null, markers:[], testPlayer:true};
+    if(i >= n - t){ p.wantsTraveller = true; p.alignmentOverride = 'good'; }
+    return p;
+  });
+  game.seatLocks = {}; game.players.forEach(p=>{ game.seatLocks[p.id] = true; });   // already seated: no seat to pick
+  game.seatingLayout = 'circle';
+  game.keepSeating = false;
+  game.testMode = true;
+  ui.modal = null;
+  saveGame();
+  renderModal(); render();
+  if(!appState.code && (FIREBASE_CONFIG || (typeof window!=='undefined' && window.BOTC_NET_FACTORY))) appStartRoomFromNames();
+  showInfo(`🧪 Test game ready: ${n} player${n===1?'':'s'}${t ? `, ${t} of them Traveller${t===1?'':'s'}` : ''}.\n\nContinue to token setup as usual. When you start the game, each player opens in its own browser tab — allow pop-ups for this site if Chrome asks.`);
+}
 function appTestModeOpenTabs(){
   if(!game || !game.testMode) return;
   const players = game.players.slice();
