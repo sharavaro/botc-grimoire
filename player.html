@@ -195,6 +195,23 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
 @media (prefers-reduced-motion:reduce){.win *{animation-duration:.01s!important;animation-delay:0s!important}}
 .win .ev .av img{width:100%;height:100%;object-fit:contain;display:block;border-radius:50%}
 .win .ev .dead{font-size:11px;color:#c8a5ab;margin-inline-start:6px}
+.ih{font-size:14px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.total{display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;color:var(--muted);margin-bottom:12px}.total b{color:var(--gold-bright,#e8c35a);font-size:20px}
+.counts{display:flex;justify-content:space-between;gap:6px}.cnt{flex:1;text-align:center}
+.cnt .o{width:54px;height:54px;border-radius:50%;margin:0 auto 5px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;border:3px solid;background:rgba(255,255,255,.03)}
+.cnt .t{font-size:12px}.cnt .e{font-size:10px;color:var(--muted);display:block}
+.cnt.tf .o{border-color:#4caf7a;color:#4caf7a;box-shadow:0 0 12px rgba(76,175,122,.25)}.cnt.os .o{border-color:#4a90d9;color:#4a90d9;box-shadow:0 0 12px rgba(74,144,217,.25)}
+.cnt.mn .o{border-color:#e8913a;color:#e8913a;box-shadow:0 0 12px rgba(232,145,58,.25)}.cnt.dm .o{border-color:#d6403a;color:#d6403a;box-shadow:0 0 12px rgba(214,64,58,.3)}
+.isep{height:1px;background:var(--line);margin:14px 0}
+.mates{display:flex;flex-direction:column;gap:8px}
+.mate{display:flex;align-items:center;gap:10px;background:rgba(74,18,24,.45);border:1px solid #7d1a28;border-radius:12px;padding:8px 10px}
+.mate .mt{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:21px;background:radial-gradient(circle at 35% 30%,#f4e7c2,#cdb98a);border:3px solid #d6403a;flex:none}
+.mate.min .mt{border-color:#e8913a}.mate b{font-size:16px}.mate span{display:block;font-size:12px;color:#ff9aa0}.mate i{margin-inline-start:auto;font-style:normal;font-size:11px;background:#5c0f1b;color:#ffd0d6;border-radius:9px;padding:3px 9px;white-space:nowrap}
+.bluffs{display:flex;justify-content:space-around;gap:8px}.bl{flex:1;text-align:center;cursor:pointer;min-width:0}
+.bl .bt{width:72px;height:72px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:34px;background:radial-gradient(circle at 35% 30%,#f4e7c2,#cdb98a);border:3px solid;box-shadow:0 3px 10px rgba(0,0,0,.4)}
+.bl b{font-size:14px;display:block}.bl small{font-size:10px;color:var(--muted);display:block}.bl.sel .bt{outline:3px solid var(--gold-bright,#e8c35a);outline-offset:2px}
+.blinfo{margin-top:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6}
+.tmr{font-size:11px;color:var(--muted);direction:ltr;display:inline-block}
 </style>
 </head>
 <body>
@@ -208,7 +225,7 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.11.13.1';
+const PLAYER_BUILD = '2026.11.13.3';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -228,7 +245,7 @@ let NET = null;
 const S = {
   room:null, uid:null, pid:null, stage:'loading', error:null, online:true,
   pub:null, script:null, icons:{}, priv:null,
-  tab:'role', roleShown:false, refTab:'chars', showEnglish:false,
+  tab:'role', roleShown:false, refTab:'chars', showEnglish:true,
   seenMsgs:{}, reads:{}, banner:null, confirmPid:null, unsubs:[], privUnsub:null,
   trav:{open:false, name:'', prefer:'', sent:false, unsub:null},
   notes:null, view:null, chat:{}, chatReadAt:0, chatUnsub:null, chatDraft:'',
@@ -390,9 +407,12 @@ async function playSfx(k){
   S.lastSfx = k;                       // (also lets the tests see what would have played)
   try{
     unlockAudio(); if(!AC) return;
+    // If the phone cannot play right now (no tap on the page yet), drop the sound. Starting it
+    // anyway would make it play later, on the player's next tap — e.g. on the eye icon.
+    if(AC.state!=='running') return;
     stopSfx(); sfxWant = k;
     const buf = await loadSfx(k);
-    if(!buf || sfxWant!==k) return;
+    if(!buf || sfxWant!==k || AC.state!=='running') return;
     sfxSrc = AC.createBufferSource(); sfxSrc.buffer = buf; sfxSrc.connect(AC.destination); sfxSrc.start();
   }catch(e){}
 }
@@ -499,7 +519,7 @@ function winStartFx(k){
 try{ if(document.addEventListener){ document.addEventListener('touchstart', unlockAudio, {passive:true}); document.addEventListener('click', unlockAudio); } }catch(e){}
 function playNudgeSound(){
   try{
-    unlockAudio(); if(!AC) return;
+    unlockAudio(); if(!AC || AC.state!=='running') return;   // never queue a sound for later
     const t = AC.currentTime;
     [[880,0],[1175,0.2],[880,0.4],[1175,0.6],[1568,0.8]].forEach(([f,d])=>{
       const o = AC.createOscillator(), g = AC.createGain();
@@ -869,8 +889,23 @@ function phaseLabel(){
   const p = S.pub;
   if(!p) return '';
   if(p.phase!=='play') return 'التحضير للعبة';
-  return p.subphase==='night' ? `🌙 الليلة <b>${p.nightNum}</b>` : `☀️ اليوم <b>${p.dayNum}</b>`;
+  return (p.subphase==='night' ? `🌙 الليلة <b>${p.nightNum}</b>` : `☀️ اليوم <b>${p.dayNum}</b>`) + timersSpanHtml();
 }
+/* ---------- timers: this day/night, and the whole game ---------- */
+function fmtDur(ms){
+  const sec = Math.max(0, Math.floor((ms||0)/1000));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), ss = sec%60;
+  const two = x=>String(x).padStart(2,'0');
+  return h ? `${h}:${two(m)}:${two(ss)}` : `${two(m)}:${two(ss)}`;
+}
+function timersText(){
+  const t = S.pub && S.pub.timers;
+  if(!t || !t.game) return '';
+  const end = t.end || Date.now();
+  return `⏱ ${fmtDur(end - (t.phase || t.game))} · 🕰 ${fmtDur(end - t.game)}`;
+}
+function timersSpanHtml(){ const x = timersText(); return x ? ` <span class="tmr" id="tmr" title="مدة هذه المرحلة · مدة اللعبة">${x}</span>` : ''; }
+try{ if(typeof setInterval==='function') setInterval(()=>{ try{ const e = document.getElementById('tmr'); if(e) e.textContent = timersText(); }catch(err){} }, 1000); }catch(e){}
 function sortedSeats(){
   const seats = Object.values((S.pub && S.pub.seats) || {});
   return seats.sort((a,b)=>((a.seat??999)-(b.seat??999)) || String(a.name).localeCompare(String(b.name)));
@@ -1240,7 +1275,33 @@ function roleTab(){
       ${role.ability ? `<div class="ability-en">${esc(role.ability)}</div>` : ''}
       <div class="muted" style="text-align:center;margin-top:14px;">اضغط لإخفاء الدور</div>
     </div>
-    ${role.text ? `<div class="card"><div class="muted" style="margin-bottom:6px;">رسالة الراوي</div><div class="msgtext">${fmt(role.text)}</div></div>` : ''}`;
+    ${role.info ? roleInfoCardHtml(role) : (role.text ? `<div class="card"><div class="muted" style="margin-bottom:6px;">رسالة الراوي</div><div class="msgtext">${fmt(role.text)}</div></div>` : '')}`;
+}
+/* The first-night information, drawn instead of written: count circles, team-mates by name only,
+   and — for the Demon — the three bluffs as tokens (tap one to read its ability). */
+function pickBluff(i){ S.bluffSel = S.bluffSel===i ? -1 : i; render(); }
+function roleInfoCardHtml(role){
+  const info = role.info || {};
+  const ch = info.chart || [];
+  const cnt = (k, n, ar, en)=>`<div class="cnt ${k}"><div class="o">${n===undefined?'':n}</div><div class="t">${ar}</div><div class="e en">${en}</div></div>`;
+  const team = info.team || [];
+  const TAG = {demon:'العفريت', minion:'تابع', lunatic:'المعتوه'};
+  const SUB = {demon:'هو العفريت', minion: role.type==='minion' ? 'تابع معك' : 'من أعوانك', lunatic:'يظن أنه العفريت (Lunatic)'};
+  const bluffs = info.bluffs || [];
+  const sel = (S.bluffSel!==undefined && S.bluffSel>=0 && bluffs[S.bluffSel]) ? bluffs[S.bluffSel] : null;
+  const selInfo = sel ? (charInfo(sel.char) || {}) : null;
+  const teamTitle = role.type==='minion' ? '😈 فريقك' : (role.type==='traveller' ? '😈 العفريت' : '😈 أعوانك');
+  return `<div class="card">
+    <div class="ih">🏘️ تشكيلة اللعبة</div>
+    <div class="total">عدد اللاعبين <b>${info.players===undefined?'':info.players}</b></div>
+    <div class="counts">${cnt('tf',ch[0],'قرويون','Townsfolk')}${cnt('os',ch[1],'غرباء','Outsiders')}${cnt('mn',ch[2],'أعوان','Minions')}${cnt('dm',ch[3],'عفاريت','Demon')}</div>
+    ${team.length ? `<div class="isep"></div><div class="ih">${teamTitle}</div>
+      <div class="mates">${team.map(m=>`<div class="mate ${m.tag==='demon'?'':'min'}"><div class="mt">${m.tag==='demon'?'👹':(m.tag==='lunatic'?'🌀':'😈')}</div><div><b><bdi>${esc(m.name)}</bdi></b><span>${SUB[m.tag]||''}</span></div><i>${TAG[m.tag]||''}</i></div>`).join('')}</div>` : ''}
+    ${bluffs.length ? `<div class="isep"></div><div class="ih">🎭 شخصيات التمويه <span style="font-weight:400;color:var(--muted);font-size:12px;">— ليست في اللعبة، يمكنك ادعاؤها</span></div>
+      <div class="bluffs">${bluffs.map((b,i)=>{ const ci = charInfo(b.char) || {}; return `<div class="bl ${S.bluffSel===i?'sel':''}" onclick="pickBluff(${i})"><div class="bt" style="border-color:${TYPE_COLORS[b.type]||'var(--gold)'};">${iconHtml(b.char)}</div><b>${esc(ci.nameAr||b.char)}</b><small class="en">${esc(b.char)}</small></div>`; }).join('')}</div>
+      ${sel ? `<div class="blinfo"><b>${esc(selInfo.nameAr||sel.char)}</b> <span class="en" style="color:var(--muted);font-size:12px;">${esc(sel.char)}</span><div>${esc(selInfo.abilityAr||'')}</div>${selInfo.ability ? `<div class="ability-en" style="margin-top:4px;">${esc(selInfo.ability)}</div>` : ''}</div>` : ''}
+      <p class="muted" style="font-size:11px;text-align:center;margin:8px 0 0;">اضغط على أي شخصية لقراءة قدرتها</p>` : ''}
+  </div>`;
 }
 function inboxTab(){
   const inbox = (S.priv && S.priv.inbox) || {};

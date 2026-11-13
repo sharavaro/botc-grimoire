@@ -585,34 +585,34 @@ const SCRIPTS = {
     label:'Trouble Brewing',
     characters: {
       townsfolk: [
-        {name:'Washerwoman', nameAr:'غسالة الملابس', ability:'First night: learn that one of two players is a specific Townsfolk.', abilityAr:'تبدأ اللعبة بمعرفة أن أحد لاعبين اثنين هو شخصية من القرويين.', firstNightOnly:true},
-        {name:'Librarian', nameAr:'أمين المكتبة', ability:'First night: learn that one of two players is a specific Outsider (or that none are in play).', abilityAr:'تبدأ اللعبة بمعرفة أن أحد لاعبين اثنين هو شخصية من الغرباء (أو أنه لا يوجد أي غرباء في اللعبة).', firstNightOnly:true},
-        {name:'Investigator', nameAr:'المحقق', ability:'First night: learn that one of two players is a specific Minion.', abilityAr:'تبدأ اللعبة بمعرفة أن أحد لاعبين اثنين هو من أعوان العفريت.', firstNightOnly:true},
-        {name:'Chef', nameAr:'الطباخ', ability:'First night: learn how many pairs of evil players sit next to each other.', abilityAr:'تبدأ اللعبة بمعرفة عدد أزواج اللاعبين الأشرار المتجاورين.', firstNightOnly:true},
-        {name:'Empath', nameAr:'الحدس', ability:'Each night: learn how many of your two living neighbours are evil.', abilityAr:'كل ليلة، تعرف عدد اللاعبين الأشرار من بين جاريك الاثنين الأحياء.'},
-        {name:'Fortune Teller', nameAr:'العراف', ability:'Each night: choose two players, learn if either is the Demon. One player (the red herring) always registers as a Demon to you.', abilityAr:'كل ليلة، اختر لاعبين اثنين: تعرف إذا كان أحدهما هو العفريت (هناك لاعب من أهل المدينة يظهر لك دائمًا كعفريت).'},
-        {name:'Undertaker', nameAr:'حامل النعش', ability:'Each night except the first: learn the character of whoever was executed today.', abilityAr:'كل ليلة (ليس في الليلة الأولى)، تعرف أي شخصية ماتت بالإعدام اليوم.'},
-        {name:'Monk', nameAr:'الراهب', ability:'Each night except the first: choose a player (not yourself) to protect from the Demon tonight.', abilityAr:'كل ليلة (ليس في الليلة الأولى)، اختر لاعبًا (ليس أنت): يكون محميًا من العفريت هذه الليلة.'},
-        {name:'Ravenkeeper', nameAr:'صاحب الغراب', ability:'If you die at night, you wake to choose a player and learn their character.', abilityAr:'إذا مِتَّ في الليل، تُوقَظ لاختيار لاعب لتعرف شخصيته.'},
-        {name:'Virgin', nameAr:'العذراء', ability:'The first time you are nominated, if the nominator is a Townsfolk, they are executed immediately.', abilityAr:'في أول مرة يتم ترشيحك فيها، إذا كان المُرشِح من القرويين، يُعدم فورًا.'},
-        {name:'Slayer', nameAr:'القاتل', ability:'Once per game, by day, publicly choose a player. If they are the Demon, they die.', abilityAr:'اختر لاعبًا لتقتله في النهار (مرة واحدة فقط)، إذا كان هو العفريت فإنه يموت.'},
-        {name:'Soldier', nameAr:'الجندي', ability:'You cannot be killed by the Demon.', abilityAr:'أنت محمي من العفريت في الليل.'},
-        {name:'Mayor', nameAr:'المختار', ability:'If only 3 players live and no execution happens, good wins. A night kill on you may be redirected to another player.', abilityAr:'إذا بقي 3 لاعبين أحياء ولم يحدث إعدام، فريقك يفوز. إذا مِتَّ في الليل، قد يموت لاعب آخر بدلاً منك.'},
+        {name:'Washerwoman', nameAr:'غسالة الملابس', ability:'You start knowing that 1 of 2 players is a particular Townsfolk.', abilityAr:'تبدأ اللعبة بمعرفة أن أحد لاعبين اثنين هو شخصية من القرويين.', firstNightOnly:true},
+        {name:'Librarian', nameAr:'أمين المكتبة', ability:'You start knowing that 1 of 2 players is a particular Outsider. (Or that zero are in play.)', abilityAr:'تبدأ اللعبة بمعرفة أن أحد لاعبين اثنين هو شخصية من الغرباء (أو أنه لا يوجد أي غرباء في اللعبة).', firstNightOnly:true},
+        {name:'Investigator', nameAr:'المحقق', ability:'You start knowing that 1 of 2 players is a particular Minion.', abilityAr:'تبدأ اللعبة بمعرفة أن أحد لاعبين اثنين هو من أعوان العفريت.', firstNightOnly:true},
+        {name:'Chef', nameAr:'الطباخ', ability:'You start knowing how many pairs of evil players there are.', abilityAr:'تبدأ اللعبة بمعرفة عدد أزواج اللاعبين الأشرار المتجاورين.', firstNightOnly:true},
+        {name:'Empath', nameAr:'الحدس', ability:'Each night, you learn how many of your 2 alive neighbors are evil.', abilityAr:'كل ليلة، تعرف عدد اللاعبين الأشرار من بين جاريك الاثنين الأحياء.'},
+        {name:'Fortune Teller', nameAr:'العراف', ability:'Each night, choose 2 players: you learn if either is a Demon. There is a good player that registers as a Demon to you.', abilityAr:'كل ليلة، اختر لاعبين اثنين: تعرف إذا كان أحدهما هو العفريت (هناك لاعب من أهل المدينة يظهر لك دائمًا كعفريت).'},
+        {name:'Undertaker', nameAr:'حامل النعش', ability:'Each night*, you learn which character died by execution today.', abilityAr:'كل ليلة (ليس في الليلة الأولى)، تعرف أي شخصية ماتت بالإعدام اليوم.'},
+        {name:'Monk', nameAr:'الراهب', ability:'Each night*, choose a player (not yourself): they are safe from the Demon tonight.', abilityAr:'كل ليلة (ليس في الليلة الأولى)، اختر لاعبًا (ليس أنت): يكون محميًا من العفريت هذه الليلة.'},
+        {name:'Ravenkeeper', nameAr:'صاحب الغراب', ability:'If you die at night, you are woken to choose a player: you learn their character.', abilityAr:'إذا مِتَّ في الليل، تُوقَظ لاختيار لاعب لتعرف شخصيته.'},
+        {name:'Virgin', nameAr:'العذراء', ability:'The 1st time you are nominated, if the nominator is a Townsfolk, they are executed immediately.', abilityAr:'في أول مرة يتم ترشيحك فيها، إذا كان المُرشِح من القرويين، يُعدم فورًا.'},
+        {name:'Slayer', nameAr:'القاتل', ability:'Once per game, during the day, publicly choose a player: if they are the Demon, they die.', abilityAr:'اختر لاعبًا لتقتله في النهار (مرة واحدة فقط)، إذا كان هو العفريت فإنه يموت.'},
+        {name:'Soldier', nameAr:'الجندي', ability:'You are safe from the Demon.', abilityAr:'أنت محمي من العفريت في الليل.'},
+        {name:'Mayor', nameAr:'المختار', ability:'If only 3 players live & no execution occurs, your team wins. If you die at night, another player might die instead.', abilityAr:'إذا بقي 3 لاعبين أحياء ولم يحدث إعدام، فريقك يفوز. إذا مِتَّ في الليل، قد يموت لاعب آخر بدلاً منك.'},
       ],
       outsider: [
-        {name:'Butler', nameAr:'الخادم', ability:'Each night: choose a player. Tomorrow you may only vote if that player votes too.', abilityAr:'كل ليلة، اختر لاعبًا (ليس أنت) ليكون سيدك: غدًا، يمكنك التصويت فقط إذا كان سيدك سيصوت.'},
-        {name:'Drunk', nameAr:'السكير', ability:'Believes they are a Townsfolk and has that ability — but it does not actually work.', abilityAr:'لا تعرف أنك السكير. تعتقد أنك شخصية من القرويين، لكنك لست كذلك.', hidden:true},
-        {name:'Recluse', nameAr:'المنعزل', ability:'May register as evil, and as a Minion or Demon, even though they are not.', abilityAr:'تظهر للاعبين كعفريت أو أحد أعوانه.'},
-        {name:'Saint', nameAr:'القديس', ability:'If you are executed, your team loses the game immediately.', abilityAr:'إذا مِتَّ بالإعدام (المحاكمة)، فريقك يخسر.'},
+        {name:'Butler', nameAr:'الخادم', ability:'Each night, choose a player (not yourself): tomorrow, you may only vote if they are voting too.', abilityAr:'كل ليلة، اختر لاعبًا (ليس أنت) ليكون سيدك: غدًا، يمكنك التصويت فقط إذا كان سيدك سيصوت.'},
+        {name:'Drunk', nameAr:'السكير', ability:'You do not know you are the Drunk. You think you are a Townsfolk character, but you are not.', abilityAr:'لا تعرف أنك السكير. تعتقد أنك شخصية من القرويين، لكنك لست كذلك.', hidden:true},
+        {name:'Recluse', nameAr:'المنعزل', ability:'You might register as evil & as a Minion or Demon, even if dead.', abilityAr:'تظهر للاعبين كعفريت أو أحد أعوانه.'},
+        {name:'Saint', nameAr:'القديس', ability:'If you die by execution, your team loses.', abilityAr:'إذا مِتَّ بالإعدام (المحاكمة)، فريقك يخسر.'},
       ],
       minion: [
-        {name:'Poisoner', nameAr:'المسمم', ability:'Each night: choose a player. Their ability malfunctions until dusk tomorrow.', abilityAr:'كل ليلة، اختر لاعبًا ليتم تسميمه هذه الليلة ويوم الغد.'},
-        {name:'Spy', nameAr:'الجاسوس', ability:'Each night: sees the full grimoire. May register as good, and as a Townsfolk or Outsider.', abilityAr:'كل ليلة تستطيع أن تطلع على الكتاب، وتستطيع أن تظهر للاعبين الآخرين كقروي أو من الغرباء.'},
-        {name:'Scarlet Woman', nameAr:'المرأة القرمزية', ability:'If 5+ players are alive and the Demon dies, you become the Demon.', abilityAr:'إذا كان هناك 5 لاعبين أو أكثر أحياء ومات العفريت، تتحول إلى العفريت (المسافرون لا يحتسبون).'},
-        {name:'Baron', nameAr:'البارون', ability:'At setup, adds 2 extra Outsiders to the game (and removes 2 Townsfolk).', abilityAr:'يوجد غرباء إضافيون في اللعبة (+2).'},
+        {name:'Poisoner', nameAr:'المسمم', ability:'Each night, choose a player: they are poisoned tonight and tomorrow day.', abilityAr:'كل ليلة، اختر لاعبًا ليتم تسميمه هذه الليلة ويوم الغد.'},
+        {name:'Spy', nameAr:'الجاسوس', ability:'Each night, you see the Grimoire. You might register as good & as a Townsfolk or Outsider, even if dead.', abilityAr:'كل ليلة تستطيع أن تطلع على الكتاب، وتستطيع أن تظهر للاعبين الآخرين كقروي أو من الغرباء.'},
+        {name:'Scarlet Woman', nameAr:'المرأة القرمزية', ability:'If there are 5 or more players alive & the Demon dies, you become the Demon. (Travellers don\'t count.)', abilityAr:'إذا كان هناك 5 لاعبين أو أكثر أحياء ومات العفريت، تتحول إلى العفريت (المسافرون لا يحتسبون).'},
+        {name:'Baron', nameAr:'البارون', ability:'There are extra Outsiders in play. [+2 Outsiders]', abilityAr:'يوجد غرباء إضافيون في اللعبة (+2).'},
       ],
       demon: [
-        {name:'Imp', nameAr:'إمب', ability:'Each night except the first: choose a player, they die. May choose self — a Minion becomes the Imp instead.', abilityAr:'في كل ليلة تقتل لاعبًا، إذا قتلت نفسك فإن أحد أعوانك يصبح هو العفريت الجديد.'},
+        {name:'Imp', nameAr:'إمب', ability:'Each night*, choose a player: they die. If you kill yourself this way, a Minion becomes the Imp.', abilityAr:'في كل ليلة تقتل لاعبًا، إذا قتلت نفسك فإن أحد أعوانك يصبح هو العفريت الجديد.'},
       ],
     },
     firstNightOrder: ['Bureaucrat','Thief','Poisoner','Washerwoman','Librarian','Investigator','Chef','Empath','Fortune Teller','Butler','Spy'],
@@ -622,37 +622,37 @@ const SCRIPTS = {
     label:'Sects & Violets',
     characters: {
       townsfolk: [
-        {name:'Clockmaker', nameAr:'صانع الساعات', ability:'You start knowing how many steps from the Demon to the nearest Minion.', abilityAr:'تبدأ اللعبة بمعرفة عدد الخطوات بين العفريت وأقرب أعوانه.', firstNightOnly:true},
-        {name:'Savant', nameAr:'النابغة', ability:'Each day, you may visit the Storyteller to learn 2 things in private: one true, one false.', abilityAr:'في كل يوم، يخبرك راوي القصة معلومتين بشكل سري: معلومة صحيحة وأخرى خاطئة.', dayAbility:true},
-        {name:'Dreamer', nameAr:'الحالم', ability:'Each night, choose a player (not yourself or a Traveller): you learn 1 good and 1 evil character, 1 of which is correct.', abilityAr:'كل ليلة، اختر لاعبًا (ليس نفسك أو أحد المسافرين): ستعرف شخصية خيرة وأخرى شريرة، إحداهما صحيحة.'},
-        {name:'Snake Charmer', nameAr:'ساحر الثعابين', ability:'Each night, choose a living player: if they are the Demon, you swap characters and teams, and they become poisoned.', abilityAr:'كل ليلة، اختر لاعبًا على قيد الحياة إذا كان هو العفريت فإنكما تتبادلان الأدوار والأفرقة ويصبح هو مسمما.'},
+        {name:'Clockmaker', nameAr:'صانع الساعات', ability:'You start knowing how many steps from the Demon to its nearest Minion.', abilityAr:'تبدأ اللعبة بمعرفة عدد الخطوات بين العفريت وأقرب أعوانه.', firstNightOnly:true},
+        {name:'Savant', nameAr:'النابغة', ability:'Each day, you may visit the Storyteller to learn 2 things in private: 1 is true & 1 is false.', abilityAr:'في كل يوم، يخبرك راوي القصة معلومتين بشكل سري: معلومة صحيحة وأخرى خاطئة.', dayAbility:true},
+        {name:'Dreamer', nameAr:'الحالم', ability:'Each night, choose a player (not yourself or Travellers): you learn 1 good & 1 evil character, 1 of which is correct.', abilityAr:'كل ليلة، اختر لاعبًا (ليس نفسك أو أحد المسافرين): ستعرف شخصية خيرة وأخرى شريرة، إحداهما صحيحة.'},
+        {name:'Snake Charmer', nameAr:'ساحر الثعابين', ability:'Each night, choose an alive player: a chosen Demon swaps characters & alignments with you & is then poisoned.', abilityAr:'كل ليلة، اختر لاعبًا على قيد الحياة إذا كان هو العفريت فإنكما تتبادلان الأدوار والأفرقة ويصبح هو مسمما.'},
         {name:'Mathematician', nameAr:'عالم الرياضيات', ability:'Each night, you learn how many players\' abilities worked abnormally (since dawn) due to another character\'s ability.', abilityAr:'كل ليلة، تعرف عدد اللاعبين الذين عملت قدراتهم بشكل غير طبيعي (منذ الفجر) بسبب قدرة شخصية أخرى.'},
-        {name:'Flowergirl', nameAr:'بائعة الزهور', ability:'Each night except the first, you learn if the Demon voted today.', abilityAr:'كل ليلة* تعرف ما إذا كان هناك عفريت قد صوت اليوم.'},
-        {name:'Town Crier', nameAr:'منادي البلدة', ability:'Each night except the first, you learn if a Minion nominated today.', abilityAr:'كل ليلة*، تعرف إذا كان أحد الأعوان قد رشح لاعبًا اليوم.'},
-        {name:'Oracle', nameAr:'العراف', ability:'Each night except the first, you learn how many dead players are evil.', abilityAr:'كل ليلة*، تعرف عدد الأموات من فريق الشر.'},
-        {name:'Seamstress', nameAr:'الخياطة', ability:'Once per game, at night, choose two players (not yourself): you learn if they are the same team.', abilityAr:'مرة واحدة في اللعبة، في الليل، اختر لاعبين اثنين (ليس نفسك): تعرف ما إذا كانا من نفس الفريق.', onceOnly:true},
-        {name:'Philosopher', nameAr:'الفيلسوف', ability:'Once per game, at night, choose a good character: gain that ability. If in play, that character becomes drunk.', abilityAr:'مرة واحدة في اللعبة، في الليل، اختر شخصية خيرة: تكتسب قدرتها. إذا كانت هذه الشخصية موجودة في اللعبة، تصبح مخمورة.', onceOnly:true},
-        {name:'Artist', nameAr:'الفنان', ability:'Once per game, by day, privately ask the Storyteller a yes/no question.', abilityAr:'مرة واحدة في اللعبة، خلال النهار، اسأل راوي القصة سؤالًا بشكل سري، تكون اجابته بنعم أو لا.', onceOnly:true, dayAbility:true},
-        {name:'Juggler', nameAr:'البهلوان', ability:'On your first day, publicly guess up to 5 players\' characters. That night, you learn how many you got right.', abilityAr:'في يومك الأول، خمّن علنًا ما يصل إلى 5 شخصيات لاعبين. في تلك الليلة، تعرف عدد التخمينات الصحيحة.'},
-        {name:'Sage', nameAr:'الحكيم', ability:'If the Demon kills you, you learn that it is one of two players.', abilityAr:'إذا قتلك العفريت، تعرف أنه أحد لاعبين اثنين محددين.'},
+        {name:'Flowergirl', nameAr:'بائعة الزهور', ability:'Each night*, you learn if a Demon voted today.', abilityAr:'كل ليلة* تعرف ما إذا كان هناك عفريت قد صوت اليوم.'},
+        {name:'Town Crier', nameAr:'منادي البلدة', ability:'Each night*, you learn if a Minion nominated today.', abilityAr:'كل ليلة*، تعرف إذا كان أحد الأعوان قد رشح لاعبًا اليوم.'},
+        {name:'Oracle', nameAr:'العراف', ability:'Each night*, you learn how many dead players are evil.', abilityAr:'كل ليلة*، تعرف عدد الأموات من فريق الشر.'},
+        {name:'Seamstress', nameAr:'الخياطة', ability:'Once per game, at night, choose 2 players (not yourself): you learn if they are the same alignment.', abilityAr:'مرة واحدة في اللعبة، في الليل، اختر لاعبين اثنين (ليس نفسك): تعرف ما إذا كانا من نفس الفريق.', onceOnly:true},
+        {name:'Philosopher', nameAr:'الفيلسوف', ability:'Once per game, at night, choose a good character: gain that ability. If this character is in play, they are drunk.', abilityAr:'مرة واحدة في اللعبة، في الليل، اختر شخصية خيرة: تكتسب قدرتها. إذا كانت هذه الشخصية موجودة في اللعبة، تصبح مخمورة.', onceOnly:true},
+        {name:'Artist', nameAr:'الفنان', ability:'Once per game, during the day, privately ask the Storyteller any yes/no question.', abilityAr:'مرة واحدة في اللعبة، خلال النهار، اسأل راوي القصة سؤالًا بشكل سري، تكون اجابته بنعم أو لا.', onceOnly:true, dayAbility:true},
+        {name:'Juggler', nameAr:'البهلوان', ability:'On your 1st day, publicly guess up to 5 players\' characters. That night, you learn how many you got correct.', abilityAr:'في يومك الأول، خمّن علنًا ما يصل إلى 5 شخصيات لاعبين. في تلك الليلة، تعرف عدد التخمينات الصحيحة.'},
+        {name:'Sage', nameAr:'الحكيم', ability:'If the Demon kills you, you learn that it is 1 of 2 players.', abilityAr:'إذا قتلك العفريت، تعرف أنه أحد لاعبين اثنين محددين.'},
       ],
       outsider: [
-        {name:'Mutant', nameAr:'المسخ', ability:'If you are "mad" about being an Outsider, you might be executed for it.', abilityAr:'إذا كنت (مجنونا) بشأن كونك من الغرباء، قد يتم اعدامك.'},
-        {name:'Sweetheart', nameAr:'العشيق', ability:'When you die, 1 player becomes drunk.', abilityAr:'عندما تموت، يصبح أحد اللاعبين مخمورا.'},
-        {name:'Barber', nameAr:'الحلاق', ability:'If you die, the Demon may (that night) choose 2 players to swap characters.', abilityAr:'إذا مت هذا اليوم أو هذه الليلة، يمكن للشيطان أن يختار لاعبين اثنين (ليس عفريتا آخر) ليتبادلا شخصيتيهما.'},
-        {name:'Klutz', nameAr:'الأخرق', ability:'When you learn that you died, publicly choose a player: if they are evil, your team loses.', abilityAr:'عندما تعرف أنك مت، اختر علنًا لاعبًا حيًا: إذا كان شريرًا، يخسر فريقك.'},
+        {name:'Mutant', nameAr:'المسخ', ability:'If you are “mad” about being an Outsider, you might be executed.', abilityAr:'إذا كنت (مجنونا) بشأن كونك من الغرباء، قد يتم اعدامك.'},
+        {name:'Sweetheart', nameAr:'العشيق', ability:'When you die, 1 player is drunk from now on.', abilityAr:'عندما تموت، يصبح أحد اللاعبين مخمورا.'},
+        {name:'Barber', nameAr:'الحلاق', ability:'If you died today or tonight, the Demon may choose 2 players (not another Demon) to swap characters.', abilityAr:'إذا مت هذا اليوم أو هذه الليلة، يمكن للشيطان أن يختار لاعبين اثنين (ليس عفريتا آخر) ليتبادلا شخصيتيهما.'},
+        {name:'Klutz', nameAr:'الأخرق', ability:'When you learn that you died, publicly choose 1 alive player: if they are evil, your team loses.', abilityAr:'عندما تعرف أنك مت، اختر علنًا لاعبًا حيًا: إذا كان شريرًا، يخسر فريقك.'},
       ],
       minion: [
-        {name:'Witch', nameAr:'الساحرة', ability:'Each night, choose a player: if they nominate tomorrow, they die. If only 3 players live, you lose this ability.', abilityAr:'كل ليلة، اختر لاعبًا: إذا رشح لاعبًا غدًا، يموت. إذا بقي 3 لاعبين فقط أحياء، تفقد هذه القدرة.'},
-        {name:'Cerenovus', nameAr:'سيرينوفس', ability:'Each night, choose a player and a good character: they are "mad" they are this character tomorrow, or might be executed.', abilityAr:'كل ليلة، اختر لاعبًا وشخصية خيرة: يجب أن يتصرف هذا اللاعب كهذه الشخصية (مجنون) غدًا، وإلا فقد يُعدم.'},
-        {name:'Pit-Hag', nameAr:'الشمطاء', ability:'Each night except the first, choose a player and a character not in play: they become that character. If a Demon is chosen, tonight\'s deaths are arbitrary.', abilityAr:'كل ليلة*، اختر لاعبًا وشخصية ليصبحها (بشرط ألا تكون الشخصية موجودة في هذه اللعبة)، إذا كانت الشخصية المختارة عفريتا، فعمليات القتل هذه الليلة تكون عشوائية.'},
-        {name:'Evil Twin', nameAr:'التوأم الشرير', ability:'You and a player of the other team know each other. If the good player is executed, evil wins. Good cannot win while you both live.', abilityAr:'أنت ولاعب من الفريق الأخر تعرفون بعضكم. إذا تم إعدام اللاعب الخير، يفوز الشر. لا يمكن للخير أن ينتصر إذا بقي كلاكما حيا.'},
+        {name:'Witch', nameAr:'الساحرة', ability:'Each night, choose a player: if they nominate tomorrow, they die. If just 3 players live, you lose this ability.', abilityAr:'كل ليلة، اختر لاعبًا: إذا رشح لاعبًا غدًا، يموت. إذا بقي 3 لاعبين فقط أحياء، تفقد هذه القدرة.'},
+        {name:'Cerenovus', nameAr:'سيرينوفس', ability:'Each night, choose a player & a good character: they are “mad” they are this character tomorrow, or might be executed.', abilityAr:'كل ليلة، اختر لاعبًا وشخصية خيرة: يجب أن يتصرف هذا اللاعب كهذه الشخصية (مجنون) غدًا، وإلا فقد يُعدم.'},
+        {name:'Pit-Hag', nameAr:'الشمطاء', ability:'Each night*, choose a player & a character they become (if not in play). If a Demon is made, deaths tonight are arbitrary.', abilityAr:'كل ليلة*، اختر لاعبًا وشخصية ليصبحها (بشرط ألا تكون الشخصية موجودة في هذه اللعبة)، إذا كانت الشخصية المختارة عفريتا، فعمليات القتل هذه الليلة تكون عشوائية.'},
+        {name:'Evil Twin', nameAr:'التوأم الشرير', ability:'You & an opposing player know each other. If the good player is executed, evil wins. Good can\'t win if you both live.', abilityAr:'أنت ولاعب من الفريق الأخر تعرفون بعضكم. إذا تم إعدام اللاعب الخير، يفوز الشر. لا يمكن للخير أن ينتصر إذا بقي كلاكما حيا.'},
       ],
       demon: [
-        {name:'Fang Gu', nameAr:'فانغ غو', ability:'Each night except the first, choose a player: they die. The first Outsider killed becomes an evil Fang Gu instead, and you die. [+1 Outsider]', abilityAr:'كل ليلة* اختر لاعبًا تقتله. أول لاعب من الغرباء تقتله يصبح هو فانغ غو وتموت أنت. [الغرباء +1]', setupEffect:{from:'townsfolk', to:'outsider', count:1}},
-        {name:'No Dashii', nameAr:'نو داشي', ability:'Each night except the first, choose a player: they die. Your 2 Townsfolk neighbors are poisoned.', abilityAr:'كل ليلة*، اختر لاعبًا: يموت. جيرانك الاثنان القرويان يصابون بالتسمم.'},
-        {name:'Vigormortis', nameAr:'فيغورمورتيس', ability:'Each night except the first, choose a player: they die. Minions you kill keep their ability, and poison a Townsfolk neighbor. [-1 Outsider]', abilityAr:'كل ليلة*، اختر لاعبًا: يموت. الأعوان الذين تقتلهم تبقى قدراتهم ويسمم أحد جيرانهم القرويين. [الغرباء -1]', setupEffect:{from:'outsider', to:'townsfolk', count:1}},
-        {name:'Vortox', nameAr:'فورتكس', ability:'Each night except the first, choose a player: they die. Townsfolk abilities yield false information. If no execution occurs, evil wins.', abilityAr:'كل ليلة*، اختر لاعبًا: يموت. قدرات القرويين تقدم معلومات خاطئة. إذا لم يتم اعدام أي لاعب في أي يوم، ينتصر الشر.'},
+        {name:'Fang Gu', nameAr:'فانغ غو', ability:'Each night*, choose a player: they die. The 1st Outsider this kills becomes an evil Fang Gu & you die instead. [+1 Outsider]', abilityAr:'كل ليلة* اختر لاعبًا تقتله. أول لاعب من الغرباء تقتله يصبح هو فانغ غو وتموت أنت. [الغرباء +1]', setupEffect:{from:'townsfolk', to:'outsider', count:1}},
+        {name:'No Dashii', nameAr:'نو داشي', ability:'Each night*, choose a player: they die. Your 2 Townsfolk neighbors are poisoned.', abilityAr:'كل ليلة*، اختر لاعبًا: يموت. جيرانك الاثنان القرويان يصابون بالتسمم.'},
+        {name:'Vigormortis', nameAr:'فيغورمورتيس', ability:'Each night*, choose a player: they die. Minions you kill keep their ability & poison 1 Townsfolk neighbor. [-1 Outsider]', abilityAr:'كل ليلة*، اختر لاعبًا: يموت. الأعوان الذين تقتلهم تبقى قدراتهم ويسمم أحد جيرانهم القرويين. [الغرباء -1]', setupEffect:{from:'outsider', to:'townsfolk', count:1}},
+        {name:'Vortox', nameAr:'فورتكس', ability:'Each night*, choose a player: they die. Townsfolk abilities yield false info. Each day, if no-one is executed, evil wins.', abilityAr:'كل ليلة*، اختر لاعبًا: يموت. قدرات القرويين تقدم معلومات خاطئة. إذا لم يتم اعدام أي لاعب في أي يوم، ينتصر الشر.'},
       ],
     },
     firstNightOrder: ['Barista','Philosopher','Snake Charmer','Evil Twin','Witch','Cerenovus','Clockmaker','Dreamer','Seamstress','Mathematician'],
@@ -662,37 +662,37 @@ const SCRIPTS = {
     label:'Bad Moon Rising',
     characters: {
       townsfolk: [
-        {name:'Grandmother', nameAr:'الجدة', ability:'First night: learn a good player and their character. If the Demon kills that player, you die too.', abilityAr:'تبدأ اللعبة بمعرفة لاعب خيّر وشخصيته. إذا قتله العفريت، تموت أنت أيضًا.', firstNightOnly:true},
-        {name:'Sailor', nameAr:'البحار', ability:'Each night, choose a living player: either you or they become drunk until dusk. You cannot die at night.', abilityAr:'كل ليلة، اختر لاعبًا حيًا: يصبح أحدكما (أنت أو هو) مخمورًا حتى الغسق. لا يمكن أن تموت في الليل.'},
-        {name:'Chambermaid', nameAr:'الخادمة', ability:'Each night, choose two living players (not yourself): learn how many of them woke tonight due to their ability.', abilityAr:'كل ليلة، اختر لاعبين حيين اثنين (ليس نفسك): تعرف كم منهما استيقظ هذه الليلة بسبب قدرته.'},
-        {name:'Exorcist', nameAr:'طارد الأرواح', ability:'Each night except the first, choose a player (different to last night): if they are the Demon, they learn who exorcised them and do not act tonight.', abilityAr:'كل ليلة*، اختر لاعبًا (غير من اخترته الليلة السابقة): إذا كان هو العفريت، يعرف من طارد روحه ولا يستخدم قدرته هذه الليلة.'},
-        {name:'Innkeeper', nameAr:'صاحب الحانة', ability:'Each night except the first, choose two players: they cannot die tonight, but one of them is drunk until dusk.', abilityAr:'كل ليلة*، اختر لاعبين اثنين: لا يمكن أن يموتا هذه الليلة، لكن أحدهما يصبح مخمورًا حتى الغسق.'},
-        {name:'Gambler', nameAr:'المقامر', ability:'Each night except the first, choose a player and guess their character: if you guess wrong, you die.', abilityAr:'كل ليلة*، اختر لاعبًا وخمّن شخصيته: إذا كان تخمينك خاطئًا، تموت.'},
-        {name:'Gossip', nameAr:'النمام', ability:'Each day, you may make a public statement. If it is true, a player dies that night.', abilityAr:'في كل يوم، يمكنك الإدلاء بتصريح علني. إذا كان صحيحًا، يموت أحد اللاعبين تلك الليلة.', dayAbility:true},
-        {name:'Courtier', nameAr:'الصديق المقرب', ability:'Once per game, at night, choose a character: if in play, that character\'s player is drunk for the next 3 days and nights.', abilityAr:'مرة واحدة في اللعبة، في الليل، اختر شخصية: إذا كانت موجودة في اللعبة، يصبح صاحبها مخمورًا لثلاثة أيام وثلاث ليالٍ قادمة.', onceOnly:true},
-        {name:'Professor', nameAr:'البروفيسور', ability:'Once per game, at night except the first, choose a dead player: if they are a Townsfolk, they are resurrected.', abilityAr:'مرة واحدة في اللعبة، في إحدى الليالي (ليس الأولى)، اختر لاعبًا ميتًا: إذا كان من القرويين، يُبعث حيًا من جديد.', onceOnly:true},
-        {name:'Minstrel', nameAr:'العازف', ability:'When a Minion dies by execution, all other players are drunk until dusk the next day.', abilityAr:'عندما يموت أحد الأعوان بالإعدام، يصبح جميع اللاعبين الآخرين مخمورين حتى غسق اليوم التالي.'},
-        {name:'Tea Lady', nameAr:'سيدة الشاي', ability:'If both of your living neighbours are good, they cannot die.', abilityAr:'إذا كان جاراك الأحياء كلاهما من الأخيار، لا يمكن أن يموتا.'},
+        {name:'Grandmother', nameAr:'الجدة', ability:'You start knowing a good player & their character. If the Demon kills them, you die too.', abilityAr:'تبدأ اللعبة بمعرفة لاعب خيّر وشخصيته. إذا قتله العفريت، تموت أنت أيضًا.', firstNightOnly:true},
+        {name:'Sailor', nameAr:'البحار', ability:'Each night, choose an alive player: either you or they are drunk until dusk. You can\'t die.', abilityAr:'كل ليلة، اختر لاعبًا حيًا: يصبح أحدكما (أنت أو هو) مخمورًا حتى الغسق. لا يمكن أن تموت في الليل.'},
+        {name:'Chambermaid', nameAr:'الخادمة', ability:'Each night, choose 2 alive players (not yourself): you learn how many woke tonight due to their ability.', abilityAr:'كل ليلة، اختر لاعبين حيين اثنين (ليس نفسك): تعرف كم منهما استيقظ هذه الليلة بسبب قدرته.'},
+        {name:'Exorcist', nameAr:'طارد الأرواح', ability:'Each night*, choose a player (different to last night): the Demon, if chosen, learns who you are then doesn\'t wake tonight.', abilityAr:'كل ليلة*، اختر لاعبًا (غير من اخترته الليلة السابقة): إذا كان هو العفريت، يعرف من طارد روحه ولا يستخدم قدرته هذه الليلة.'},
+        {name:'Innkeeper', nameAr:'صاحب الحانة', ability:'Each night*, choose 2 players: they can\'t die tonight, but 1 is drunk until dusk.', abilityAr:'كل ليلة*، اختر لاعبين اثنين: لا يمكن أن يموتا هذه الليلة، لكن أحدهما يصبح مخمورًا حتى الغسق.'},
+        {name:'Gambler', nameAr:'المقامر', ability:'Each night*, choose a player & guess their character: if you guess wrong, you die.', abilityAr:'كل ليلة*، اختر لاعبًا وخمّن شخصيته: إذا كان تخمينك خاطئًا، تموت.'},
+        {name:'Gossip', nameAr:'النمام', ability:'Each day, you may make a public statement. Tonight, if it was true, a player dies.', abilityAr:'في كل يوم، يمكنك الإدلاء بتصريح علني. إذا كان صحيحًا، يموت أحد اللاعبين تلك الليلة.', dayAbility:true},
+        {name:'Courtier', nameAr:'الصديق المقرب', ability:'Once per game, at night, choose a character: they are drunk for 3 nights & 3 days.', abilityAr:'مرة واحدة في اللعبة، في الليل، اختر شخصية: إذا كانت موجودة في اللعبة، يصبح صاحبها مخمورًا لثلاثة أيام وثلاث ليالٍ قادمة.', onceOnly:true},
+        {name:'Professor', nameAr:'البروفيسور', ability:'Once per game, at night*, choose a dead player: if they are a Townsfolk, they are resurrected.', abilityAr:'مرة واحدة في اللعبة، في إحدى الليالي (ليس الأولى)، اختر لاعبًا ميتًا: إذا كان من القرويين، يُبعث حيًا من جديد.', onceOnly:true},
+        {name:'Minstrel', nameAr:'العازف', ability:'When a Minion dies by execution, all other players (except Travellers) are drunk until dusk tomorrow.', abilityAr:'عندما يموت أحد الأعوان بالإعدام، يصبح جميع اللاعبين الآخرين مخمورين حتى غسق اليوم التالي.'},
+        {name:'Tea Lady', nameAr:'سيدة الشاي', ability:'If both your alive neighbors are good, they can\'t die.', abilityAr:'إذا كان جاراك الأحياء كلاهما من الأخيار، لا يمكن أن يموتا.'},
         {name:'Pacifist', nameAr:'المسالم', ability:'Executed good players might not die.', abilityAr:'اللاعبون الأخيار الذين يُعدمون قد لا يموتون.'},
-        {name:'Fool', nameAr:'الأحمق', ability:'The first time you would die, you don\'t.', abilityAr:'في أول مرة كان من المفترض أن تموت فيها، لا تموت.'},
+        {name:'Fool', nameAr:'الأحمق', ability:'The 1st time you die, you don\'t.', abilityAr:'في أول مرة كان من المفترض أن تموت فيها، لا تموت.'},
       ],
       outsider: [
         {name:'Tinker', nameAr:'العابث', ability:'You might die at any time.', abilityAr:'قد تموت في أي وقت.'},
         {name:'Moonchild', nameAr:'طفل القمر', ability:'When you learn that you died, publicly choose 1 alive player. Tonight, if it was a good player, they die.', abilityAr:'عندما تعرف أنك مت، اختر علنًا لاعبًا حيًا واحدًا. الليلة، إذا كان لاعبًا خيّرًا، فإنه يموت.'},
-        {name:'Goon', nameAr:'الأبله', ability:'Each night, the first player to choose you becomes drunk until dusk, and you become their alignment.', abilityAr:'كل ليلة، أول لاعب يختارك يصبح مخمورًا حتى الغسق، وتصبح أنت من نفس فريقه (خيّر أو شرير).'},
-        {name:'Lunatic', nameAr:'المعتوه', ability:'You think you are the Demon, but you are not. The Storyteller decides what you learn and who you kill each night.', abilityAr:'تعتقد أنك العفريت، لكنك لست كذلك. يقرر راوي القصة ماذا تعرف ومن تقتل كل ليلة.'},
+        {name:'Goon', nameAr:'الأبله', ability:'Each night, the 1st player to choose you with their ability is drunk until dusk. You become their alignment.', abilityAr:'كل ليلة، أول لاعب يختارك يصبح مخمورًا حتى الغسق، وتصبح أنت من نفس فريقه (خيّر أو شرير).'},
+        {name:'Lunatic', nameAr:'المعتوه', ability:'You think you are a Demon, but you are not. The Demon knows who you are & who you choose at night.', abilityAr:'تعتقد أنك العفريت، لكنك لست كذلك. يقرر راوي القصة ماذا تعرف ومن تقتل كل ليلة.'},
       ],
       minion: [
-        {name:'Godfather', nameAr:'العراب', ability:'You start knowing which Outsiders are in play. If an Outsider died today, choose a player tonight: they die.', abilityAr:'تبدأ اللعبة بمعرفة أي الغرباء موجودون في اللعبة. إذا مات أحد الغرباء اليوم، اختر لاعبًا هذه الليلة: يموت.'},
-        {name:'Devil\'s Advocate', nameAr:'محامي الشيطان', ability:'Each night, choose a living player (different to last night): if executed the next day, they do not die.', abilityAr:'كل ليلة، اختر لاعبًا حيًا (غير من اخترته الليلة السابقة): إذا أُعدم في اليوم التالي، لا يموت.'},
-        {name:'Assassin', nameAr:'القاتل', ability:'Once per game, at night, choose a player: they die, even if this would normally be prevented.', abilityAr:'مرة واحدة في اللعبة، في الليل، اختر لاعبًا: يموت، حتى لو كان من المفترض ألا يموت.', onceOnly:true},
-        {name:'Mastermind', nameAr:'العقل المدبر', ability:'If the Demon dies by execution and the game would end, play one more day. If a player is executed that day, evil wins instead.', abilityAr:'إذا مات العفريت بالإعدام وكان من المفترض أن تنتهي اللعبة، تستمر اللعبة ليوم إضافي. إذا أُعدم لاعب في ذلك اليوم، يفوز الشر بدلاً من ذلك.'},
+        {name:'Godfather', nameAr:'العراب', ability:'You start knowing which Outsiders are in play. If 1 died today, choose a player tonight: they die. [-1 or +1 Outsider]', abilityAr:'تبدأ اللعبة بمعرفة أي الغرباء موجودون في اللعبة. إذا مات أحد الغرباء اليوم، اختر لاعبًا هذه الليلة: يموت.'},
+        {name:'Devil\'s Advocate', nameAr:'محامي الشيطان', ability:'Each night, choose a living player (different to last night): if executed tomorrow, they don\'t die.', abilityAr:'كل ليلة، اختر لاعبًا حيًا (غير من اخترته الليلة السابقة): إذا أُعدم في اليوم التالي، لا يموت.'},
+        {name:'Assassin', nameAr:'القاتل', ability:'Once per game, at night*, choose a player: they die, even if for some reason they could not.', abilityAr:'مرة واحدة في اللعبة، في الليل، اختر لاعبًا: يموت، حتى لو كان من المفترض ألا يموت.', onceOnly:true},
+        {name:'Mastermind', nameAr:'العقل المدبر', ability:'If the Demon dies by execution (ending the game), play for 1 more day. If a player is then executed, their team loses.', abilityAr:'إذا مات العفريت بالإعدام وكان من المفترض أن تنتهي اللعبة، تستمر اللعبة ليوم إضافي. إذا أُعدم لاعب في ذلك اليوم، يفوز الشر بدلاً من ذلك.'},
       ],
       demon: [
-        {name:'Zombuul', nameAr:'زومبُول', ability:'Each night except the first, if no-one died today, choose a player: they die. The first time you would die, you instead appear to die but secretly live on.', abilityAr:'كل ليلة* (إذا لم يمت أحد اليوم)، اختر لاعبًا: يموت. في أول مرة كان يفترض أن تموت فيها، تبدو ميتًا لكنك تبقى حيًا سرًا.'},
-        {name:'Pukka', nameAr:'بوكّا', ability:'Each night, choose a player: they become poisoned. Whoever you poisoned the previous night dies, then becomes healthy again.', abilityAr:'كل ليلة، اختر لاعبًا: يصبح مسمومًا. اللاعب الذي سممته الليلة السابقة يموت، ثم يعود سليمًا.'},
-        {name:'Shabaloth', nameAr:'شبالوث', ability:'Each night except the first, choose two players: they die. A player you killed the previous night might instead be revived.', abilityAr:'كل ليلة*، اختر لاعبين اثنين: يموتان. لاعب قتلته الليلة السابقة قد يعود حيًا بدلاً من ذلك.'},
-        {name:'Po', nameAr:'بو', ability:'Each night except the first, you may choose a player: they die. If you chose no-one the previous night, you must choose three players tonight.', abilityAr:'كل ليلة*، يمكنك اختيار لاعب: يموت. إذا لم تختر أحدًا الليلة السابقة، يجب أن تختار ثلاثة لاعبين هذه الليلة.'},
+        {name:'Zombuul', nameAr:'زومبُول', ability:'Each night*, if no-one died today, choose a player: they die. The 1st time you die, you live but register as dead.', abilityAr:'كل ليلة* (إذا لم يمت أحد اليوم)، اختر لاعبًا: يموت. في أول مرة كان يفترض أن تموت فيها، تبدو ميتًا لكنك تبقى حيًا سرًا.'},
+        {name:'Pukka', nameAr:'بوكّا', ability:'Each night, choose a player: they are poisoned. The previously poisoned player dies then becomes healthy.', abilityAr:'كل ليلة، اختر لاعبًا: يصبح مسمومًا. اللاعب الذي سممته الليلة السابقة يموت، ثم يعود سليمًا.'},
+        {name:'Shabaloth', nameAr:'شبالوث', ability:'Each night*, choose 2 players: they die. A dead player you chose last night might be regurgitated.', abilityAr:'كل ليلة*، اختر لاعبين اثنين: يموتان. لاعب قتلته الليلة السابقة قد يعود حيًا بدلاً من ذلك.'},
+        {name:'Po', nameAr:'بو', ability:'Each night*, you may choose a player: they die. If your last choice was no-one, choose 3 players tonight.', abilityAr:'كل ليلة*، يمكنك اختيار لاعب: يموت. إذا لم تختر أحدًا الليلة السابقة، يجب أن تختار ثلاثة لاعبين هذه الليلة.'},
       ],
     },
     firstNightOrder: ['Sailor','Courtier','Godfather','Devil\'s Advocate','Pukka','Grandmother','Chambermaid'],
@@ -718,16 +718,16 @@ let CHARACTERS, ALL_CHARS, CHAR_LOOKUP, TYPE_OF, TEAM_OF, FIRST_NIGHT_ORDER, OTH
 // call below, since that function references it.
 const TRAVELLERS_BY_SCRIPT = {
   tb: [
-    {name:'Scapegoat', nameAr:'كبش الفداء', ability:'If a player of your alignment is about to be executed, you may be executed in their place.', abilityAr:'إذا كان لاعب من نفس انتمائك على وشك الإعدام، يمكن أن تُعدم أنت بدلاً منه.'},
-    {name:'Gunslinger', nameAr:'مسدسي', ability:'Each day, after the 1st vote for execution is tallied, you may choose a player who voted: they die.', abilityAr:'كل يوم، بعد تسجيل أول تصويت للإعدام، يمكنك اختيار لاعب صوّت: يموت.'},
+    {name:'Scapegoat', nameAr:'كبش الفداء', ability:'If a player of your alignment is executed, you might be executed instead.', abilityAr:'إذا كان لاعب من نفس انتمائك على وشك الإعدام، يمكن أن تُعدم أنت بدلاً منه.'},
+    {name:'Gunslinger', nameAr:'مسدسي', ability:'Each day, after the 1st vote has been tallied, you may choose a player that voted: they die.', abilityAr:'كل يوم، بعد تسجيل أول تصويت للإعدام، يمكنك اختيار لاعب صوّت: يموت.'},
     {name:'Beggar', nameAr:'المتسوّل', ability:"You must use a vote token to vote. Dead players may choose to give you theirs — if so, you learn that player's alignment. You are sober and healthy.", abilityAr:'يجب أن تستخدم رمز تصويت للتصويت. يمكن للاعبين الموتى منحك رمز تصويتهم، وإن فعلوا فإنك تعرف انتماءهم. أنت دائمًا صاحٍ وسليم.'},
     {name:'Bureaucrat', nameAr:'البيروقراطي', ability:'Each night, choose a player (not yourself): their vote counts as 3 votes tomorrow.', abilityAr:'كل ليلة، اختر لاعبًا (ليس نفسك): يُحتسب صوته 3 أصوات غدًا.'},
     {name:'Thief', nameAr:'اللص', ability:'Each night, choose a player (not yourself): their vote counts negatively tomorrow.', abilityAr:'كل ليلة، اختر لاعبًا (ليس نفسك): يُحتسب صوته سلبًا غدًا.'},
   ],
   sv: [
     {name:'Butcher', nameAr:'الجزار', ability:'Each day, after the 1st execution, you may nominate again.', abilityAr:'كل يوم، بعد أول إعدام، يمكنك أن ترشّح مرة أخرى.'},
-    {name:'Bone Collector', nameAr:'جامع العظام', ability:'Once per game, at night (not the first night), choose a dead player: they regain their ability until dusk.', abilityAr:'مرة واحدة في اللعبة، ليلاً (ليست الليلة الأولى)، اختر لاعبًا ميتًا: يستعيد قدرته حتى الغسق.', onceOnly:true},
-    {name:'Harlot', nameAr:'العاهرة', ability:'Each night (not the first night), choose a living player: if they agree, you learn their character, but you both might die.', abilityAr:'كل ليلة (ليست الليلة الأولى)، اختر لاعبًا حيًا: إذا وافق، تعرف شخصيته، لكن كلاكما قد يموت.'},
+    {name:'Bone Collector', nameAr:'جامع العظام', ability:'Once per game, at night*, choose a dead player: they regain their ability until dusk.', abilityAr:'مرة واحدة في اللعبة، ليلاً (ليست الليلة الأولى)، اختر لاعبًا ميتًا: يستعيد قدرته حتى الغسق.', onceOnly:true},
+    {name:'Harlot', nameAr:'العاهرة', ability:'Each night*, choose a living player: if they agree, you learn their character, but you both might die.', abilityAr:'كل ليلة (ليست الليلة الأولى)، اختر لاعبًا حيًا: إذا وافق، تعرف شخصيته، لكن كلاكما قد يموت.'},
     {name:'Barista', nameAr:'الباريستا', ability:"Each night, until dusk, either a player becomes sober, healthy & gets true info, or their ability works twice. They learn which.", abilityAr:'كل ليلة، حتى الغسق، إما أن يصبح لاعب صاحيًا وسليمًا ويحصل على معلومات صحيحة، أو تعمل قدرته مرتين. يعرف اللاعب أيهما.'},
     {name:'Deviant', nameAr:'المنحرف', ability:'If you were funny today, you cannot die by exile.', abilityAr:'إذا كنت مضحكًا اليوم، لا يمكن أن تموت بالنفي.'},
   ],
@@ -872,7 +872,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.13.2';
+const APP_BUILD = '2026.11.13.3';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -3190,13 +3190,15 @@ function setJoinedTravellerCharacter(pid, charName){
   p.character = charName && TRAVELLER_LOOKUP[charName] ? charName : null;
   p.isDrunk = false; p.drunkCover = null;
   if(!p.alignmentOverride) p.alignmentOverride = 'good';
-  saveGame(); render();
+  saveGame(); appSyncSoon();
+  if(route==='review' && typeof document!=='undefined' && document.getElementById('review-list')) refreshReview(); else render();
 }
 function setJoinedTravellerAlignment(pid, val){
   const p = game.players.find(x=>x.id===pid);
   if(!p) return;
   p.alignmentOverride = val==='evil' ? 'evil' : 'good';
-  saveGame(); render();
+  saveGame(); appSyncSoon();
+  if(route==='review' && typeof document!=='undefined' && document.getElementById('review-list')) refreshReview(); else render();
 }
 function makeJoinedTravellerNormal(pid){
   const p = game.players.find(x=>x.id===pid);
@@ -3232,7 +3234,7 @@ function joinedTravellersPanelHtml(){
 function blockIfTravellersUnassigned(){
   const t = travellersWithoutCharacter();
   if(!t.length) return false;
-  showInfo(`Choose a Traveller character for ${t.map(p=>p.name).join(', ')} first (🧳 Travellers, on the token setup screen) — or make them normal players.`);
+  showInfo(`Choose a Traveller character for ${t.map(p=>p.name).join(', ')} first (on the Review & adjust screen) — or make them normal players.`);
   return true;
 }
 function effectiveSetupChart(n){
@@ -3278,7 +3280,6 @@ screens['tokens'] = () => {
       </div>
     </div>
   </div>
-  ${chosen ? joinedTravellersPanelHtml() : ''}
   ${chosen ? `
   <div class="panel reveal-swift">
     <h2 style="margin-top:0;">Choose your token pool</h2>
@@ -3476,7 +3477,6 @@ function syncDrunkEffectMarker(p){
   }
 }
 function finalizeAssignment(pool){
-  if(blockIfTravellersUnassigned()) return;
   const shuffled = shuffle(pool);
   // Travellers added during setup keep their Traveller character; only everyone else gets a token.
   game.players.filter(p=>!isTravellerPlayer(p)).forEach((p,i)=>{
@@ -3503,20 +3503,94 @@ function finalizeAssignment(pool){
 screens['review'] = () => `
   <div class="panel">
     <h2 style="margin-top:0;">Review &amp; adjust</h2>
-    ${roleCountPillsHtml()}
-    <p class="muted" style="margin-top:-8px;">Swap any player's token if you think it's a bad fit. The Drunk marker (🍺) is only visible to you.</p>
+    <div id="review-pills">${reviewPillsHtml()}</div>
+    <p class="muted" style="margin-top:-2px;">Swap any player's token if you think it's a bad fit, choose each Traveller's character here, and switch a player between Traveller and normal player. The Drunk marker (🍺) is only visible to you.</p>
     <div class="hr"></div>
     <div id="review-list" class="stack">${reviewListHtml()}</div>
     <div class="hr"></div>
     <div class="row between">
       <button class="ghost" onclick="pageTurnTransition(()=>go('tokens'), true)">‹ Redo token setup</button>
-      <button class="primary" onclick="goToSeatingFresh()">Looks good — arrange seating ›</button>
+      <button class="primary" onclick="reviewContinue()">Looks good — arrange seating ›</button>
     </div>
   </div>
 `;
+// ---- Review & adjust: live role counts, Travellers, and the "Fix role counts" button ----
+function reviewTypes(){ return game.atheistMode ? ['townsfolk','outsider'] : ['townsfolk','outsider','minion','demon']; }
+// What the tokens are now, and what they should be for this many normal players
+// (Baron / Fang Gu / Vigormortis / Godfather in play shift the Townsfolk–Outsider split).
+function reviewCountState(){
+  const norm = game.players.filter(p=>!isTravellerPlayer(p));
+  const cur = {townsfolk:0, outsider:0, minion:0, demon:0};
+  norm.forEach(p=>{ const t = p.character && TYPE_OF[p.character]; if(cur[t]!==undefined) cur[t]++; });
+  let [t,o,m,d] = effectiveSetupChart(norm.length);
+  const inPlay = norm.map(p=>p.character).filter(Boolean);
+  inPlay.forEach(name=>{
+    const eff = SPECIAL_SETUP_EFFECTS[name];
+    if(!eff || !CHAR_LOOKUP[name]) return;
+    if(eff.to==='outsider'){ o += eff.count; t -= eff.count; } else { t += eff.count; o -= eff.count; }
+  });
+  if(inPlay.includes('Godfather')){
+    // [-1 or +1 Outsider]: either is right; lean towards whichever the tokens are closer to.
+    const up = (cur.outsider >= o) || o-1 < 0;
+    if(up){ o += 1; t -= 1; } else { o -= 1; t += 1; }
+  }
+  if(o<0){ t += o; o = 0; }
+  if(t<0){ o += t; t = 0; }
+  const target = {townsfolk:t, outsider:o, minion:m, demon:d};
+  const empties = norm.filter(p=>!p.character);
+  const mismatch = reviewTypes().some(k=>cur[k]!==target[k]);
+  return {norm, cur, target, empties, mismatch};
+}
+function reviewPillsHtml(){
+  const st = reviewCountState();
+  const col = {townsfolk:['#4caf6a','#8fe0ab'], outsider:['#4a90d9','#a9cdf5'], minion:['#f28c28','#ffc98a'], demon:['#ff2e35','#ffb0b3']};
+  const label = {townsfolk:'Townsfolk', outsider:'Outsider', minion:'Minion', demon:'Demon'};
+  const pills = reviewTypes().map(k=>{
+    const bad = st.cur[k]!==st.target[k];
+    return `<span class="role-count-pill" style="border-color:${bad?'#ff5a52':col[k][0]};${bad?'background:rgba(214,64,58,.18);box-shadow:0 0 0 3px rgba(214,64,58,.2);width:auto;min-width:44px;padding:0 10px;':''}" title="${label[k]}: ${st.cur[k]} now, ${st.target[k]} recommended"><b style="color:${bad?'#ff8a84':col[k][1]};">${st.cur[k]}${bad?`<span style="font-size:11px;font-weight:400;"> / ${st.target[k]}</span>`:''}</b></span>`;
+  }).join('');
+  const travs = game.players.filter(p=>isTravellerPlayer(p));
+  const noChar = travs.filter(p=>!p.character);
+  const needsFix = st.mismatch || st.empties.length>0;
+  const want = reviewTypes().map(k=>`${st.target[k]} ${label[k]}${st.target[k]===1||k==='townsfolk'?'':'s'}`).join(', ');
+  let line = '';
+  if(needsFix) line = `<span style="color:#ff8a84;">${st.norm.length} normal players need ${want}. Fix it with the dropdowns, or press "Fix role counts".</span>`;
+  else if(noChar.length) line = `<span style="color:var(--warn);">${noChar.length} Traveller${noChar.length===1?'':'s'} still need${noChar.length===1?'s':''} a character before the game can start.</span>`;
+  else line = `<span style="color:#8fe0ab;">✓ Role counts match the recommended split.</span>`;
+  return `
+    <div class="row role-count-row" style="gap:8px;flex-wrap:wrap;margin:6px 0 6px;align-items:center;">
+      ${pills}
+      ${travs.length ? `<span class="role-count-pill" style="border-color:${TYPE_COLORS.traveller};width:auto;padding:0 10px;" title="${travs.length} Traveller${travs.length===1?'':'s'} (extra to the split)"><b style="color:${TYPE_COLORS.traveller};">🧳 ${travs.length}</b></span>` : ''}
+      <button class="${needsFix?'primary':'ghost'} small" ${needsFix?'':'disabled'} onclick="fixRoleCounts()" style="margin-left:auto;${needsFix?'':'opacity:.4;cursor:not-allowed;'}" title="Changes only what is needed — every token that still fits stays where it is">🔄 Fix role counts</button>
+    </div>
+    <div style="font-size:13px;margin:0 0 10px;min-height:18px;">${line}</div>`;
+}
+function refreshReview(){
+  const l = document.getElementById('review-list'); if(l) l.innerHTML = reviewListHtml();
+  const pl = document.getElementById('review-pills'); if(pl) pl.innerHTML = reviewPillsHtml();
+}
 function reviewListHtml(){
+  const usedTrav = new Set(game.players.filter(p=>p.character && TYPE_OF[p.character]==='traveller').map(p=>p.character));
   return game.players.map(p=>{
-    const opts = (game.atheistMode ? ['townsfolk','outsider'] : ['townsfolk','outsider','minion','demon']).flatMap(type=>
+    if(isTravellerPlayer(p)){
+      // A Traveller: only Traveller characters, plus the alignment (the Storyteller's call).
+      return `
+      <div class="seat-row" style="flex-wrap:wrap;border-color:${TYPE_COLORS.traveller};">
+        <bdi style="min-width:110px;">${escapeHtml(p.name)}</bdi>
+        <select style="max-width:220px;${p.character?'':'border-color:var(--warn);'}" onchange="setJoinedTravellerCharacter('${p.id}', this.value)">
+          <option value="">Choose a Traveller...</option>
+          ${TRAVELLER_CHARACTERS.filter(c=>c.name===p.character || !usedTrav.has(c.name)).map(c=>`<option value="${c.name}" ${p.character===c.name?'selected':''}>${c.name}</option>`).join('')}
+        </select>
+        <select style="max-width:110px;" onchange="setJoinedTravellerAlignment('${p.id}', this.value)">
+          <option value="good" ${(p.alignmentOverride||'good')==='good'?'selected':''}>Good</option>
+          <option value="evil" ${p.alignmentOverride==='evil'?'selected':''}>Evil</option>
+        </select>
+        <span class="tag traveller">traveller</span>
+        ${TRAVELLER_CHARACTERS.length===0 ? `<span class="muted" style="font-size:12px;color:var(--warn);">This script has no Travellers built yet</span>` : ''}
+        <button class="ghost small" style="margin-left:auto;" onclick="reviewMakeNormal('${p.id}')" title="Count this player as a normal player">🙂 Make normal player</button>
+      </div>`;
+    }
+    const opts = reviewTypes().flatMap(type=>
       CHARACTERS[type].map(c=>{
         const holder = game.players.find(x=>x.id!==p.id && x.character===c.name);
         const label = holder ? `${c.name} (${holder.name})` : c.name;
@@ -3533,15 +3607,95 @@ function reviewListHtml(){
     return `
       <div class="seat-row" style="flex-wrap:wrap;">
         <bdi style="min-width:110px;">${escapeHtml(p.name)}</bdi>
-        <select style="max-width:220px;" onchange="reassignChar('${p.id}', this.value)">${opts}</select>
-        ${p.character ? `<span class="tag ${TYPE_OF[p.character]}">${TYPE_OF[p.character]}</span>` : ''}
+        <select style="max-width:220px;${p.character?'':'border-color:#ff5a52;'}" onchange="if(this.value) reassignChar('${p.id}', this.value)">${p.character ? '' : '<option value="" selected>Choose a character...</option>'}${opts}</select>
+        ${p.character ? `<span class="tag ${TYPE_OF[p.character]}">${TYPE_OF[p.character]}</span>` : `<span class="tag" style="color:#ff8a84;border-color:#ff5a52;">no token</span>`}
         ${p.isDrunk ? `
           <span class="muted" style="font-size:12px;">🍺 believes they're:</span>
           <select style="max-width:210px;" onchange="setDrunkCover('${p.id}', this.value)">${coverOptions}</select>
         ` : ''}
+        <button class="ghost small" style="margin-left:auto;" onclick="reviewMakeTraveller('${p.id}')" title="This player is a Traveller (extra to the role split)">🧳 Make Traveller</button>
       </div>
     `;
   }).join('');
+}
+// Switching a player to/from Traveller never touches anyone else's token: the Storyteller fixes
+// the split with the dropdowns, or with "Fix role counts".
+function reviewMakeTraveller(pid){
+  const p = game.players.find(x=>x.id===pid);
+  if(!p) return;
+  p.character = null; p.isDrunk = false; p.drunkCover = null;
+  p.wantsTraveller = true; p.alignmentOverride = 'good';
+  syncDrunkEffectMarker(p);
+  reconcileBluffsWithDrunkCovers();
+  saveGame(); appSyncSoon();
+  refreshReview();
+}
+function reviewMakeNormal(pid){
+  const p = game.players.find(x=>x.id===pid);
+  if(!p) return;
+  delete p.wantsTraveller; delete p.alignmentOverride;
+  p.character = null; p.isDrunk = false; p.drunkCover = null;
+  saveGame(); appSyncSoon();
+  refreshReview();
+}
+// Smallest change: every token that still fits stays; only empty seats and surplus types change.
+function fixRoleCounts(){
+  const pickFor = (type)=>{
+    const used = new Set(game.players.map(x=>x.character).filter(Boolean));
+    const covers = new Set(game.players.filter(x=>x.isDrunk).map(x=>x.drunkCover).filter(Boolean));
+    let options = CHARACTERS[type].map(c=>c.name).filter(n=>!used.has(n) && !covers.has(n));
+    // Don't quietly bring in a character that changes the split again, or a new Drunk, if there is a choice.
+    const calm = options.filter(n=>!SPECIAL_SETUP_EFFECTS[n] && n!=='Godfather' && n!=='Drunk');
+    if(calm.length) options = calm;
+    return shuffle(options)[0] || null;
+  };
+  const setChar = (p, name)=>{
+    p.character = name; p.isDrunk = name==='Drunk';
+    if(p.isDrunk){
+      const usedT = game.players.filter(x=>x.character && TYPE_OF[x.character]==='townsfolk').map(x=>x.character);
+      p.drunkCover = shuffle(CHARACTERS.townsfolk.map(c=>c.name).filter(n=>!usedT.includes(n)))[0] || null;
+    } else p.drunkCover = null;
+    syncDrunkEffectMarker(p);
+  };
+  let changed = 0;
+  for(let guard=0; guard<80; guard++){
+    const st = reviewCountState();
+    const types = reviewTypes();
+    const under = types.find(k=>st.cur[k]<st.target[k]);
+    const over = types.find(k=>st.cur[k]>st.target[k]);
+    if(!under && !over && !st.empties.length) break;
+    if(under){
+      let p = st.empties[0];
+      if(!p && over){ const l = st.norm.filter(x=>x.character && TYPE_OF[x.character]===over); p = l.filter(x=>!SPECIAL_SETUP_EFFECTS[x.character]).pop() || l.pop(); }
+      const name = p ? pickFor(under) : null;
+      if(!p || !name) break;
+      setChar(p, name); changed++;
+      continue;
+    }
+    if(st.empties.length){            // counts already full but someone has no token: give them a Townsfolk
+      const name = pickFor('townsfolk'); if(!name) break;
+      setChar(st.empties[0], name); changed++; continue;
+    }
+    break;
+  }
+  // A Drunk must not "believe" they are a character somebody now really holds.
+  game.players.filter(x=>x.isDrunk).forEach(dr=>{
+    if(dr.drunkCover && game.players.some(x=>x.id!==dr.id && !x.isDrunk && x.character===dr.drunkCover)){
+      const usedT = game.players.filter(x=>x.character && TYPE_OF[x.character]==='townsfolk').map(x=>x.character);
+      dr.drunkCover = shuffle(CHARACTERS.townsfolk.map(c=>c.name).filter(n=>!usedT.includes(n)))[0] || dr.drunkCover;
+    }
+  });
+  reconcileBluffsWithDrunkCovers();
+  saveGame(); appSyncSoon();
+  refreshReview();
+  return changed;
+}
+function reviewContinue(){
+  const st = reviewCountState();
+  if(st.empties.length){ showInfo(`${st.empties.map(p=>p.name).join(', ')} ${st.empties.length===1?'has':'have'} no token yet. Choose a character from the dropdown, or press "Fix role counts".`); return; }
+  if(blockIfTravellersUnassigned()) return;
+  if(st.mismatch){ showConfirm('The role counts do not match the recommended split for this many players. Continue anyway?', ()=>goToSeatingFresh()); return; }
+  goToSeatingFresh();
 }
 function setDrunkCover(pid, coverName){
   const p = game.players.find(x=>x.id===pid);
@@ -3558,7 +3712,7 @@ function setDrunkCover(pid, coverName){
   p.drunkCover = coverName;
   reconcileBluffsWithDrunkCovers();
   saveGame();
-  document.getElementById('review-list').innerHTML = reviewListHtml();
+  refreshReview();
 }
 function reassignChar(pid, newChar){
   const p = game.players.find(x=>x.id===pid);
@@ -3597,7 +3751,7 @@ function reassignChar(pid, newChar){
   if(other) syncDrunkEffectMarker(other);
   if(drunkConflict) syncDrunkEffectMarker(drunkConflict);
   saveGame();
-  document.getElementById('review-list').innerHTML = reviewListHtml();
+  refreshReview();
 }
 
 // Baron / Fang Gu / Vigormortis all adjust the Townsfolk↔Outsider setup counts. If the
@@ -4014,6 +4168,8 @@ function goBackToSeating(){
 // Under the Tor Loric players must not know their characters, so nothing is sent automatically.
 function startFirstNight(){
   if(blockIfTravellersUnassigned()) return;
+  const tokenless = game.players.filter(p=>!p.character && !isTravellerPlayer(p));
+  if(tokenless.length){ showInfo(`${tokenless.map(p=>p.name).join(', ')} ${tokenless.length===1?'has':'have'} no token yet — go back to Review & adjust.`); return; }
   assignLunaticFakeDemon(); // before the cards go out: the Lunatic's card must already show their fake Demon
   beginGame(()=>{
     if((game.activeLoric||[]).includes('Tor')){ showInfo('Tor is active — role cards were NOT sent to phones. (You can still send one from 📱 Phones if you need to.)'); return; }
@@ -4021,7 +4177,8 @@ function startFirstNight(){
   });
 }
 function beginGame(after){
-  game.phase='play'; game.subphase='night'; game.nightNum=1; appFx('night');
+  game.phase='play'; game.subphase='night'; game.nightNum=1;   // no night sound on the first night
+  game.gameStartedAt = Date.now(); game.phaseStartedAt = game.gameStartedAt; game.gameEndedAt = null;
   assignRedHerring();
   assignLunaticFakeDemon();
   game.players.forEach(p=>{
@@ -4924,12 +5081,39 @@ function refreshCourt(){
     drawCourtNominationRope();
   }
 }
+// ---- Timers: how long this day/night has run, and how long the whole game has run ----
+function fmtDur(ms){
+  const sec = Math.max(0, Math.floor((ms||0)/1000));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), ss = sec%60;
+  const two = x=>String(x).padStart(2,'0');
+  return h ? `${h}:${two(m)}:${two(ss)}` : `${two(m)}:${two(ss)}`;
+}
+function timersNow(){
+  if(!game || game.phase!=='play' || !game.gameStartedAt) return null;
+  const end = game.gameEndedAt || Date.now();
+  return {phase: fmtDur(end - (game.phaseStartedAt || game.gameStartedAt)), game: fmtDur(end - game.gameStartedAt)};
+}
+function timersHtml(label){
+  const t = timersNow();
+  if(!t) return '';
+  return `<span class="muted" style="font-size:13px;font-variant-numeric:tabular-nums;" title="Time since this ${game.subphase==='night'?'night':'day'} started · time since the game started (Night 1)">⏱ ${label||''} <b class="tm-phase" style="color:var(--gold-bright);">${t.phase}</b> &nbsp;·&nbsp; 🕰 Game <b class="tm-game" style="color:var(--gold-bright);">${t.game}</b>${game.gameEndedAt ? ' (ended)' : ''}</span>`;
+}
+if(typeof setInterval==='function' && typeof document!=='undefined'){
+  setInterval(()=>{
+    try{
+      const t = timersNow(); if(!t || !document.querySelectorAll) return;
+      document.querySelectorAll('.tm-phase').forEach(e=>{ e.textContent = t.phase; });
+      document.querySelectorAll('.tm-game').forEach(e=>{ e.textContent = t.game; });
+    }catch(e){}
+  }, 1000);
+}
 screens['court'] = () => courtScreenHtml();
 screens['play'] = () => {
   const phaseLabel = game.subphase==='night' ? `Night ${game.nightNum}` : `Day ${game.dayNum}`;
   return `
     <div class="row between" style="margin-bottom:10px;">
       <span class="eyebrow">${phaseLabel}</span>
+      ${timersHtml(phaseLabel)}
     </div>
     ${roleCountPillsHtml()}
     ${translationWidgetHtml()}
@@ -5952,6 +6136,50 @@ function nightChecklistHtml(){
   if(steps.length===0) return `<div class="panel"><p class="muted">No relevant characters in the wake order tonight.</p></div>`;
   return `<div class="panel"><h3 style="margin-top:0;">Tonight's order</h3><div class="hr"></div><div class="zebra-list">${steps.map((step,i)=>nightStepHtml(step,i)).join('')}</div></div>`;
 }
+// The Lunatic is shown "his Minions": each one right half of the time, otherwise a decoy. Decided
+// once per game, so the text message and the visual card on the phone always agree.
+function lunaticShownMinionNames(p){
+  const realMinions = game.players.filter(x=>x.character && TYPE_OF[x.character]==='minion');
+  const key = realMinions.map(m=>m.id).join(',');
+  if(game.lunaticShown && game.lunaticShown.key===key && game.lunaticShown.pid===p.id) return game.lunaticShown.names.slice();
+  const nonMinions = game.players.filter(x=>x.id!==p.id && !(x.character && TYPE_OF[x.character]==='minion'));
+  const names = realMinions.map(m=>{
+    if(Math.random()<0.5) return m.name; // correct, 50% of the time
+    const decoy = nonMinions[Math.floor(Math.random()*nonMinions.length)];
+    return decoy ? decoy.name : m.name;
+  });
+  game.lunaticShown = {key, pid:p.id, names};
+  return names.slice();
+}
+// The same first-night information as characterRevealText, as data: the phone draws it as
+// coloured count circles, team-mate chips (names only — never their characters) and bluff tokens.
+function characterRevealInfo(p){
+  const n = nonTravellerPlayerCount();
+  const chart = SETUP_CHART[n] || SETUP_CHART[n<5?5:15];
+  const info = {players:n, chart:[chart[0],chart[1],chart[2],chart[3]], team:[], bluffs:[]};
+  const type = p.character ? TYPE_OF[p.character] : null;
+  const demon = game.players.find(x=>x.character && TYPE_OF[x.character]==='demon');
+  if(!p.isDrunk && type==='minion'){
+    if(demon) info.team.push({name:demon.name, tag:'demon'});
+    game.players.filter(x=>x.character && TYPE_OF[x.character]==='minion' && x.id!==p.id).forEach(x=>info.team.push({name:x.name, tag:'minion'}));
+  }
+  if(!p.isDrunk && type==='demon'){
+    game.players.filter(x=>x.character && TYPE_OF[x.character]==='minion').forEach(x=>info.team.push({name:x.name, tag:'minion'}));
+    const lunatic = game.players.find(x=>x.character==='Lunatic');
+    if(lunatic) info.team.push({name:lunatic.name, tag:'lunatic'});
+    reconcileBluffsWithInPlayCharacters('bluffs');
+    info.bluffs = (game.bluffs||[]).slice();
+  }
+  if(p.character==='Lunatic'){
+    lunaticShownMinionNames(p).forEach(name=>info.team.push({name, tag:'minion'}));
+    reconcileBluffsWithInPlayCharacters('bluffs');
+    reconcileBluffsWithInPlayCharacters('lunaticBluffs');
+    info.bluffs = (game.lunaticBluffs && game.lunaticBluffs.length===3 ? game.lunaticBluffs : (game.bluffs||[])).slice();
+  }
+  if(!p.isDrunk && type==='traveller' && isEvil(p) && demon) info.team.push({name:demon.name, tag:'demon'});
+  info.bluffs = info.bluffs.map(b=>({char:b, type: TYPE_OF[b] || 'townsfolk'}));
+  return info;
+}
 function characterRevealText(p){
   // A Drunk is told Good (they think they're a Townsfolk); the Lunatic is told Evil, since they
   // believe they are the Demon.
@@ -5980,11 +6208,7 @@ function characterRevealText(p){
   if(p.character==='Lunatic'){
     const realMinions = game.players.filter(x=>x.character && TYPE_OF[x.character]==='minion');
     const nonMinions = game.players.filter(x=>x.id!==p.id && !(x.character && TYPE_OF[x.character]==='minion'));
-    const shownMinionNames = realMinions.map(m=>{
-      if(Math.random()<0.5) return m.name; // correct, 50% of the time
-      const decoy = nonMinions[Math.floor(Math.random()*nonMinions.length)];
-      return decoy ? decoy.name : m.name;
-    });
+    const shownMinionNames = lunaticShownMinionNames(p);
     // Same defensive final check as above, covering whichever bluff list actually gets used.
     reconcileBluffsWithInPlayCharacters('bluffs');
     reconcileBluffsWithInPlayCharacters('lunaticBluffs');
@@ -10299,20 +10523,88 @@ function svSavantHtml(isLastCard){
       ${deadIconHtml}${statusIconsHtml ? `<div style="margin-top:4px;">${statusIconsHtml}</div>` : ''}
       ${unreliable ? `<p class="muted" style="color:var(--warn);">Ability malfunctioning — no guaranteed true/false split. Write both freely.</p>` : ''}
       <div class="muted" style="font-size:10px;margin-top:6px;">To ${escapeHtml(savant.name)}</div>
-      <div class="eyebrow" style="margin-top:2px;">Statement 1</div>
+      <div class="eyebrow" style="margin-top:2px;">Statement 1 <span class="muted" style="text-transform:none;letter-spacing:0;">— ${unreliable ? 'your choice' : 'the true one'} (only you see this note)</span></div>
       <div class="msg-box" id="savant-box-1" dir="auto" contenteditable="true" oninput="storeSavantStatement('trueText', this.innerText)">${escapeHtmlBr(trueText)}</div>
+      ${savantSuggestionChipsHtml('trueText')}
       <button class="ghost small" style="margin-top:4px;" onclick="translateBoxToArabic('savant-box-1', 'trueText', this)">🌐 Translate to Arabic</button>
-      <div class="eyebrow" style="margin-top:10px;">Statement 2</div>
+      <div class="eyebrow" style="margin-top:10px;">Statement 2 <span class="muted" style="text-transform:none;letter-spacing:0;">— ${unreliable ? 'your choice' : 'the false one'}</span></div>
       <div class="msg-box" id="savant-box-2" dir="auto" contenteditable="true" oninput="storeSavantStatement('falseText', this.innerText)">${escapeHtmlBr(falseText)}</div>
+      ${savantSuggestionChipsHtml('falseText')}
       <button class="ghost small" style="margin-top:4px;" onclick="translateBoxToArabic('savant-box-2', 'falseText', this)">🌐 Translate to Arabic</button>
       <div class="row" style="margin-top:8px;">
         <button class="ghost small" onclick="copySavantStatements(this)" title="Copy both">📋</button>
         <button class="ghost small" onclick="sendSavantWA(this)" title="Send to this player's phone">${SEND_ICON}</button>
         <button class="ghost small" onclick="clearSavantStatements()">Clear &amp; write my own</button>
+        <button class="ghost small" onclick="swapSavantStatements()" title="Swap the two boxes, so the true statement is not always the first one the Savant reads">⇅ Swap order</button>
+        <button class="ghost small" onclick="newSavantSuggestions()" title="Show a different set of suggestions">🎲 New suggestions</button>
       </div>
       ${cardFooterButtonsHtml(`toggleDayCardCollapse('${k}')`, null, null, isLastCard)}
     </div>
   `;
+}
+// Ready-made statements built from the real game: a list of true ones and a list of false ones.
+// Tapping a chip fills that box; the box stays editable, and typing your own still works.
+function buildSavantSuggestions(){
+  const ps = game.players.filter(p=>p.character);
+  const alive = ps.filter(p=>p.alive);
+  const savant = ps.find(p=>p.character==='Savant');
+  const others = shuffle(alive.filter(p=>!savant || p.id!==savant.id));
+  const typeOf = p=>TYPE_OF[p.character];
+  const realChar = p=>p.character;
+  const demon = ps.find(p=>typeOf(p)==='demon');
+  const minions = ps.filter(p=>typeOf(p)==='minion');
+  const good = others.filter(p=>!isEvil(p)), evil = others.filter(p=>isEvil(p));
+  const outsiders = ps.filter(p=>typeOf(p)==='outsider').length;
+  const evilAlive = alive.filter(p=>isEvil(p)).length;
+  const inPlay = new Set(ps.map(realChar));
+  const notInPlay = shuffle(ALL_CHARS.map(c=>c.name).filter(n=>!inPlay.has(n) && TYPE_OF[n]!=='traveller'));
+  const inPlayGood = shuffle(ps.filter(p=>!isEvil(p) && (!savant || p.id!==savant.id)).map(realChar));
+  const T = [], F = [];
+  const two = (a,b)=>shuffle([a,b]).map(x=>x.name).join(' أو ');
+  if(good[0]) T.push(`${good[0].name} من فريق الأخيار.`);
+  if(evil[0]) T.push(`${evil[0].name} من فريق الأشرار.`);
+  if(good[0]) F.push(`${good[0].name} من فريق الأشرار.`);
+  if(evil[0]) F.push(`${evil[0].name} من فريق الأخيار.`);
+  T.push(`يوجد ${outsiders} من الغرباء (Outsiders) في اللعبة.`);
+  F.push(`يوجد ${Math.max(0, outsiders + (outsiders===0 || Math.random()<0.5 ? 1 : -1))} من الغرباء (Outsiders) في اللعبة.`);
+  if(demon && good[1]) T.push(`أحد هذين اللاعبين هو العفريت (Demon): ${two(demon, good[1])}.`);
+  if(good[1] && good[2]) F.push(`أحد هذين اللاعبين هو العفريت (Demon): ${two(good[1], good[2])}.`);
+  if(minions[0] && good[2]) T.push(`أحد هذين اللاعبين من الأعوان (Minion): ${two(minions[0], good[2])}.`);
+  if(good[0] && good[3]) F.push(`أحد هذين اللاعبين من الأعوان (Minion): ${two(good[0], good[3])}.`);
+  if(good[3]) T.push(`${good[3].name} ليس العفريت (Demon).`);
+  if(demon && demon.alive) F.push(`${demon.name} ليس العفريت (Demon).`);
+  if(notInPlay[0]) T.push(`شخصية ${charBoth(notInPlay[0])} غير موجودة في اللعبة.`);
+  if(inPlayGood[0]) F.push(`شخصية ${charBoth(inPlayGood[0])} غير موجودة في اللعبة.`);
+  if(inPlayGood[1]) T.push(`شخصية ${charBoth(inPlayGood[1])} موجودة في اللعبة.`);
+  if(notInPlay[1]) F.push(`شخصية ${charBoth(notInPlay[1])} موجودة في اللعبة.`);
+  T.push(`عدد الأشرار الأحياء الآن هو ${evilAlive}.`);
+  F.push(`عدد الأشرار الأحياء الآن هو ${Math.max(0, evilAlive + (evilAlive<=1 || Math.random()<0.5 ? 1 : -1))}.`);
+  return {trueText: T, falseText: F};
+}
+function savantSuggestions(){
+  ui.savantSug = ui.savantSug || {};
+  if(!ui.savantSug[game.dayNum]) ui.savantSug[game.dayNum] = buildSavantSuggestions();
+  return ui.savantSug[game.dayNum];
+}
+function savantSuggestionChipsHtml(field){
+  const st = game.savantStatements[game.dayNum] || {};
+  const which = st.swapped ? (field==='trueText' ? 'falseText' : 'trueText') : field;   // after a swap the true list follows the true box
+  const list = savantSuggestions()[which] || [];
+  if(!list.length) return '';
+  return `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px;" dir="rtl">${list.map((t,i)=>`<button class="ghost small" style="font-size:12px;padding:4px 9px;text-align:start;border-color:${which==='trueText'?'#4caf6a':'#c9394a'};" onclick="applySavantSuggestion('${field}','${which}',${i})">${escapeHtml(t)}</button>`).join('')}</div>`;
+}
+function applySavantSuggestion(field, which, i){
+  const text = (savantSuggestions()[which] || [])[i];
+  if(text===undefined) return;
+  storeSavantStatement(field, text);
+  refreshPlay();
+}
+function newSavantSuggestions(){ ui.savantSug = ui.savantSug || {}; delete ui.savantSug[game.dayNum]; refreshPlay(); }
+function swapSavantStatements(){
+  const st = game.savantStatements[game.dayNum] = game.savantStatements[game.dayNum] || generateSavantStatements();
+  const a = st.trueText; st.trueText = st.falseText; st.falseText = a;
+  st.swapped = !st.swapped;
+  saveGame(); refreshPlay();
 }
 function copySavantStatements(btn){
   const b1 = document.getElementById('savant-box-1');
@@ -10464,7 +10756,7 @@ function generateExecutionAnnouncement(btn, selectClass, textField){
 }
 function advanceToDay(){
   game.totalAdvanceClicks = (game.totalAdvanceClicks||0) + 1;
-  game.subphase='day'; game.dayNum+=1; game.dayHasDeath=false; appFx('day');
+  game.subphase='day'; game.dayNum+=1; game.dayHasDeath=false; appFx('day'); game.phaseStartedAt = Date.now();
   game.diedFromResolutionTodayIds = [];
   game.execAnnouncementText = '';
   game.butcherExecAnnouncementText = '';
@@ -10538,7 +10830,7 @@ function advanceToNight(){
       }
     }
   }
-  game.subphase='night'; game.nightNum+=1; appFx('night'); resolvePukkaOvernight();
+  game.subphase='night'; game.nightNum+=1; appFx('night'); game.phaseStartedAt = Date.now(); resolvePukkaOvernight();
   // If Po genuinely used her charged 3-kill turn on the night we just left, clear the flag now.
   // An Exorcist-blocked night never sets poChargedUsedAtNight, so the flag correctly survives
   // untouched through any number of blocked nights until she actually gets a real turn.
@@ -10572,6 +10864,7 @@ function goBackPhase(){
     game.dayNum -= 1;
     game.subphase='night';
   }
+  game.phaseStartedAt = Date.now();
   saveGame();
   go('play');
 }
@@ -10787,6 +11080,7 @@ function appBuildPublicState(){
     joinOpen: appNormalJoinOpen(), seatsOpen: !game.seatsLockedByHost,
     nudge: game.nudge || null,
     fx: game.fx || null,
+    timers: game.phase==='play' && game.gameStartedAt ? {game: game.gameStartedAt, phase: game.phaseStartedAt || game.gameStartedAt, end: game.gameEndedAt || null} : null,
     result: game.result ? {winner: game.result.winner, seq: game.result.seq, silent: !!game.soundsOff, evil: game.result.evil || []} : null,
     seats,
     court: { nomination, history, leadingIds: leading, publicMessage: (court.publicMessage && court.publicMessage===court.deathMsgText) ? null : (court.publicMessage || null),
@@ -11086,6 +11380,10 @@ async function appSendRole(pid, btn, textOverride){
   const text = textOverride!==undefined ? textOverride
     : (game.messageOverrides && game.messageOverrides[overrideKey]!==undefined ? game.messageOverrides[overrideKey] : withRevealHeader(characterRevealText(p)));
   const role = appBuildRole(p, text);
+  // The standard first-night message also travels as data, so the phone can draw it. A message
+  // the Storyteller edited, or a later "your character changed" note, is shown as written.
+  const edited = game.messageOverrides && game.messageOverrides[overrideKey]!==undefined;
+  if(textOverride===undefined && !edited){ try{ role.info = characterRevealInfo(p); }catch(e){ console.warn('reveal info', e); } }
   try{
     // The role lives on the phone's role tab only — it is not posted as a message.
     const status = await appDeliver(pid, null, role);
@@ -11535,6 +11833,7 @@ function declareWinner(winner){
     game.result = {winner: winner==='evil' ? 'evil' : 'good', seq: Math.max((game.result && game.result.seq) || 0, game.resultSeq || 0) + 1, at: Date.now(), evil: appEvilTeamList()};
     // The game is over: nothing is hidden any more.
     if(game.declaredAlive) game.players.forEach(p=>{ game.declaredAlive[p.id] = p.alive!==false; });
+    game.gameEndedAt = Date.now();   // the timers stop here
     logAction(`🏁 Game over — ${label}.`);
     saveGame(); appSyncSoon();
     if(route==='court') refreshCourt(); else if(route==='play') refreshPlay(); else render();
@@ -11544,7 +11843,7 @@ function cancelWinner(){
   if(!game || !game.result) return;
   showConfirm('Cancel the declared result? The result screen disappears from every phone and the game continues.', ()=>{
     const seq = game.result.seq;
-    game.result = null; game.resultSeq = seq;
+    game.result = null; game.resultSeq = seq; game.gameEndedAt = null;
     logAction('🏁 The declared result was cancelled.');
     saveGame(); appSyncSoon();
     if(route==='court') refreshCourt(); else if(route==='play') refreshPlay(); else render();
