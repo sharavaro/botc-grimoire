@@ -225,7 +225,7 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.11.13.3';
+const PLAYER_BUILD = '2026.11.13.4';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -580,10 +580,12 @@ async function onPublic(){
       const key = appKey(saved.pid);
       if(seats[key] && seats[key].claimed){
         let owned = null; try{ owned = await NET.get(R('claims/'+key)); }catch(e){ owned = null; }
-        if(owned===S.uid){ takeSeat(saved.pid); render(); return; }
+        if(owned===S.uid && (!TEST_AS || saved.pid===TEST_AS)){ takeSeat(saved.pid); render(); return; }
       }
       // New game, same room: re-join automatically under the same name if it's free.
-      const sameName = Object.values(seats).find(s=>s.name===saved.name && !s.claimed);
+      // (Not for a test tab: it always takes the seat it was opened for. Test names are drawn at random
+      // from the same list, so a remembered name would make it grab another tab's seat.)
+      const sameName = TEST_AS ? null : Object.values(seats).find(s=>s.name===saved.name && !s.claimed);
       if(sameName && !seats[key]){ await claimSeat(sameName.pid, true); return; }
     }
     if(TEST_AS && seats[appKey(TEST_AS)] && !seats[appKey(TEST_AS)].claimed){ await claimSeat(TEST_AS, true); return; }
