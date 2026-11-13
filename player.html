@@ -149,11 +149,58 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
 .court-center .vs{font-size:13.5px;line-height:1.5;}
 .court-center .cnt{font-size:40px;font-weight:700;line-height:1;font-family:'Cinzel',serif;}
 .countdown{font-size:44px;font-weight:700;color:var(--gold-bright);line-height:1;margin-top:6px;}
+/* ---------- the result screen (this is what every phone would show) ---------- */
+.win{position:fixed;inset:0;z-index:400;direction:rtl;color:#fff;display:none;overflow:hidden}
+.win.show{display:block}
+.win canvas{position:absolute;inset:0;width:100%;height:100%}
+.win .veil{position:absolute;inset:0;opacity:0;animation:winveil .7s ease-out forwards}
+.win.evil .veil{background:radial-gradient(120% 90% at 50% 18%,#5a0a14 0%,#22040a 45%,#070207 100%)}
+.win.good .veil{background:radial-gradient(120% 90% at 50% 10%,#ffe9a0 0%,#d49a22 24%,#6b4a2a 46%,#33255c 72%,#150f26 100%)}
+@keyframes winveil{to{opacity:1}}
+.win .rays{position:absolute;left:50%;top:16%;width:220vmax;height:220vmax;transform:translate(-50%,-50%);opacity:0;pointer-events:none}
+.win.good .rays{background:repeating-conic-gradient(from 0deg,rgba(255,244,200,.20) 0 7deg,transparent 7deg 20deg);animation:winspin 40s linear infinite,winfadein 1.4s .3s ease-out forwards;-webkit-mask-image:radial-gradient(circle,#000 0,transparent 55%);mask-image:radial-gradient(circle,#000 0,transparent 55%)}
+.win.evil .rays{background:repeating-conic-gradient(from 0deg,rgba(255,40,60,.13) 0 4deg,transparent 4deg 26deg);animation:winspin 70s linear infinite reverse,winfadein 2s .4s ease-out forwards;-webkit-mask-image:radial-gradient(circle,#000 0,transparent 45%);mask-image:radial-gradient(circle,#000 0,transparent 45%)}
+@keyframes winspin{to{transform:translate(-50%,-50%) rotate(360deg)}}@keyframes winfadein{to{opacity:1}}
+.win .inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;padding:7vh 18px 18px;overflow-y:auto}
+.win .sigil{font-size:88px;line-height:1;opacity:0;transform:scale(.2) rotate(-25deg);animation:winsigil .9s .25s cubic-bezier(.2,1.5,.4,1) forwards}
+.win.evil .sigil{filter:drop-shadow(0 0 22px #ff2a45)}.win.good .sigil{filter:drop-shadow(0 0 26px #fff3b0)}
+@keyframes winsigil{to{opacity:1;transform:none}}
+.win.evil .sigil.live{animation:winsigil .9s .25s cubic-bezier(.2,1.5,.4,1) forwards,winthrob 1.6s 1.3s ease-in-out infinite}
+.win.good .sigil.live{animation:winsigil .9s .25s cubic-bezier(.2,1.5,.4,1) forwards,winfloat 3s 1.3s ease-in-out infinite}
+@keyframes winthrob{50%{transform:scale(1.09);filter:drop-shadow(0 0 40px #ff2a45)}}@keyframes winfloat{50%{transform:translateY(-8px)}}
+.win .title{font-size:clamp(40px,13vw,64px);font-weight:900;margin:10px 0 2px;letter-spacing:.5px;display:flex;gap:.28em;justify-content:center}
+.win .title span{display:inline-block;opacity:0}
+.win.evil .title{color:#ff4257;text-shadow:0 0 18px #c8102e,0 3px 0 #2a0308}
+.win.evil .title span{animation:winslam .55s cubic-bezier(.2,1.3,.4,1) forwards}
+.win.good .title{color:#fffdf2;text-shadow:0 3px 0 #6b4605,0 0 6px #4a2f02,0 0 26px rgba(74,47,2,.9)}
+.win.good .title span{animation:winrise .8s cubic-bezier(.2,.9,.3,1) forwards}
+@keyframes winslam{0%{opacity:0;transform:translateY(-120px) scale(2.2)}70%{opacity:1;transform:translateY(6px) scale(.96)}100%{opacity:1;transform:none}}
+@keyframes winrise{0%{opacity:0;transform:translateY(40px) scale(.9);filter:blur(6px)}100%{opacity:1;transform:none;filter:none}}
+.win .sub{font-size:16px;opacity:0;animation:winfadeup .7s 1.5s ease-out forwards;margin-bottom:16px}
+.win.evil .sub{color:#f3b9c0}.win.good .sub{color:#fff;font-weight:700;text-shadow:0 1px 2px #4a2f02,0 0 12px rgba(74,47,2,.95)}
+@keyframes winfadeup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.win .shake{animation:winshake .5s .78s}@keyframes winshake{20%{transform:translate(-6px,3px)}40%{transform:translate(6px,-4px)}60%{transform:translate(-4px,2px)}80%{transform:translate(3px,-2px)}}
+.win .listhead{font-size:13px;letter-spacing:.5px;opacity:0;animation:winfadeup .6s 2s ease-out forwards;margin-bottom:8px;color:#ffd9de}
+.win.good .listhead{color:#fff;text-shadow:0 1px 3px #2a1a02,0 0 10px rgba(40,25,2,.9)}
+.win .evils{width:100%;max-width:420px;display:flex;flex-direction:column;gap:8px}
+.win .ev{display:flex;align-items:center;gap:12px;background:rgba(20,6,10,.72);border:1px solid #7d1a28;border-radius:14px;padding:10px 12px;opacity:0;transform:perspective(600px) rotateX(-80deg);transform-origin:top;animation:winflip .6s cubic-bezier(.2,1.2,.4,1) forwards;backdrop-filter:blur(3px)}
+.win.good .ev{background:rgba(28,16,34,.78);border-color:#a8323f}
+@keyframes winflip{to{opacity:1;transform:none}}
+.win .ev .av{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;background:radial-gradient(circle at 35% 30%,#7a1422,#2a060c);border:2px solid #c9394a;flex:none}
+.win .ev .nm{font-size:17px;font-weight:700}.win .ev .ch{font-size:13px;color:#ff9aa5}.win .ev .ch .en{color:#c8a5ab;margin-inline-start:6px;font-size:11px;direction:ltr;display:inline-block}
+.win .ev .tag{margin-inline-start:auto;font-size:11px;padding:3px 9px;border-radius:9px;background:#5c0f1b;color:#ffd0d6;white-space:nowrap}
+.win .ev.demon{border-color:#ff4257;box-shadow:0 0 18px rgba(255,40,70,.35)}.win .ev.demon .tag{background:#c8102e;color:#fff}
+.win .btns{margin-top:18px;display:flex;gap:10px;opacity:0;animation:winfadeup .6s 3.2s ease-out forwards}
+.win .btns button{border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.35);color:#fff;border-radius:12px;padding:11px 18px;font-size:15px;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.win *{animation-duration:.01s!important;animation-delay:0s!important}}
+.win .ev .av img{width:100%;height:100%;object-fit:contain;display:block;border-radius:50%}
+.win .ev .dead{font-size:11px;color:#c8a5ab;margin-inline-start:6px}
 </style>
 </head>
 <body>
 <div id="app"><div class="card" style="text-align:center;margin-top:40px;">...جارٍ التحميل</div></div>
 <div id="overlay"></div>
+<div class="win" id="winlayer"></div>
 <script>
 /* ==========================================================================
    CLOCKTOWER PLAYER APP — runs on each player's phone.
@@ -161,7 +208,7 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.11.12.4';
+const PLAYER_BUILD = '2026.11.13.1';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -283,7 +330,7 @@ function forgetRoom(message){
   if(S.trav && S.trav.unsub){ S.trav.unsub(); }
   if(S.pid || S.privUnsub || S.chatUnsub) leaveSeat();
   lsDel('room'); lsDel('join');
-  S.room = null; S.pub = null; S.script = null; S.icons = {}; S.notes = null; S.metaSeen = false; S.nudgeKey = undefined;
+  S.room = null; S.pub = null; S.script = null; S.icons = {}; S.notes = null; S.metaSeen = false; S.nudgeKey = undefined; S.fxKey = undefined; S.resultKey = undefined;
   S.trav = {open:false, name:'', prefer:'', sent:false, unsub:null};
   S.stage = 'code'; S.error = message || null;
   // Drop ?room=… from the address so reopening the page doesn't go back to the old room.
@@ -324,7 +371,131 @@ function courtAutoJump(pub){
 }
 /* ---------- nudge from the Storyteller: vibrate + sound + a big "pick up your phone" ---------- */
 let AC = null;
-function unlockAudio(){ try{ const C = window.AudioContext || window.webkitAudioContext; if(!C) return; AC = AC || new C(); if(AC.state==='suspended') AC.resume(); }catch(e){} }
+function unlockAudio(){ try{ const C = window.AudioContext || window.webkitAudioContext; if(!C) return; const first = !AC; AC = AC || new C(); if(AC.state==='suspended') AC.resume(); if(first) preloadSfx(); }catch(e){} }
+
+/* ---------- sound moments: night, day, Courthouse, vote, death, and the two endings ---------- */
+const SFX = {night:'sounds/night.mp3', day:'sounds/day.mp3', court:'sounds/gavel.mp3', vote:'sounds/vote.mp3', death:'sounds/death.mp3', evil:'sounds/evil.mp3', good:'sounds/good.mp3'};
+const SFX_BANNER = {night:'🌙 حلّ الليل', day:'☀️ طلع النهار', court:'⚖️ افتُتحت المحكمة', vote:'', death:''};
+const sfxBuf = {}; let sfxSrc = null, sfxWant = null;
+async function loadSfx(k){
+  if(sfxBuf[k]) return sfxBuf[k];
+  if(!AC || typeof fetch!=='function' || !SFX[k]) return null;
+  const res = await fetch(SFX[k]); const arr = await res.arrayBuffer();
+  sfxBuf[k] = await new Promise((ok,bad)=>{ const pr = AC.decodeAudioData(arr, ok, bad); if(pr && pr.then) pr.then(ok, bad); });
+  return sfxBuf[k];
+}
+function preloadSfx(){ Object.keys(SFX).forEach(k=>{ loadSfx(k).catch(()=>{}); }); }
+function stopSfx(){ sfxWant = null; try{ if(sfxSrc) sfxSrc.stop(); }catch(e){} sfxSrc = null; }
+async function playSfx(k){
+  S.lastSfx = k;                       // (also lets the tests see what would have played)
+  try{
+    unlockAudio(); if(!AC) return;
+    stopSfx(); sfxWant = k;
+    const buf = await loadSfx(k);
+    if(!buf || sfxWant!==k) return;
+    sfxSrc = AC.createBufferSource(); sfxSrc.buffer = buf; sfxSrc.connect(AC.destination); sfxSrc.start();
+  }catch(e){}
+}
+// The Storyteller's latest sound moment: play it once, never replay an old one after reopening the app.
+function checkFx(pub){
+  const fx = pub && pub.fx;
+  const key = fx && fx.seq ? (pub.gameId||'')+':'+fx.seq : null;
+  if(S.fxKey===undefined){ S.fxKey = key; return; }
+  if(key && key!==S.fxKey){
+    S.fxKey = key;
+    if(S.stage!=='joined') return;
+    playSfx(fx.kind);
+    if(SFX_BANNER[fx.kind]) showBanner(SFX_BANNER[fx.kind]);
+  }
+}
+
+/* ---------- the end of the game: who won, with the evil team revealed ---------- */
+let winRaf = null, winParts = [], winMode = null;
+function winTagFor(t){ return t==='demon' ? 'الشيطان' : t==='minion' ? 'تابع' : t==='traveller' ? 'مسافر شرير' : 'شرير'; }
+function winInnerHtml(r){
+  const k = r.winner==='evil' ? 'evil' : 'good';
+  const words = k==='evil' ? ['انتصر','الشر'] : ['انتصر','الخير'];
+  const evil = r.evil || [];
+  return `<div class="veil"></div><div class="rays"></div><canvas id="winfx"></canvas>
+  <div class="inner ${k==='evil'?'shake':''}" id="wininner">
+    <div class="sigil live">${k==='evil' ? '😈' : '🕊️'}</div>
+    <div class="title">${words.map((x,i)=>`<span style="animation-delay:${(k==='evil'?.55:.5)+i*.28}s">${x}</span>`).join('')}</div>
+    <div class="sub">${k==='evil' ? 'سقطت القرية في الظلام' : 'تم اعدام العفريت!'}</div>
+    ${evil.length ? `<div class="listhead">${k==='evil' ? '— هؤلاء كانوا الأشرار —' : '— الأشرار الذين هُزموا —'}</div>` : ''}
+    <div class="evils">${evil.map((p,i)=>`<div class="ev ${p.type==='demon'?'demon':''}" style="animation-delay:${2.2+i*.3}s"><div class="av">${iconHtml(p.char,'')}</div><div><div class="nm"><bdi>${esc(p.name)}</bdi>${p.alive===false?'<span class="dead">⚰️</span>':''}</div><div class="ch">${esc(p.nameAr || (charInfo(p.char)||{}).nameAr || p.char)}<span class="en">${esc(p.char)}</span></div></div><span class="tag">${winTagFor(p.type)}</span></div>`).join('')}</div>
+    <div class="btns"><button onclick="stopSfx()">🔇 إيقاف الصوت</button><button onclick="closeWin()">إغلاق</button></div>
+  </div>`;
+}
+function winKey(pub){ return pub && pub.result ? (pub.gameId||'')+':'+pub.result.seq+':'+pub.result.winner : null; }
+// Shown once per result; `live` (it was declared while the app is open) adds the sound and vibration.
+function showWin(r, live){
+  S.winOpen = true; S.winHtml = winInnerHtml(r);
+  const k = r.winner==='evil' ? 'evil' : 'good';
+  if(live){
+    if(!r.silent) playSfx(k);
+    try{ navigator.vibrate && navigator.vibrate(k==='evil' ? [0,700,200,120,400] : [120,80,120,80,300]); }catch(e){}
+  }
+  const w = document.getElementById('winlayer'); if(!w) return;
+  w.className = 'win'; void w.offsetWidth; w.className = 'win show '+k; w.innerHTML = S.winHtml;
+  winStartFx(k);
+}
+function closeWin(){
+  S.winOpen = false; S.winHtml = ''; stopSfx();
+  if(S.pub && S.pub.result) lsSet('winseen_'+S.room, winKey(S.pub));
+  winMode = null; try{ cancelAnimationFrame(winRaf); }catch(e){}
+  const w = document.getElementById('winlayer'); if(w){ w.className = 'win'; w.innerHTML = ''; }
+  render();
+}
+function reopenWin(){ if(S.pub && S.pub.result) showWin(S.pub.result, false); }
+function checkResult(pub){
+  const key = winKey(pub);
+  if(S.stage!=='joined' && key) return;            // not seated yet: look again once joined
+  const first = S.resultKey===undefined;
+  if(key===S.resultKey && !first) return;
+  S.resultKey = key;
+  if(!key){ if(S.winOpen){ S.winOpen = false; S.winHtml = ''; stopSfx(); winMode = null; const w = document.getElementById('winlayer'); if(w){ w.className = 'win'; w.innerHTML = ''; } } return; }
+  if(first){ if(lsGet('winseen_'+S.room)!==key) showWin(pub.result, false); return; }   // reopened the app: show it, quietly
+  showWin(pub.result, true);
+}
+function winStartFx(k){
+  const cv = document.getElementById('winfx'); if(!cv || !cv.getContext) return;
+  const g = cv.getContext('2d'); let W = 0, H = 0;
+  const size = ()=>{ const d = Math.min(2, window.devicePixelRatio||1); W = cv.clientWidth; H = cv.clientHeight; cv.width = W*d; cv.height = H*d; g.setTransform(d,0,0,d,0,0); };
+  size(); winMode = k; winParts = []; try{ cancelAnimationFrame(winRaf); }catch(e){}
+  const R = (a,b)=>a+Math.random()*(b-a);
+  const cols = ['#ffe08a','#fff6d6','#f2b632','#ffffff','#9ad0ff'];
+  const spawn = ()=>{
+    if(k==='evil') winParts.push({x:R(0,W),y:H+10,vx:R(-.3,.3),vy:R(-2.4,-.8),r:R(1,3.4),life:1,dec:R(.004,.011),hue:R(0,28),sway:R(0,6.28)});
+    else if(Math.random()<.6) winParts.push({k:'c',x:R(0,W),y:-12,vx:R(-1,1),vy:R(1.2,3.2),w:R(5,10),h:R(8,14),rot:R(0,6.28),vr:R(-.2,.2),col:cols[Math.floor(R(0,5))],life:1,dec:.003});
+    else winParts.push({k:'s',x:R(0,W),y:R(0,H*.7),r:R(1,2.6),life:0,up:true,dec:R(.02,.05)});
+  };
+  if(k==='good') setTimeout(()=>{ if(winMode!=='good') return; for(let i=0;i<90;i++){ const a = R(0,6.28), sp = R(2,9); winParts.push({k:'c',x:W/2,y:H*.2,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-2,w:R(5,10),h:R(8,14),rot:R(0,6.28),vr:R(-.3,.3),col:cols[Math.floor(R(0,4))],life:1,dec:.006,grav:.16}); } }, 650);
+  const frame = ()=>{
+    if(winMode!==k || !document.getElementById('winfx')) return;
+    if(cv.clientWidth!==W || cv.clientHeight!==H) size();
+    g.clearRect(0,0,W,H);
+    for(let i=0;i<(k==='evil'?3:2);i++) if(winParts.length<420) spawn();
+    for(const p of winParts){
+      if(k==='evil'){ p.sway+=.05; p.x+=p.vx+Math.sin(p.sway)*.5; p.y+=p.vy; p.life-=p.dec;
+        g.globalCompositeOperation='lighter'; const a = Math.max(0,p.life);
+        const gr = g.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*4); gr.addColorStop(0,`hsla(${p.hue},100%,62%,${a})`); gr.addColorStop(1,'hsla(0,100%,40%,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(p.x,p.y,p.r*4,0,6.28); g.fill();
+      } else if(p.k==='c'){ p.vy+=(p.grav||0.02); p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.life-=p.dec;
+        g.globalCompositeOperation='source-over'; g.save(); g.translate(p.x,p.y); g.rotate(p.rot); g.globalAlpha = Math.max(0,Math.min(1,p.life*1.5)); g.fillStyle = p.col;
+        const hh = p.h*Math.abs(Math.cos(p.rot*2)); g.fillRect(-p.w/2,-hh/2,p.w,hh+1); g.restore();
+        if(p.y>H+20) p.life = 0;
+      } else { p.life += p.up ? p.dec : -p.dec; if(p.life>=1) p.up = false;
+        g.globalCompositeOperation='lighter'; g.globalAlpha = Math.max(0,p.life); g.fillStyle = '#fff8d8';
+        g.beginPath(); g.moveTo(p.x,p.y-p.r*4); g.lineTo(p.x+p.r,p.y-p.r); g.lineTo(p.x+p.r*4,p.y); g.lineTo(p.x+p.r,p.y+p.r); g.lineTo(p.x,p.y+p.r*4); g.lineTo(p.x-p.r,p.y+p.r); g.lineTo(p.x-p.r*4,p.y); g.lineTo(p.x-p.r,p.y-p.r); g.closePath(); g.fill(); g.globalAlpha = 1;
+        if(!p.up && p.life<=0) p.life = -1;
+      }
+    }
+    g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+    winParts = winParts.filter(p=>p.k==='s' ? p.life>-1 : p.life>0);
+    winRaf = requestAnimationFrame(frame);
+  };
+  if(typeof requestAnimationFrame==='function') frame();
+}
 try{ if(document.addEventListener){ document.addEventListener('touchstart', unlockAudio, {passive:true}); document.addEventListener('click', unlockAudio); } }catch(e){}
 function playNudgeSound(){
   try{
@@ -355,6 +526,8 @@ async function onPublic(){
   const pub = S.pub;
   try{ notesSync(); }catch(e){}
   try{ checkNudge(pub); }catch(e){}
+  try{ checkFx(pub); }catch(e){}
+  try{ checkResult(pub); }catch(e){}
   courtAutoJump(pub);
   if(S.seatPending!==null && S.pid && pub && pub.seats){
     const mine = pub.seats[appKey(S.pid)];
@@ -432,6 +605,7 @@ function takeSeat(pid){
   S.chatReadAt = lsGet('chatread_'+S.room) || 0; S.chatLoaded = false;
   if(S.chatUnsub) S.chatUnsub();
   S.chatUnsub = NET.on(R('chat/'+S.uid), v=>onChat(v));
+  try{ checkResult(S.pub); }catch(e){}
 }
 function leaveSeat(){
   if(S.privUnsub){ S.privUnsub(); S.privUnsub = null; }
@@ -1140,6 +1314,7 @@ function boardTab(){
         </div>
       </div>
       ${!seats.length && unseated.length ? '<p class="muted" style="text-align:center;">لم يتم ترتيب المقاعد بعد</p>' : ''}
+      ${S.pub && S.pub.result && !S.winOpen ? `<div style="text-align:center;margin-top:6px;"><button class="primary" style="padding:8px 16px;font-size:14px;" onclick="reopenWin()">🏁 ${S.pub.result.winner==='evil' ? 'انتصر الشر' : 'انتصر الخير'} — عرض النتيجة</button></div>` : ''}
       ${seatingFinal() && seatsOpen() && mySeat() ? `<div style="text-align:center;margin-top:6px;"><button class="ghost" style="padding:6px 14px;font-size:13px;" onclick="openSeatChange()">🪑 تغيير مقعدي</button></div>` : ''}
     </div>`;
 }

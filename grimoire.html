@@ -872,7 +872,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.12.4';
+const APP_BUILD = '2026.11.13.1';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1884,6 +1884,7 @@ function go(r){
   route=r; ui.modal=null;
   // Phones jump to their Courthouse view whenever the Storyteller opens the Courthouse.
   if(enteringCourt && game && appPendingDeclarations().length) ui.courtDeclarePrompt = true;
+  if(enteringCourt && game && game.phase==='play' && game.courtFxDay!==game.dayNum){ game.courtFxDay = game.dayNum; appFx('court'); }
   if(enteringCourt && game && game.court){ game.court.openSeq = (game.court.openSeq||0) + 1; saveGame(); }
   else if(typeof appSyncSoon==='function') appSyncSoon();
   render(); window.scrollTo(0, 0);
@@ -4019,7 +4020,7 @@ function startFirstNight(){
   });
 }
 function beginGame(after){
-  game.phase='play'; game.subphase='night'; game.nightNum=1;
+  game.phase='play'; game.subphase='night'; game.nightNum=1; appFx('night');
   assignRedHerring();
   assignLunaticFakeDemon();
   game.players.forEach(p=>{
@@ -4944,6 +4945,7 @@ screens['play'] = () => {
         <svg id="witch-curse-svg" class="fx-svg"></svg>
         <svg id="vortox-tornado-svg" class="fx-svg"></svg>
         ${declareButtonHtml()}
+        ${winButtonsHtml()}
         <div class="circle-center"><div class="clock-icon">🕰️</div><div class="muted" style="font-size:10.5px;">${game.players.filter(p=>p.alive).length} alive</div></div>
         ${svVoteFlagOverlayHtml()}
         ${seatedPlayers().map(p=>tokenHtml(p)).join('')}
@@ -10457,7 +10459,7 @@ function generateExecutionAnnouncement(btn, selectClass, textField){
 }
 function advanceToDay(){
   game.totalAdvanceClicks = (game.totalAdvanceClicks||0) + 1;
-  game.subphase='day'; game.dayNum+=1; game.dayHasDeath=false;
+  game.subphase='day'; game.dayNum+=1; game.dayHasDeath=false; appFx('day');
   game.diedFromResolutionTodayIds = [];
   game.execAnnouncementText = '';
   game.butcherExecAnnouncementText = '';
@@ -10531,7 +10533,7 @@ function advanceToNight(){
       }
     }
   }
-  game.subphase='night'; game.nightNum+=1; resolvePukkaOvernight();
+  game.subphase='night'; game.nightNum+=1; appFx('night'); resolvePukkaOvernight();
   // If Po genuinely used her charged 3-kill turn on the night we just left, clear the flag now.
   // An Exorcist-blocked night never sets poChargedUsedAtNight, so the flag correctly survives
   // untouched through any number of blocked nights until she actually gets a real turn.
@@ -10704,6 +10706,7 @@ function appDeclareDeaths(){
   const m = appDeclaredMap();
   game.players.forEach(p=>{ m[p.id] = p.alive!==false; });
   ui.courtDeclarePrompt = false;
+  if(pend.some(x=>x.dying)) appFx('death');   // a revival on its own is declared silently
   logAction('Declared to the players: ' + pend.map(x=>`${x.p.name} ${x.dying?'died':'is alive again'}`).join(', ') + '.');
   saveGame();
   appSyncSoon();
@@ -10713,7 +10716,7 @@ function skipDeclarePrompt(){ ui.courtDeclarePrompt = false; if(route==='court')
 function declareButtonHtml(){
   if(!game || game.phase!=='play' || !appState.attached) return '';
   const n = appPendingDeclarations().length;
-  return `<button class="${n?'primary':'ghost'} small" ${n?'':'disabled'} onclick="appDeclareDeaths()" style="position:absolute;left:6px;top:6px;z-index:5;${n?'':'opacity:.4;cursor:not-allowed;'}" title="${n?'Tell the players about the deaths/revivals that happened':'Nothing to declare right now'}">💀 Declare deaths${n?` <b style="background:#d6403a;color:#fff;border-radius:9px;padding:0 7px;margin-inline-start:4px;">${n}</b>`:''}</button>`;
+  return `<button class="${n?'primary':'ghost'} small" ${n?'':'disabled'} onclick="appDeclareDeaths()" style="position:absolute;left:6px;top:6px;z-index:5;${n?'':'opacity:.4;cursor:not-allowed;'}" title="${n?'Tell the players about the deaths/revivals that happened':'Nothing to declare right now'}">💀 Declare death/revival${n?` <b style="background:#d6403a;color:#fff;border-radius:9px;padding:0 7px;margin-inline-start:4px;">${n}</b>`:''}</button>`;
 }
 function declarePromptHtml(){
   const pend = appPendingDeclarations();
@@ -10778,6 +10781,8 @@ function appBuildPublicState(){
     nightNum: game.nightNum || 0, dayNum: game.dayNum || 0,
     joinOpen: appNormalJoinOpen(), seatsOpen: !game.seatsLockedByHost,
     nudge: game.nudge || null,
+    fx: game.fx || null,
+    result: game.result ? {winner: game.result.winner, seq: game.result.seq, silent: !!game.soundsOff, evil: game.result.evil || []} : null,
     seats,
     court: { nomination, history, leadingIds: leading, publicMessage: (court.publicMessage && court.publicMessage===court.deathMsgText) ? null : (court.publicMessage || null),
              openSeq: court.openSeq || 0, hostInCourt: route==='court',
@@ -11425,6 +11430,7 @@ function appOpenVoteWindow(){
   if(!nom || !nom.trialActive) return;
   if(!appState.code) return; // no phones connected: the vote runs by hand, as before
   if(appVoteMode()==='manual') return; // Storyteller chose to tap the votes himself
+  appFx('vote');
   nom.voteRound = (nom.voteRound||0) + 1;
   nom.voteOpenRound = nom.voteRound;
   nom.voteOpenedAt = Date.now();
@@ -11493,6 +11499,59 @@ function appChatMarkSeen(pid){
   const th = appChatThread(pid);
   const last = th.length ? Math.max(...th.map(m=>m.at||0)) : 0;
   if((game.chatSeen[pid]||0) < last){ game.chatSeen[pid] = last; saveGame(); }
+}
+// ---- Sound moments on the phones: night, day, Courthouse gavel, vote fanfare, death ----
+// One "latest event" travels on the public board; each phone plays it once when it changes.
+function appFx(kind){
+  if(!game || game.soundsOff) return;
+  game.fx = {seq: ((game.fx && game.fx.seq) || 0) + 1, kind, at: Date.now()};
+  if(appState.attached) appSyncSoon();
+}
+function toggleSounds(){
+  game.soundsOff = !game.soundsOff;
+  saveGame(); appSyncSoon();
+  if(ui && ui.modal && ui.modal.type==='appRoom') renderModal(); else render();
+}
+function soundsButtonHtml(){
+  return `<button class="ghost small" onclick="toggleSounds()" title="Night, day, Courthouse, vote, death and win sounds on the players' phones">${game.soundsOff ? '🔇 Phone sounds off — turn on' : '🔊 Phone sounds on — turn off'}</button>`;
+}
+// ---- End of the game: "Evil wins" / "Good wins" ----
+// Every phone shows the result with an animation and a sound, and the evil team is revealed.
+function appEvilTeamList(){
+  const order = {demon:0, minion:1, traveller:2};
+  return game.players.filter(p=>isEvil(p) && p.character).map(p=>({
+    name: p.name, char: p.character, nameAr: (CHAR_LOOKUP[p.character]||{}).nameAr || '', type: TYPE_OF[p.character] || 'other', alive: p.alive!==false,
+  })).sort((a,b)=>((order[a.type]??3) - (order[b.type]??3)));
+}
+function declareWinner(winner){
+  if(!game || game.phase!=='play') return;
+  const label = winner==='evil' ? 'Evil wins' : 'Good wins';
+  showConfirm(`Declare "${label}"? Every phone shows the result and the evil team is revealed. The game is over.`, ()=>{
+    game.result = {winner: winner==='evil' ? 'evil' : 'good', seq: Math.max((game.result && game.result.seq) || 0, game.resultSeq || 0) + 1, at: Date.now(), evil: appEvilTeamList()};
+    // The game is over: nothing is hidden any more.
+    if(game.declaredAlive) game.players.forEach(p=>{ game.declaredAlive[p.id] = p.alive!==false; });
+    logAction(`🏁 Game over — ${label}.`);
+    saveGame(); appSyncSoon();
+    if(route==='court') refreshCourt(); else if(route==='play') refreshPlay(); else render();
+  });
+}
+function cancelWinner(){
+  if(!game || !game.result) return;
+  showConfirm('Cancel the declared result? The result screen disappears from every phone and the game continues.', ()=>{
+    const seq = game.result.seq;
+    game.result = null; game.resultSeq = seq;
+    logAction('🏁 The declared result was cancelled.');
+    saveGame(); appSyncSoon();
+    if(route==='court') refreshCourt(); else if(route==='play') refreshPlay(); else render();
+  });
+}
+function winButtonsHtml(){
+  if(!game || game.phase!=='play') return '';
+  const wrap = 'position:absolute;right:6px;top:6px;z-index:5;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:60%;';
+  if(game.result){
+    return `<div style="${wrap}"><span style="align-self:center;font-size:13px;color:var(--gold-bright);">🏁 ${game.result.winner==='evil' ? '😈 Evil won' : '😇 Good won'}</span><button class="ghost small" onclick="cancelWinner()">Cancel result</button></div>`;
+  }
+  return `<div style="${wrap}"><button class="ghost small" onclick="declareWinner('good')" title="End the game: Good wins">😇 Good wins</button><button class="ghost small" onclick="declareWinner('evil')" title="End the game: Evil wins">😈 Evil wins</button></div>`;
 }
 // Nudge: every phone vibrates, plays a sound and shows "pick up your phone".
 function appNudgeAll(btn){
@@ -11917,6 +11976,7 @@ function appRoomPanelHtml(){
       <button class="ghost small" onclick="showConfirm('Close this room? Every phone disconnects and players must scan a new code.', ()=>appCloseRoom())">Close room</button>
       <button class="ghost small" onclick="showConfirm('Open a brand-new room? The current code and QR stop working, every phone disconnects, and players scan the new code.', ()=>appNewRoom())" title="Close this room and open a new one with a new code and QR">🆕 New room</button>
       ${seatsLockButtonHtml()}
+      ${soundsButtonHtml()}
       ${game.testMode ? `<button class="ghost small" onclick="appTestModeOpenTabs()" style="border-color:#8a5fd6;">🧪 Open all player tabs</button>` : ''}
       ${game.players.some(p=>p.character) ? `<button class="ghost small" onclick="appSendAllRoles()">🎭 Send all roles</button>` : ''}
     </div>
