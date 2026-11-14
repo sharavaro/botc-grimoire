@@ -589,6 +589,25 @@ bdi{unicode-bidi:isolate;}
 .more-item b{display:block;font-size:16px;font-weight:600;}
 .more-item small{display:block;font-size:12.5px;color:var(--mist);}
 .more-item.danger b{color:var(--warn);}
+
+#alert-host{position:fixed;top:10px;left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 20px));z-index:9000;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.st-alert{pointer-events:auto;display:flex;gap:12px;align-items:center;border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.6);cursor:pointer;animation:stAlertDrop .35s cubic-bezier(.2,1.2,.4,1);border:2px solid;color:#f3efe2;font-family:'Spectral','Noto Naskh Arabic',serif;}
+.st-alert.reply{background:#12301d;border-color:#4caf6a;} .st-alert.chat{background:#10283d;border-color:#5aa7e0;}
+@keyframes stAlertDrop{from{transform:translateY(-70px);opacity:0}to{transform:none;opacity:1}}
+.st-alert .sa-ic{font-size:26px;} .st-alert .sa-tx{flex:1;min-width:0;}
+.st-alert small{display:block;font-size:12.5px;opacity:.85;}
+.st-alert b{display:block;font-size:18px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.st-alert .sa-go{font-family:'Cinzel',serif;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;border:1px solid currentColor;border-radius:3px;padding:6px 8px;white-space:nowrap;}
+.st-alert .sa-x{background:transparent;border:0;color:inherit;font-size:20px;opacity:.75;cursor:pointer;padding:0 4px;min-width:0;}
+.app-ask-strip.ask-reply{margin-top:10px;border:2px solid #4caf6a;background:rgba(76,175,106,.13);border-radius:8px;padding:10px 12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+.ask-reply .ask-tick{font-size:24px;} .ask-reply .ask-body{flex:1;min-width:120px;}
+.ask-reply small{display:block;color:#a9dcb9;font-size:12.5px;} .ask-reply .ask-line{color:#c9f0d5;} .ask-reply b{font-size:22px;font-weight:600;color:#fff;margin-inline-start:4px;}
+.ask-reply.ask-pulse{animation:askPulse 1.2s ease-out 2;}
+@keyframes askPulse{0%{box-shadow:0 0 0 0 rgba(76,175,106,.7)}100%{box-shadow:0 0 0 18px rgba(76,175,106,0)}}
+.app-ask-strip.ask-wait{margin-top:10px;border:1px dashed var(--line);border-radius:8px;padding:10px 12px;color:var(--mist);}
+.ask-dots::after{content:"…";display:inline-block;overflow:hidden;vertical-align:bottom;animation:askDots 1.4s steps(4) infinite;width:1.2em;text-align:start;}
+@keyframes askDots{0%{width:0}100%{width:1.2em}}
+@media(prefers-reduced-motion:reduce){.st-alert,.ask-reply.ask-pulse,.ask-dots::after{animation:none}}
 </style>
 </head>
 <body>
@@ -897,7 +916,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.14.1';
+const APP_BUILD = '2026.11.14.2';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -10825,6 +10844,7 @@ function generateExecutionAnnouncement(btn, selectClass, textField){
   }
 }
 function advanceToDay(){
+  clearAlerts('reply');   // answers from the phase that just ended are no longer news
   game.totalAdvanceClicks = (game.totalAdvanceClicks||0) + 1;
   game.subphase='day'; game.dayNum+=1; game.dayHasDeath=false; appFx('day'); game.phaseStartedAt = Date.now();
   game.diedFromResolutionTodayIds = [];
@@ -10837,6 +10857,7 @@ function advanceToDay(){
   saveGame(); go('play');
 }
 function advanceToNight(){
+  clearAlerts('reply');   // answers from the phase that just ended are no longer news
   // Mayor win-condition reminder: purely informational, matching the same lightweight approach
   // already used for Saint and Scarlet Woman — no automatic game-ending logic at all, just a
   // nudge for the Storyteller to make the actual call. Travellers don't count toward the
@@ -10926,6 +10947,7 @@ function advanceToNight(){
   }
 }
 function goBackPhase(){
+  clearAlerts('reply');   // answers from the phase that just ended are no longer news
   if(game.subphase==='night'){
     if(game.nightNum<=1) return; // nothing before the very first night
     game.nightNum -= 1;
@@ -11651,15 +11673,54 @@ function appPhoneAskStripHtml(step){
   // Status only: asking happens through the message's own 📱 send button.
   let body;
   if(q && q.answer){
-    const applyBtn = q.manual && !q.applied && !q.answer.skip ? ` <button class="primary small" onclick="appApplyStoredAnswer('${q.qid}')">✅ Apply</button>` : '';
-    const note = q.note ? ` <span class="muted" style="font-size:11px;">(${escapeHtml(q.note)})</span>` : '';
-    body = `<span style="color:#6fc58a;">📱 ${name} chose: <b>${appAnswerText(q)}</b></span>${note}${applyBtn}`;
+    const applyBtn = q.manual && !q.applied && !q.answer.skip ? `<button class="primary small" onclick="appApplyStoredAnswer('${q.qid}')">✅ Apply</button>` : '';
+    const note = q.note ? `<span class="muted" style="font-size:12px;display:block;">(${escapeHtml(q.note)})</span>` : '';
+    const pulse = ui.pulseQid===q.qid ? ' ask-pulse' : '';
+    return `<div class="app-ask-strip ask-reply${pulse}" id="ask-${q.qid}"><span class="ask-tick">✅</span><span class="ask-body"><small>📱 Answered on their phone</small><span class="ask-line">${name} chose: <b>${appAnswerText(q)}</b></span>${note}</span>${applyBtn}</div>`;
   } else if(q){
-    body = `<span class="muted">⏳ Waiting for ${name}'s answer on their phone… (press 📱 again to re-ask)</span>`;
-  } else {
-    return '';
+    return `<div class="app-ask-strip ask-wait" id="ask-${q.qid}">📱 Sent to ${name}'s phone — waiting for the answer<span class="ask-dots"></span> <span style="font-size:12px;">(press 📱 again to re-ask)</span></div>`;
   }
-  return `<div class="app-ask-strip" style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${body}</div>`;
+  return '';
+}
+
+// ---- Alerts: a banner at the top of the screen when a player answers or sends a chat message ----
+// They stay until tapped (so a reply is never missed) and make no sound. Not saved: a reload starts clean.
+function alertsList(){ if(!ui.alerts) ui.alerts = []; return ui.alerts; }
+function pushAlert(a){
+  const list = alertsList();
+  const i = list.findIndex(x=>x.id===a.id);
+  if(i>=0) list.splice(i,1);                  // one banner per question / per chatting player
+  list.push(a);
+  while(list.length>4) list.shift();
+  renderAlerts();
+}
+function dismissAlert(id){ ui.alerts = alertsList().filter(a=>a.id!==id); renderAlerts(); }
+function clearAlerts(kind){ ui.alerts = kind ? alertsList().filter(a=>a.kind!==kind) : []; renderAlerts(); }
+function alertsHtml(){
+  return alertsList().map(a=>`<div class="st-alert ${a.kind}" onclick="openAlert('${a.id}')" role="status">
+    <span class="sa-ic">${a.kind==='reply'?'✅':'💬'}</span>
+    <span class="sa-tx"><small>${a.small}</small><b>${a.big}</b></span>
+    <span class="sa-go">${a.kind==='reply'?'Go to card':'Open chat'}</span>
+    <button class="sa-x" onclick="event.stopPropagation(); dismissAlert('${a.id}')" aria-label="Dismiss">✕</button>
+  </div>`).join('');
+}
+function renderAlerts(){
+  if(typeof document==='undefined') return;
+  try{
+    let host = document.getElementById('alert-host');
+    if(!host){ host = document.createElement('div'); host.id = 'alert-host'; document.body.appendChild(host); }
+    host.innerHTML = alertsHtml();
+  }catch(e){}
+}
+function openAlert(id){
+  const a = alertsList().find(x=>x.id===id); if(!a) return;
+  dismissAlert(id);
+  if(a.kind==='chat'){ openChat(a.pid); return; }
+  // A reply: show the night (or day) card it belongs to.
+  if(route!=='play' && game && game.phase==='play'){ go('play'); }
+  ui.pulseQid = a.qid;
+  if(route==='play') refreshPlay();
+  setTimeout(()=>{ try{ const el = document.getElementById('ask-'+a.qid); if(el && el.scrollIntoView) el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){} }, 60);
 }
 // The card's send button: its message text becomes the question on the phone.
 function appAskChoiceFromBox(step, actorId, btn){
@@ -11751,7 +11812,10 @@ function appApplyAnswer(pid, qid, ans){
   const uidOf = appState.claims[appKey(pid)];
   if(uidOf && NET) NET.set(appRoomPath(`private/${uidOf}/inbox/${msgId}/answeredNames`), names).catch(()=>{});
   saveGame();
+  ui.pulseQid = qid;
   if(route==='play') refreshPlay(); else render();
+  const roleName = actor.isDrunk && actor.drunkCover ? actor.drunkCover : q.step;
+  pushAlert({id:'r_'+qid, kind:'reply', qid, pid, small:`${escapeHtml(actor.name)} (${escapeHtml(roleName)}) answered`, big: appAnswerText(q)});
   return true;
 }
 // "Apply" for answers whose card handler acts immediately (the Storyteller stays in control).
@@ -11872,6 +11936,7 @@ function appChatMarkSeen(pid){
   const th = appChatThread(pid);
   const last = th.length ? Math.max(...th.map(m=>m.at||0)) : 0;
   if((game.chatSeen[pid]||0) < last){ game.chatSeen[pid] = last; saveGame(); }
+  if(ui.alerts && ui.alerts.some(a=>a.id==='c_'+pid)) dismissAlert('c_'+pid);
 }
 // ---- Sound moments on the phones: night, day, Courthouse gavel, vote fanfare, death ----
 // One "latest event" travels on the public board; each phone plays it once when it changes.
@@ -11960,6 +12025,19 @@ function appOnChat(val){
   if(!game) return;
   appState.chat = val || {};
   if(ui && ui.modal && ui.modal.type==='chat' && ui.modal.pid) appChatMarkSeen(ui.modal.pid);
+  // A banner for each player with a NEW message (not for what was already there when the page loaded).
+  const first = !appState.chatAlerted;
+  appState.chatAlerted = appState.chatAlerted || {};
+  game.players.forEach(p=>{
+    const mine = appChatThread(p.id).filter(m=>m.from==='p');
+    const last = mine.length ? mine[mine.length-1] : null;
+    const at = last ? (last.at||0) : 0;
+    if(!first && last && at > (appState.chatAlerted[p.id]||0) && appChatUnread(p.id)>0){
+      const n = appChatUnread(p.id);
+      pushAlert({id:'c_'+p.id, kind:'chat', pid:p.id, small:`Message from ${escapeHtml(p.name)}${n>1?` (${n} new)`:''}`, big:`<bdi>${escapeHtml(String(last.text||'').slice(0,80))}</bdi>`});
+    }
+    appState.chatAlerted[p.id] = Math.max(appState.chatAlerted[p.id]||0, at);
+  });
   appChatRefreshBadges();
   if(ui && ui.modal && ui.modal.type==='chat') appChatRerender();
 }
