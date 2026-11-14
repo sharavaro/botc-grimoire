@@ -928,7 +928,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.14.6';
+const APP_BUILD = '2026.11.14.7';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -6706,10 +6706,12 @@ function evilTwinCardHtml(i, isLastCard){
           ${sortedByRoleType(eligible).map(x=>playerOptionHtml(x, counterpart ? counterpart.id : null)).join('')}
         </select>
       </div>
+      ${counterpart ? `
       <div class="muted" style="font-size:11px;margin-top:6px;">1 — To ${escapeHtml(evilTwin.name)}</div>
       ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${kEvil}', this.innerText)">${escapeHtmlBr(evilText)}</div>`, `copyStepMessage('${kEvil}', this)`, evilTwin ? `sendStepMessageWA('${evilTwin.id}', this)` : null)}
       <div class="muted" style="font-size:11px;margin-top:10px;">2 — To ${counterpart ? escapeHtml(counterpart.name) : 'the good twin'}</div>
       ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${kGood}', this.innerText)">${escapeHtmlBr(goodText)}</div>`, `copyStepMessage('${kGood}', this)`, counterpart && counterpart ? `sendStepMessageWA('${counterpart.id}', this)` : null)}
+      ` : `<div class="muted ask-waiting" style="font-size:12px;margin-top:8px;">✍️ Choose the good twin above — the two messages (to ${escapeHtml(evilTwin.name)} and to the good twin) appear once you have.</div>`}
       ${cardFooterButtonsHtml(`toggleNightCheckKey('${doneKey}')`, null, null, isLastCard)}
     </div>
   `;
@@ -7036,6 +7038,11 @@ function pickSummaryText(step, p){
   if(pick.effect) parts.push(pick.effect==='sober' ? '☕ sober & healthy' : '🔁 acts twice');
   return parts.join(' + ');
 }
+// A draft that still tells the Storyteller to choose something before the message exists.
+function isPlaceholderMessage(t){
+  const body = String(t||'').replace(/^\*[^*]*\*\s*/,'').trim();   // drop the "*ليلة 1*" header
+  return /^\((اختر|قم باختيار|أدخل)/.test(body) && /لإنشاء هذه الرسالة/.test(body);
+}
 function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation, isLastCard){
   appCurrentActor = p; // lets the card's pickers offer "ask on phone" to this exact player
   const k = `${keyFor(step)}-${p.id}`;
@@ -7147,7 +7154,13 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
     (step==='Innkeeper' && !((game.infoPicks[keyFor('Innkeeper')]||{}).p1 && (game.infoPicks[keyFor('Innkeeper')]||{}).p2)) ||
     (step==='Moonchild' && !((game.infoPicks[keyFor('Moonchild')]||{}).p1)) ||
     (step==='Harlot' && !((game.infoPicks[keyFor('Harlot')]||{}).target));
-  const resultBoxHtml = (!isExorcisedDemon && step!=='Barista' && step!=='Gossip' && !hideResultBoxUntilPicked) ? `
+  // Any other card whose result still reads "(choose … below to build this message)" is in the same
+  // position: nothing to send yet, so no box and no send button until the choice is made.
+  // (A message the Storyteller typed over the placeholder is kept and shown.)
+  const resultIsPlaceholder = game.messageOverrides[k]===undefined && isPlaceholderMessage(text);
+  const waitingHint = (hideResultBoxUntilPicked || resultIsPlaceholder) && !isExorcisedDemon && step!=='Barista' && step!=='Gossip'
+    ? `<div class="muted ask-waiting" style="font-size:12px;margin-top:8px;">✍️ ${isDual ? 'The result message appears here once the choice is made.' : 'The message appears here once you make the choices below.'}</div>` : '';
+  const resultBoxHtml = (!isExorcisedDemon && step!=='Barista' && step!=='Gossip' && !hideResultBoxUntilPicked && !resultIsPlaceholder) ? `
         <div class="muted" style="font-size:11px;margin-top:6px;">${isDual ? (step==='Fortune Teller' ? '2 — Send the result once you\'ve entered their picks above' : '2 — Result (fills in once you pick their target above)') : ''}</div>
         <div class="muted" style="font-size:10px;">To ${escapeHtml(p.name)}</div>
         ${msgBoxWithButtons(`<div class="msg-box" dir="auto" contenteditable="true" oninput="storeOverride('${k}', this.innerText)" style="${cardAssetStyle('messageBox', p.character)}">${escapeHtmlBr(text)}</div>`, `copyStepMessage('${k}', this)`, p ? (appAskOnResultBox ? appAskSend : (step==='Spy' ? `appSendSpyGrimoire('${p.id}', this)` : `sendStepMessageWA('${p.id}', this)`)) : null, cardAssetStyle('copyButton', p.character), cardAssetStyle('sendButton', p.character), p)}
@@ -7172,8 +7185,10 @@ function nightStepCardHtml(step, p, i, viaPhilosopher, isSecondBaristaActivation
         <div class="hr" style="margin:10px 0;"></div>
       ` : ''}
       ${isMessageFirst ? resultBoxHtml : ''}
+      ${isDual ? waitingHint : ''}
       ${becameDemonViaSelfKill ? '' : pickControlsHtml(step)}
       ${isMessageFirst ? '' : resultBoxHtml}
+      ${isDual ? '' : waitingHint}
       ${snakeCharmerThirdMessageHtml(step)}
       ${cerenovusTargetMessageHtml(step)}
       ${cerenovusSecondTargetMessageHtml(step)}
