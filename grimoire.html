@@ -608,6 +608,15 @@ bdi{unicode-bidi:isolate;}
 .ask-dots::after{content:"…";display:inline-block;overflow:hidden;vertical-align:bottom;animation:askDots 1.4s steps(4) infinite;width:1.2em;text-align:start;}
 @keyframes askDots{0%{width:0}100%{width:1.2em}}
 @media(prefers-reduced-motion:reduce){.st-alert,.ask-reply.ask-pulse,.ask-dots::after{animation:none}}
+
+.home-wrap{max-width:460px;margin:8vh auto 0;display:flex;flex-direction:column;gap:12px;}
+.home-brand{font-family:'Cinzel Decorative',serif;font-size:26px;color:var(--gold-bright);text-align:center;}
+.home-build{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.12em;color:var(--mist);opacity:.7;text-align:center;margin:-8px 0 14px;}
+.home-btn,.home-resume{display:block;width:100%;text-align:start;padding:14px 16px;border-radius:8px;letter-spacing:0;text-transform:none;font-family:'Spectral',serif;cursor:pointer;}
+.home-btn b,.home-resume b{display:block;font-size:18px;font-weight:600;}
+.home-btn small,.home-resume small{display:block;font-size:13.5px;opacity:.8;margin-top:2px;}
+.home-resume{display:flex;gap:14px;align-items:center;background:#12301d;border:2px solid #4caf6a;color:#eafff0;}
+.home-resume .hr-dot{width:12px;height:12px;border-radius:50%;background:#4caf6a;flex:none;box-shadow:0 0 0 5px rgba(76,175,106,.25);}
 </style>
 </head>
 <body>
@@ -916,7 +925,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.14.2';
+const APP_BUILD = '2026.11.14.3';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1125,6 +1134,7 @@ async function storageDelete(key){
   try{ localStorage.removeItem('cbg_'+key); return {key, deleted:true}; }catch(e){ return null; }
 }
 async function saveGame(){
+  if(game) game.savedAt = Date.now();
   const result = await storageSet('active-game', JSON.stringify(game));
   appSyncSoon();
   if(!result) showInfo("Couldn't save the game — this browser's storage may be full. Nothing after this point is guaranteed to survive a reload until it's freed up.");
@@ -1934,7 +1944,7 @@ function go(r){
   render(); window.scrollTo(0, 0);
 }
 function topbarHtml(){
-  if(route==='boot' || route==='resume-check' || route==='court' || route==='boot-error') return '';
+  if(route==='boot' || route==='resume-check' || route==='court' || route==='boot-error' || route==='home') return '';
   const inPlay = !!(game && game.phase==='play');
   return `
     <div class="topbar">
@@ -1982,7 +1992,8 @@ function moreMenuHtml(){
   groups.push(['Start over', [
     (game && (game.phase==='play' || game.phase==='reveal')) ? item('↺','Reset game','Same players and script, back to the start', "moreMenuDo(confirmResetGame)", true) : '',
     item('🆕','New game','Leave this game and set up a new one', "moreMenuDo(confirmReset)", true),
-    item('⇄','Switch mode','Back to the home page (Classic / Modern)', "moreMenuDo(()=>{location.href='./';})")
+    item('🏠','Home page','Resume, or start a different game', "moreMenuDo(()=>go('home'))"),
+    item('⇄','Switch mode','Classic (WhatsApp) or Modern (phones)', "moreMenuDo(()=>{location.href='./';})")
   ]]);
   return `<div class="modal-overlay" onclick="if(event.target===this){ui.modal=null;renderModal();}">
     <div class="modal" style="max-width:460px;">
@@ -2258,7 +2269,10 @@ function handleImportBackupFile(input){
   input.value = '';
 }
 function confirmReset(){
-  showConfirm('Start a new game with the same players and seating? (Use "Reset players" on the players page to start completely from scratch.)', ()=>{
+  showConfirm('Start a new game with the same players and seating? (Use "Reset players" on the players page to start completely from scratch.)', ()=>startNewGameSamePlayers());
+}
+function startNewGameSamePlayers(){
+  {
     const keepPlayers = game.players.map(p=>({
       id:p.id, name:p.name, phone:p.phone||'', seat:p.seat,
       telegramChatId:p.telegramChatId||null,
@@ -2294,7 +2308,58 @@ function confirmReset(){
     ui.modal = null;
     saveGame();
     go('names');
-  });
+  }
+}
+// A clean table: no players, and a brand-new room so old phones cannot wander in.
+async function startNewGameNewPlayers(){
+  const keepToken = game ? game.telegramBotToken : null, keepOffset = game ? game.telegramUpdateOffset : null;
+  game = freshGame();
+  if(keepToken){ game.telegramBotToken = keepToken; game.telegramUpdateOffset = keepOffset; }
+  applyScript(game.script);
+  ui.collapsedNightCards = {}; ui.collapsedReveals = {}; ui.expandedLogSegments = {};
+  ui.lastActiveCardKey = null; ui.lastKnownLogSegment = null; ui.modal = null; ui.alerts = [];
+  await saveGame();
+  go('names');
+  if(appState.code){ try{ await appNewRoom(); }catch(e){ console.warn('new room', e); } }
+}
+
+/* ---------------- HOME ---------------- */
+// The grimoire always opens here. A game that is still going is one tap away ("Resume");
+// a finished one never reopens by itself.
+function fmtAgo(ts){
+  if(!ts) return '';
+  const m = Math.max(0, Math.floor((Date.now()-ts)/60000));
+  if(m<1) return 'just now';
+  if(m<60) return `${m} minute${m===1?'':'s'} ago`;
+  const h = Math.floor(m/60);
+  if(h<24) return `${h} hour${h===1?'':'s'} ago`;
+  const d = Math.floor(h/24);
+  return `${d} day${d===1?'':'s'} ago`;
+}
+function homeSavedInfo(){
+  const has = !!(game && game.players && game.players.length);
+  const finished = has && !!game.result;
+  const where = !has ? '' : game.phase==='play' ? (game.subphase==='night' ? `Night ${game.nightNum}` : `Day ${game.dayNum}`) : 'Setting up';
+  return {has, finished, resumable: has && !finished, where, n: has ? game.players.length : 0, ago: has ? fmtAgo(game.savedAt) : ''};
+}
+function resumeSavedGame(){
+  try{
+    const target = game.phase==='play' ? 'play' : game.phase;
+    go(target || 'names');
+  }catch(e){
+    // Never leave the Storyteller stuck: show the error and the recovery options.
+    console.error('Failed to resume saved game:', e);
+    ui.bootError = `${e && e.message ? e.message : e}\n${e && e.stack ? String(e.stack).split('\n').slice(0,4).join('\n') : ''}`;
+    ui.modal = null;
+    route = 'boot-error';
+    try{ render(); }catch(e2){ document.getElementById('app').innerHTML = screens['boot-error'](); }
+  }
+}
+function homeStartNew(kind){
+  const info = homeSavedInfo();
+  const run = ()=>{ if(kind==='same') startNewGameSamePlayers(); else if(info.has) startNewGameNewPlayers(); else go('names'); };
+  if(info.resumable && game.phase==='play') showConfirm(`A game is still in progress (${info.where}, ${info.n} players). Starting a new game ends it. Continue?`, run);
+  else run();
 }
 function confirmResetGame(){
   showConfirm('Completely reset this game — same players, same roles, same seating — and go back to the character reveal screen? All night/day progress, deaths, and status effects will be cleared.', ()=>{
@@ -2884,6 +2949,29 @@ function drawNoDashiiPoisonStreams(){
 const screens = {};
 
 /* ---------------- BOOT / RESUME ---------------- */
+screens['home'] = () => {
+  const i = homeSavedInfo();
+  const names = i.has ? game.players.slice(0,4).map(p=>escapeHtml(p.name)).join('، ') : '';
+  const more = i.n>4 ? ` and ${i.n-4} more` : '';
+  return `
+  <div class="home-wrap">
+    <div class="home-brand">🕯️ Storyteller's Grimoire</div>
+    <div class="home-build">Modern · Build ${APP_BUILD}</div>
+    ${i.resumable ? `
+      <button class="home-resume" onclick="resumeSavedGame()">
+        <span class="hr-dot"></span>
+        <span><b>▶ Resume the game in progress</b><small>${i.where} · ${i.n} player${i.n===1?'':'s'}${i.ago ? ` · last opened ${i.ago}` : ''}</small></span>
+      </button>` : ''}
+    ${i.has ? `
+      <button class="${i.resumable?'ghost':'primary'} home-btn" onclick="homeStartNew('same')"><b>New game, same players</b><small><bdi>${names}</bdi>${more} — phones stay linked</small></button>
+      <button class="ghost home-btn" onclick="homeStartNew('new')"><b>New game, new players</b><small>Empty table and a new room code</small></button>
+    ` : `
+      <button class="primary home-btn" onclick="homeStartNew('new')"><b>Start a new game</b><small>Players join on their phones with a code</small></button>
+    `}
+    ${i.finished ? `<p class="muted" style="font-size:13px;margin:6px 0 0;">The last game has ended (${game.result.winner==='good'?'Good':'Evil'} won). <a href="#" onclick="resumeSavedGame(); return false;" style="color:var(--mist);">Open it anyway</a></p>` : ''}
+    <p class="muted" style="font-size:13px;margin-top:18px;"><a href="./" style="color:var(--mist);">⇄ Switch between Classic and Modern mode</a></p>
+  </div>`;
+};
 screens['resume-check'] = () => `<p class="muted center" style="margin-top:60px;">Loading...</p>`;
 // Shown instead of hanging on "Loading..." forever if restoring the saved game throws.
 screens['boot-error'] = () => `
@@ -12551,8 +12639,7 @@ function appRoomModalHtml(){
     try{
       game = saved;
       applyScript(game.script || 'tb');
-      const target = game.phase==='play' ? 'play' : game.phase;
-      go(target || 'names');
+      go('home');   // never straight into an old match: the Storyteller chooses Resume or a new game
     }catch(e){
       // Never leave the Storyteller stuck on "Loading...": show the error and recovery options.
       console.error('Failed to restore saved game:', e);
@@ -12564,7 +12651,7 @@ function appRoomModalHtml(){
   } else {
     game = freshGame();
     applyScript(game.script);
-    go('names');
+    go('home');
   }
   if(ui.pendingRosterUpdatePrompt){
     ui.pendingRosterUpdatePrompt = false;
