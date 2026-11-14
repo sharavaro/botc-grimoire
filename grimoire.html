@@ -580,6 +580,15 @@ bdi{unicode-bidi:isolate;}
 .tc-taken{font-size:12px;color:var(--warn);margin-top:5px;}
 .trav-one{flex-basis:100%;width:100%;border-left:3px solid #c9394a;background:rgba(0,0,0,.22);border-radius:4px;padding:8px 12px;margin-top:6px;}
 @media(max-width:600px){ .trav-pick{flex:1 1 100%;} }
+
+.more-group{margin-top:12px;}
+.more-title{font-size:12px;color:var(--mist);margin-bottom:5px;}
+.more-item{display:flex;align-items:center;gap:12px;width:100%;text-align:start;background:var(--bg-panel-2);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:6px;color:inherit;font-family:'Spectral',serif;letter-spacing:0;text-transform:none;cursor:pointer;}
+.more-item:hover{border-color:var(--gold);}
+.more-item .mi-ic{font-size:20px;width:28px;text-align:center;flex:none;}
+.more-item b{display:block;font-size:16px;font-weight:600;}
+.more-item small{display:block;font-size:12.5px;color:var(--mist);}
+.more-item.danger b{color:var(--warn);}
 </style>
 </head>
 <body>
@@ -888,7 +897,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.13.4';
+const APP_BUILD = '2026.11.14.1';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1907,24 +1916,17 @@ function go(r){
 }
 function topbarHtml(){
   if(route==='boot' || route==='resume-check' || route==='court' || route==='boot-error') return '';
+  const inPlay = !!(game && game.phase==='play');
   return `
     <div class="topbar">
       <div class="brand">🕯️ Storyteller's Grimoire<div class="brand-build" title="Grimoire build">Modern · Build ${APP_BUILD}</div>${game && game.testMode ? `<div onclick="openAppRoomPanel()" title="Testing mode: every player's phone runs as a Chrome tab" style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:9px;background:#3b2d6b;border:1px solid #8a5fd6;color:#d6c2ff;font-size:11px;font-family:system-ui;cursor:pointer;">🧪 TEST MODE</div>` : ''}</div>
       <div class="navlinks">
-        <button class="ghost small" onclick="location.href='./'" title="Back to the home page to switch between Classic and Modern mode">⇄ Mode</button>
-        <button class="ghost small" onclick="exportBackup()" title="Download everything — player names, phone numbers, custom icons, and the current game — as one portable file">💾 Backup</button>
-        <button class="ghost small" onclick="triggerTopbarImportBackup()" title="Restore names, icons, and game state from a backup file made on another device">📥 Restore</button>
         <input type="file" id="topbar-backup-import-input" accept="application/json" style="display:none;" onchange="handleImportBackupFile(this)">
-        ${game && game.phase==='play' ? `<button class="ghost small" onclick="openCharSheet()">📖 Character Sheet</button>` : ''}
-        ${game && game.phase==='play' ? `<button class="ghost small" onclick="openNightOrder()">🌙 Night Order</button>` : ''}
-        ${game && game.phase==='play' ? `<button class="ghost small" onclick="pageTurnTransition(()=>go('seating'))">Seating</button>` : ''}
-        ${game && game.phase==='play' && game.activeLoric && game.activeLoric.length>0 ? `<button class="ghost small" onclick="showLoricReminder()" style="border-color:var(--gold);color:var(--gold-bright);" title="Active Loric rule reminders">🌀 Loric (${game.activeLoric.length})</button>` : ''}
         ${appState.code ? appNudgeButtonHtml() + appChatButtonHtml() : ''}
         <button class="ghost small" onclick="openAppRoomPanel()" title="Players' phones: room code, QR, who has joined">📱 Phones${appState.code ? ` <span style="color:${appState.online?'#4caf6a':'#e0943f'};">●</span>` : ''}${appState.code && appPendingJoinRequests().length ? ` <span style="background:${TYPE_COLORS.traveller};color:#fff;border-radius:9px;padding:0 6px;font-size:11px;" title="Someone wants to join as a Traveller">🧳 ${appPendingJoinRequests().length}</span>` : ''}</button>
-        ${game && (game.phase==='play' || (game.scriptConfirmed && ['tokens','review','seating','reveal'].includes(route))) ? `<button class="ghost small" onclick="openAddTravellerModal()" title="Add a Traveller (during setup they wake on the first night like everyone else)" style="border-color:${TYPE_COLORS.traveller};">➕ Add Traveller</button>` : ''}
-        ${game && (game.phase==='play' || game.phase==='reveal') ? `<button class="ghost small" onclick="confirmResetGame()">Reset game</button>` : ''}
-        <button class="ghost small" onclick="confirmReset()">New game</button>
-        ${game && game.phase==='play' ? `
+        ${!inPlay && game && game.scriptConfirmed && ['tokens','review','seating','reveal'].includes(route) ? `<button class="ghost small" onclick="openAddTravellerModal()" title="Add a Traveller (during setup they wake on the first night like everyone else)" style="border-color:${TYPE_COLORS.traveller};">➕ Add Traveller</button>` : ''}
+        <button class="ghost small" onclick="openMoreMenu()" title="Reference sheets, seating, Travellers, backup, new game">☰ More${inPlay && game.activeLoric && game.activeLoric.length>0 ? ` <span style="color:var(--gold-bright);" title="A Loric rule is active">🌀</span>` : ''}</button>
+        ${inPlay ? `
           <button class="ghost small" onclick="playDeathSound()" title="Play death sound effect">🗡️ Death sound</button>
           <button class="ghost small" onclick="goBackPhase()" ${game.subphase==='night' && game.nightNum<=1 ? 'disabled' : ''} title="Go back to the previous night/day">⬅️ Back</button>
           ${game.subphase==='night'
@@ -1938,6 +1940,36 @@ function topbarHtml(){
 function triggerTopbarImportBackup(){
   const input = document.getElementById('topbar-backup-import-input');
   if(input) input.click();
+}
+
+// ---- ☰ More: everything that is not needed minute-to-minute lives here, so the top bar stays short ----
+function openMoreMenu(){ ui.modal = {type:'moreMenu'}; renderModal(); }
+function moreMenuDo(fn){ ui.modal = null; renderModal(); fn(); }
+function moreMenuHtml(){
+  const inPlay = !!(game && game.phase==='play');
+  const item = (icon, label, hint, js, danger)=>`<button class="more-item ${danger?'danger':''}" onclick="${js}"><span class="mi-ic">${icon}</span><span><b>${label}</b><small>${hint}</small></span></button>`;
+  const groups = [];
+  if(inPlay) groups.push(['During the game', [
+    item('📖','Character sheet','Every character in this script', "moreMenuDo(openCharSheet)"),
+    item('🌙','Night order','Who wakes, and in what order', "moreMenuDo(openNightOrder)"),
+    item('🪑','Seating','Change where players sit', "moreMenuDo(()=>pageTurnTransition(()=>go('seating')))"),
+    (game.activeLoric && game.activeLoric.length>0) ? item('🌀',`Loric reminders (${game.activeLoric.length})`,'Active Loric rules', "moreMenuDo(showLoricReminder)") : ''
+  ]]);
+  if(inPlay) groups.push(['Players', [ item('➕','Add a Traveller','Someone joining late or leaving early', "moreMenuDo(openAddTravellerModal)") ]]);
+  groups.push(['Save and restore', [
+    item('💾','Backup','Download names, icons and this game as one file', "moreMenuDo(exportBackup)"),
+    item('📥','Restore','Load a backup file made on another device', "moreMenuDo(triggerTopbarImportBackup)")
+  ]]);
+  groups.push(['Start over', [
+    (game && (game.phase==='play' || game.phase==='reveal')) ? item('↺','Reset game','Same players and script, back to the start', "moreMenuDo(confirmResetGame)", true) : '',
+    item('🆕','New game','Leave this game and set up a new one', "moreMenuDo(confirmReset)", true),
+    item('⇄','Switch mode','Back to the home page (Classic / Modern)', "moreMenuDo(()=>{location.href='./';})")
+  ]]);
+  return `<div class="modal-overlay" onclick="if(event.target===this){ui.modal=null;renderModal();}">
+    <div class="modal" style="max-width:460px;">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px;"><h3 style="margin:0;">☰ More</h3><button class="ghost small" onclick="ui.modal=null;renderModal();">Close</button></div>
+      ${groups.map(([title, items])=>`<div class="more-group"><div class="more-title">${title}</div>${items.join('')}</div>`).join('')}
+    </div></div>`;
 }
 function openCharSheet(){ ui.modal = {type:'charsheet'}; render(); }
 function openNightOrder(){ ui.modal = {type:'nightorder'}; render(); }
@@ -5183,12 +5215,6 @@ screens['play'] = () => {
 
     ${game.subphase==='night' ? nightChecklistHtml() : dayPhaseHtml()}
 
-    <div class="row" style="justify-content:flex-end;margin:10px 0;">
-      <button class="ghost small" onclick="goBackPhase()" ${game.subphase==='night' && game.nightNum<=1 ? 'disabled' : ''} title="Go back to the previous night/day">⬅️ Back</button>
-      ${game.subphase==='night'
-        ? `<button class="primary small" onclick="advanceToDay()">☀️ Advance to Day</button>`
-        : `<button class="primary small" onclick="advanceToNight()">🌙 Advance to Night</button>`}
-    </div>
 
     <div class="panel">
       <h3 style="margin-top:0;">End-of-night summary</h3>
@@ -5383,6 +5409,7 @@ function renderModal(){
   let host = document.getElementById('modal-host');
   if(!host){ host = document.createElement('div'); host.id='modal-host'; document.body.appendChild(host); }
   if(!ui.modal){ host.innerHTML=''; return; }
+  if(ui.modal.type==='moreMenu'){ host.innerHTML = moreMenuHtml(); return; }
   if(ui.modal.type==='rosterUpdateAvailable'){
     host.innerHTML = `
       <div class="modal-overlay">
@@ -6524,7 +6551,7 @@ function currentActiveNightCardHtml(){
       return wrapDuplicatedCard(`${step}-${undoneRows[0].id}`, progressBadge + undoneRows.map((p,idx)=>nightStepCardHtml(step, p, i, p.extraAbilityChar===step, false, allDoneAfterThisGroup && idx===undoneRows.length-1)).join(''));
     }
   }
-  return `<div class="panel"><p class="muted" style="font-size:12px;">All caught up for tonight.</p><button class="primary small" onclick="advanceToDay()">☀️ Advance to Day</button></div>`;
+  return `<div class="panel"><p style="margin:0;">✅ All caught up for tonight. When you are ready, press <b>☀️ Advance to Day</b> at the top.</p></div>`;
 }
 function evilTwinCardHtml(i, isLastCard){
   const evilTwin = game.players.find(x=>x.character==='Evil Twin');
@@ -10190,7 +10217,7 @@ function executionCardHtml(showAdvanceButton){
       </div>
       <div class="exec-announcement">${execAnnouncementInnerHtml('butcherExecAnnouncementText')}</div>
       ` : ''}
-      ${showAdvanceButton ? `<button class="primary small" style="margin-top:10px;" onclick="advanceToNight()">🌙 Advance to Night</button>` : ''}
+      ${showAdvanceButton ? `<p class="muted" style="margin:10px 0 0;">When the day is over, press <b>🌙 Advance to Night</b> at the top.</p>` : ''}
     </div>
   `;
 }
