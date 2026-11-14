@@ -46,6 +46,7 @@ input{font-family:inherit;font-size:20px;padding:12px;border-radius:10px;border:
 .role-hidden{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;text-align:center;gap:10px;cursor:pointer;}
 .role-hidden .eye{font-size:54px;}
 .token{width:132px;height:132px;border-radius:50%;margin:4px auto 12px;background:radial-gradient(circle at 50% 35%,#efe3c2,#c8b68a);display:flex;align-items:center;justify-content:center;overflow:hidden;border:4px solid var(--gold);box-shadow:0 0 24px #0008;}
+.token.trav{border:5px solid transparent;background:radial-gradient(circle at 50% 35%,#efe3c2,#c8b68a) padding-box,repeating-linear-gradient(45deg,#d43b3b 0 8px,#2f6fd4 8px 16px) border-box;}
 .token img{width:100%;height:100%;object-fit:contain;}
 .token .fallback{font-size:48px;}
 .role-name{text-align:center;font-size:26px;font-weight:700;}
@@ -187,7 +188,7 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
 .win.good .ev{background:rgba(28,16,34,.78);border-color:#a8323f}
 @keyframes winflip{to{opacity:1;transform:none}}
 .win .ev .av{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;background:radial-gradient(circle at 35% 30%,#7a1422,#2a060c);border:2px solid #c9394a;flex:none}
-.win .ev .nm{font-size:17px;font-weight:700}.win .ev .ch{font-size:13px;color:#ff9aa5}.win .ev .ch .en{color:#c8a5ab;margin-inline-start:6px;font-size:11px;direction:ltr;display:inline-block}
+.win .ev .nm{font-size:17px;font-weight:700}.win .ev .ch{font-size:13px;color:#ff9aa5}.win .ev .ch .en{color:#c8a5ab;margin:0 6px;font-size:11px;direction:ltr;display:inline-block}
 .win .ev .tag{margin-inline-start:auto;font-size:11px;padding:3px 9px;border-radius:9px;background:#5c0f1b;color:#ffd0d6;white-space:nowrap}
 .win .ev.demon{border-color:#ff4257;box-shadow:0 0 18px rgba(255,40,70,.35)}.win .ev.demon .tag{background:#c8102e;color:#fff}
 .win .btns{margin-top:18px;display:flex;gap:10px;opacity:0;animation:winfadeup .6s 3.2s ease-out forwards}
@@ -225,7 +226,7 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.11.13.4';
+const PLAYER_BUILD = '2026.11.14.1';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -431,7 +432,7 @@ function checkFx(pub){
 
 /* ---------- the end of the game: who won, with the evil team revealed ---------- */
 let winRaf = null, winParts = [], winMode = null;
-function winTagFor(t){ return t==='demon' ? 'الشيطان' : t==='minion' ? 'تابع' : t==='traveller' ? 'مسافر شرير' : 'شرير'; }
+function winTagFor(t){ return t==='demon' ? 'العفريت' : t==='minion' ? 'من الأعوان' : t==='traveller' ? 'مسافر شرير' : 'شرير'; }
 function winInnerHtml(r){
   const k = r.winner==='evil' ? 'evil' : 'good';
   const words = k==='evil' ? ['انتصر','الشر'] : ['انتصر','الخير'];
@@ -442,7 +443,7 @@ function winInnerHtml(r){
     <div class="title">${words.map((x,i)=>`<span style="animation-delay:${(k==='evil'?.55:.5)+i*.28}s">${x}</span>`).join('')}</div>
     <div class="sub">${k==='evil' ? 'سقطت القرية في الظلام' : 'تم اعدام العفريت!'}</div>
     ${evil.length ? `<div class="listhead">${k==='evil' ? '— هؤلاء كانوا الأشرار —' : '— الأشرار الذين هُزموا —'}</div>` : ''}
-    <div class="evils">${evil.map((p,i)=>`<div class="ev ${p.type==='demon'?'demon':''}" style="animation-delay:${2.2+i*.3}s"><div class="av">${iconHtml(p.char,'')}</div><div><div class="nm"><bdi>${esc(p.name)}</bdi>${p.alive===false?'<span class="dead">⚰️</span>':''}</div><div class="ch">${esc(p.nameAr || (charInfo(p.char)||{}).nameAr || p.char)}<span class="en">${esc(p.char)}</span></div></div><span class="tag">${winTagFor(p.type)}</span></div>`).join('')}</div>
+    <div class="evils">${evil.map((p,i)=>`<div class="ev ${p.type==='demon'?'demon':''}" style="animation-delay:${2.2+i*.3}s"><div class="av">${iconHtml(p.char,'')}</div><div><div class="nm"><bdi>${esc(p.name)}</bdi>${p.alive===false?'<span class="dead">⚰️</span>':''}</div><div class="ch">${esc(p.nameAr || (charInfo(p.char)||{}).nameAr || p.char)} <span class="en">${esc(p.char)}</span></div></div><span class="tag">${winTagFor(p.type)}</span></div>`).join('')}</div>
     <div class="btns"><button onclick="stopSfx()">🔇 إيقاف الصوت</button><button onclick="closeWin()">إغلاق</button></div>
   </div>`;
 }
@@ -1266,10 +1267,13 @@ function roleTab(){
   if(!S.roleShown){
     return `<div class="card role-hidden" onclick="toggleRole()"><div class="eye">👁️</div><div style="font-size:18px;font-weight:700;">اضغط لعرض دورك</div><div class="muted">تأكد أن لا أحد ينظر إلى شاشتك</div></div>`;
   }
-  const color = TYPE_COLORS[role.type] || 'var(--gold)';
+  // A Traveller: the red/blue Traveller frame (as on the board and in the Courthouse), and the name
+  // coloured by the team the Storyteller put them on — green for good, red for evil.
+  const isTrav = role.type==='traveller';
+  const color = isTrav ? (role.team==='evil' ? TYPE_COLORS.demon : TYPE_COLORS.townsfolk) : (TYPE_COLORS[role.type] || 'var(--gold)');
   return `
     <div class="card" onclick="toggleRole()">
-      <div class="token" style="border-color:${color};">${iconHtml(role.char)}</div>
+      <div class="token${isTrav?' trav':''}" style="${isTrav?'':`border-color:${color};`}">${iconHtml(role.char)}</div>
       <div class="role-name" style="color:${color};">${esc(role.nameAr || role.char || '')}</div>
       <div class="role-en en">${esc(role.char||'')}</div>
       <span class="team ${role.team==='evil'?'evil':'good'}">${role.team==='evil'?'فريق الأشرار':'فريق الأخيار'}</span>
@@ -1287,8 +1291,8 @@ function roleInfoCardHtml(role){
   const ch = info.chart || [];
   const cnt = (k, n, ar, en)=>`<div class="cnt ${k}"><div class="o">${n===undefined?'':n}</div><div class="t">${ar}</div><div class="e en">${en}</div></div>`;
   const team = info.team || [];
-  const TAG = {demon:'العفريت', minion:'تابع', lunatic:'المعتوه'};
-  const SUB = {demon:'هو العفريت', minion: role.type==='minion' ? 'تابع معك' : 'من أعوانك', lunatic:'يظن أنه العفريت (Lunatic)'};
+  const TAG = {demon:'العفريت', minion:'من الأعوان', lunatic:'المعتوه'};
+  const SUB = {demon:'هو العفريت', minion: role.type==='minion' ? 'من الأعوان معك' : 'من أعوانك', lunatic:'يظن أنه العفريت (Lunatic)'};
   const bluffs = info.bluffs || [];
   const sel = (S.bluffSel!==undefined && S.bluffSel>=0 && bluffs[S.bluffSel]) ? bluffs[S.bluffSel] : null;
   const selInfo = sel ? (charInfo(sel.char) || {}) : null;

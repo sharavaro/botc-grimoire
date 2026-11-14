@@ -695,7 +695,7 @@ const SCRIPTS = {
       outsider: [
         {name:'Mutant', nameAr:'المسخ', ability:'If you are “mad” about being an Outsider, you might be executed.', abilityAr:'إذا كنت (مجنونا) بشأن كونك من الغرباء، قد يتم اعدامك.'},
         {name:'Sweetheart', nameAr:'العشيق', ability:'When you die, 1 player is drunk from now on.', abilityAr:'عندما تموت، يصبح أحد اللاعبين مخمورا.'},
-        {name:'Barber', nameAr:'الحلاق', ability:'If you died today or tonight, the Demon may choose 2 players (not another Demon) to swap characters.', abilityAr:'إذا مت هذا اليوم أو هذه الليلة، يمكن للشيطان أن يختار لاعبين اثنين (ليس عفريتا آخر) ليتبادلا شخصيتيهما.'},
+        {name:'Barber', nameAr:'الحلاق', ability:'If you died today or tonight, the Demon may choose 2 players (not another Demon) to swap characters.', abilityAr:'إذا مت هذا اليوم أو هذه الليلة، يمكن للعفريت أن يختار لاعبين اثنين (ليس عفريتا آخر) ليتبادلا شخصيتيهما.'},
         {name:'Klutz', nameAr:'الأخرق', ability:'When you learn that you died, publicly choose 1 alive player: if they are evil, your team loses.', abilityAr:'عندما تعرف أنك مت، اختر علنًا لاعبًا حيًا: إذا كان شريرًا، يخسر فريقك.'},
       ],
       minion: [
@@ -928,7 +928,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.14.5';
+const APP_BUILD = '2026.11.14.6';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -2037,8 +2037,7 @@ function moreMenuHtml(){
     item('📥','Restore','Load a backup file made on another device', "moreMenuDo(triggerTopbarImportBackup)")
   ]]);
   groups.push(['Start over', [
-    (game && (game.phase==='play' || game.phase==='reveal')) ? item('↺','Reset game','Same players and script, back to the start', "moreMenuDo(confirmResetGame)", true) : '',
-    item('🆕','New game','Leave this game and set up a new one', "moreMenuDo(confirmReset)", true),
+    item('🆕','New game','Same players, new characters', "moreMenuDo(confirmReset)", true),
     item('🏠','Home page','Resume, or start a different game', "moreMenuDo(()=>go('home'))"),
     item('⇄','Switch mode','Classic (WhatsApp) or Modern (phones)', "moreMenuDo(()=>{location.href='./';})")
   ]]);
@@ -2408,6 +2407,8 @@ function goHomeFromBrand(e){
 }
 function resumeSavedGame(){
   ui.resumedThisVisit = true;
+  // A game saved on the old "Character reveals" page (now removed) continues from seating.
+  if(game && game.phase==='reveal'){ game.phase = 'seating'; saveGame(); }
   try{
     const target = game.phase==='play' ? 'play' : game.phase;
     go(target || 'names');
@@ -2425,48 +2426,6 @@ function homeStartNew(kind){
   const run = ()=>{ if(kind==='same') startNewGameSamePlayers(); else if(info.has) startNewGameNewPlayers(); else go('names'); };
   if(info.has && !info.finished && game.phase==='play') showConfirm(`A game is still saved (${info.where}, ${info.n} players). Starting a new game ends it. Continue?`, run);
   else run();
-}
-function confirmResetGame(){
-  showConfirm('Completely reset this game — same players, same roles, same seating — and go back to the character reveal screen? All night/day progress, deaths, and status effects will be cleared.', ()=>{
-    const keepPlayers = game.players.map(p=>({
-      id:p.id, name:p.name, phone:p.phone||'', seat:p.seat,
-      telegramChatId:p.telegramChatId||null,
-      freeX:p.freeX!=null?p.freeX:null, freeY:p.freeY!=null?p.freeY:null,
-      alive:true, ghostVoteUsed:false,
-      character: p.originalCharacter!==undefined ? p.originalCharacter : p.character,
-      isDrunk: p.originalCharacter!==undefined ? (p.originalIsDrunk||false) : (p.isDrunk||false),
-      drunkCover: p.originalCharacter!==undefined ? (p.originalDrunkCover||null) : (p.drunkCover||null),
-      markers:[],
-      selfJoined: !!p.selfJoined, wantsTraveller: !!p.wantsTraveller, alignmentOverride: p.alignmentOverride,
-    }));
-    const prevSeatLocks = Object.assign({}, game.seatLocks||{});
-    const prevScript = game.script || 'tb';
-    const prevSeatingLayout = game.seatingLayout || 'circle';
-    const prevTelegramToken = game.telegramBotToken;
-    const prevTelegramOffset = game.telegramUpdateOffset;
-    const newGame = freshGame();
-    newGame.players = keepPlayers;
-    newGame.seatLocks = prevSeatLocks;
-    newGame.script = prevScript;
-    newGame.seatingLayout = prevSeatingLayout;
-    newGame.telegramBotToken = prevTelegramToken;
-    newGame.telegramUpdateOffset = prevTelegramOffset;
-    newGame.keepSeating = true;
-    newGame.phase = 'reveal';
-    game = newGame;
-    applyScript(game.script);
-    game.bluffs = pickDemonBluffs();
-    assignRedHerring();
-    assignLunaticFakeDemon();
-    ui.collapsedNightCards = {};
-    ui.collapsedReveals = {};
-    ui.expandedLogSegments = {};
-    ui.lastActiveCardKey = null;
-    ui.lastKnownLogSegment = null;
-    ui.modal = null;
-    saveGame();
-    go('reveal');
-  });
 }
 function toggleAtheistMode(){
   game.atheistMode = !game.atheistMode;
@@ -4352,20 +4311,7 @@ function insertPlayerAtSeat(playerId, insertIndex){
   });
   player.seat = insertIndex;
 }
-screens['reveal'] = () => `
-  <div class="panel">
-    <h2 style="margin-top:0;">Character reveals</h2>
-    <p class="muted">Before the first night begins, send each player their own role and ability — one message per person, no particular order.</p>
-    ${sendNextRevealBarHtml()}
-    <div class="hr"></div>
-    <div class="zebra-list">${game.players.map(p=>characterRevealRowHtml(p)).join('')}</div>
-    <div class="hr"></div>
-    <div class="row between">
-      <button class="ghost" onclick="goBackToSeating()">‹ Back to seating</button>
-      <button class="primary" onclick="beginGame()">Advance to first night ›</button>
-    </div>
-  </div>
-`;
+// (The old "Character reveals" page was removed: roles go to the phones when the first night starts.)
 function sendNextRevealBarHtml(){
   const remaining = game.players.filter(p=>p.character && !game.waSentReveal[p.id]);
   const joined = game.players.filter(p=>appState.claims[appKey(p.id)]).length;
@@ -4398,14 +4344,6 @@ function resetRevealSentTracking(){
   game.waSentReveal = {};
   saveGame();
   render();
-}
-function goToReveal(){
-  game.phase='reveal';
-  // The Lunatic's reveal message must already show their fake Demon, so assign it now rather
-  // than waiting for beginGame() (which runs only after every reveal has been sent).
-  assignLunaticFakeDemon();
-  saveGame();
-  pageTurnTransition(()=>go('reveal'));
 }
 function goBackToSeating(){
   game.phase='seating';
