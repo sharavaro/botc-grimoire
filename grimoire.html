@@ -617,6 +617,9 @@ bdi{unicode-bidi:isolate;}
 .home-btn small,.home-resume small{display:block;font-size:13.5px;opacity:.8;margin-top:2px;}
 .home-resume{display:flex;gap:14px;align-items:center;background:#12301d;border:2px solid #4caf6a;color:#eafff0;}
 .home-resume .hr-dot{width:12px;height:12px;border-radius:50%;background:#4caf6a;flex:none;box-shadow:0 0 0 5px rgba(76,175,106,.25);}
+
+.msg-box-send-btn.sent{border-color:#4caf6a !important;color:#7fe0a0 !important;background:rgba(76,175,106,.18) !important;}
+.msg-box-send-btn.sent::after{content:"✓";position:absolute;top:-8px;right:-8px;width:18px;height:18px;border-radius:50%;background:#4caf6a;color:#0d1a12;font-size:12px;font-weight:700;line-height:18px;text-align:center;font-family:sans-serif;}
 </style>
 </head>
 <body>
@@ -925,7 +928,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.14.3';
+const APP_BUILD = '2026.11.14.4';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1219,12 +1222,56 @@ function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;
 // Wraps a message-box div together with its copy/send buttons, positioned as overlaid
 // bottom-left/bottom-right icons rather than a separate row below — used throughout the app
 // to keep every message box compact. innerHtml must be the full <div class="msg-box">...</div>.
+// "Sent" marks: once a card's message has gone to the phone, its send button turns green with a tick.
+// It stays clickable (to send again) and goes back to plain as soon as the text no longer matches
+// what was sent — the Storyteller edited it, or the card's message changed.
+function sentNorm(t){ return String(t||'').replace(/\s+/g,''); }   // spacing and line breaks do not count as an edit
+function sentTextOfHtml(html){
+  return sentNorm(String(html||'').replace(/<br\s*\/?>/gi,'\n').replace(/<[^>]*>/g,'')
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ').replace(/&amp;/g,'&'));
+}
+function sentMarkFor(sendOnclick, innerHtml){
+  const m = game && game.sentMarks ? game.sentMarks[sendOnclick] : null;
+  return Array.isArray(m) && m.includes(sentTextOfHtml(innerHtml));
+}
+function markBoxSent(btn){
+  try{
+    if(!btn || !btn.classList || !btn.classList.contains('msg-box-send-btn')) return;
+    const box = btn.parentElement ? btn.parentElement.querySelector('.msg-box') : null;
+    const key = btn.getAttribute('onclick');
+    if(!box || !key) return;
+    game.sentMarks = game.sentMarks || {};
+    // One player's cards can share a button, so remember every text sent through it (the newest few).
+    const list = Array.isArray(game.sentMarks[key]) ? game.sentMarks[key] : [];
+    const t = sentNorm(box.innerText);
+    if(!list.includes(t)) list.push(t);
+    game.sentMarks[key] = list.slice(-12);
+    btn.classList.add('sent');
+    saveGame();
+  }catch(e){}
+}
+function msgBoxEdited(box){
+  try{
+    const btn = box && box.parentElement ? box.parentElement.querySelector('.msg-box-send-btn') : null;
+    if(!btn) return;
+    const key = btn.getAttribute('onclick');
+    const m = game && game.sentMarks ? game.sentMarks[key] : null;
+    if(!Array.isArray(m)) return;
+    const same = m.includes(sentNorm(box.innerText));
+    btn.classList.toggle('sent', same);
+    btn.title = same ? 'Sent — tap to send again' : "Send to this player's phone";
+  }catch(e){}
+}
+if(typeof document!=='undefined' && document.addEventListener){
+  document.addEventListener('input', e=>{ const t = e.target; if(t && t.classList && t.classList.contains('msg-box')) msgBoxEdited(t); });
+}
 function msgBoxWithButtons(innerHtml, copyOnclick, sendOnclick, copyStyle, sendStyle){
+  const sent = sendOnclick ? sentMarkFor(sendOnclick, innerHtml) : false;
   return `
     <div class="msg-box-wrap">
       ${innerHtml}
       <button class="msg-box-copy-btn" onclick="${copyOnclick}" title="Copy" style="${copyStyle||''}">📋</button>
-      ${sendOnclick ? `<button class="msg-box-send-btn" onclick="${sendOnclick}" title="Send to this player's phone" style="${sendStyle||''}">${SEND_ICON}</button>` : ''}
+      ${sendOnclick ? `<button class="msg-box-send-btn${sent?' sent':''}" onclick="${sendOnclick}" title="${sent ? 'Sent — tap to send again' : "Send to this player's phone"}" style="${sendStyle||''}">${SEND_ICON}</button>` : ''}
     </div>
   `;
 }
@@ -11491,6 +11538,7 @@ async function appDeliver(pid, msg, role){
 }
 function appSendFeedback(btn, status, p){
   if(!btn) { return; }
+  markBoxSent(btn);
   const old = btn.innerHTML;
   btn.innerHTML = status==='sent' ? '✓' : '⏳';
   btn.title = status==='sent' ? `Sent to ${p.name}'s phone` : `${p.name} hasn't joined yet — it will arrive when they join`;
