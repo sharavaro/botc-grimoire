@@ -928,7 +928,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.14.4';
+const APP_BUILD = '2026.11.14.5';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1995,7 +1995,7 @@ function topbarHtml(){
   const inPlay = !!(game && game.phase==='play');
   return `
     <div class="topbar">
-      <div class="brand">🕯️ Storyteller's Grimoire<div class="brand-build" title="Grimoire build">Modern · Build ${APP_BUILD}</div>${game && game.testMode ? `<div onclick="openAppRoomPanel()" title="Testing mode: every player's phone runs as a Chrome tab" style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:9px;background:#3b2d6b;border:1px solid #8a5fd6;color:#d6c2ff;font-size:11px;font-family:system-ui;cursor:pointer;">🧪 TEST MODE</div>` : ''}</div>
+      <div class="brand" onclick="goHomeFromBrand(event)" title="Home page" style="cursor:pointer;">🕯️ Storyteller's Grimoire<div class="brand-build" title="Grimoire build">Modern · Build ${APP_BUILD}</div>${game && game.testMode ? `<div onclick="openAppRoomPanel()" title="Testing mode: every player's phone runs as a Chrome tab" style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:9px;background:#3b2d6b;border:1px solid #8a5fd6;color:#d6c2ff;font-size:11px;font-family:system-ui;cursor:pointer;">🧪 TEST MODE</div>` : ''}</div>
       <div class="navlinks">
         <input type="file" id="topbar-backup-import-input" accept="application/json" style="display:none;" onchange="handleImportBackupFile(this)">
         ${appState.code ? appNudgeButtonHtml() + appChatButtonHtml() : ''}
@@ -2383,13 +2383,31 @@ function fmtAgo(ts){
   const d = Math.floor(h/24);
   return `${d} day${d===1?'':'s'} ago`;
 }
+// A game nobody has touched for this long is not offered for Resume any more (it is still reachable
+// through "Open it anyway"). Measured from the last time the game changed, so a long match that is
+// still being played is never hidden.
+const RESUME_IDLE_MS = 2*60*60*1000;
+function homeLastActivity(){
+  // Once the Storyteller has been back in this game during this visit, it counts as active now;
+  // otherwise use the time it was last saved before the page was opened (opening the page itself
+  // may save things, which must not count as activity).
+  if(ui.resumedThisVisit) return game.savedAt || Date.now();
+  return ui.bootSavedAt!==undefined ? ui.bootSavedAt : (game ? game.savedAt : 0);
+}
 function homeSavedInfo(){
   const has = !!(game && game.players && game.players.length);
   const finished = has && !!game.result;
+  const last = has ? homeLastActivity() : 0;
+  const idle = has && !finished && (!last || Date.now()-last > RESUME_IDLE_MS);
   const where = !has ? '' : game.phase==='play' ? (game.subphase==='night' ? `Night ${game.nightNum}` : `Day ${game.dayNum}`) : 'Setting up';
-  return {has, finished, resumable: has && !finished, where, n: has ? game.players.length : 0, ago: has ? fmtAgo(game.savedAt) : ''};
+  return {has, finished, idle, resumable: has && !finished && !idle, where, n: has ? game.players.length : 0, ago: has && last ? fmtAgo(last) : ''};
+}
+function goHomeFromBrand(e){
+  if(e && e.target && e.target.closest && e.target.closest('[onclick]')!==e.currentTarget) return;   // a badge inside the brand has its own action
+  go('home');
 }
 function resumeSavedGame(){
+  ui.resumedThisVisit = true;
   try{
     const target = game.phase==='play' ? 'play' : game.phase;
     go(target || 'names');
@@ -2405,7 +2423,7 @@ function resumeSavedGame(){
 function homeStartNew(kind){
   const info = homeSavedInfo();
   const run = ()=>{ if(kind==='same') startNewGameSamePlayers(); else if(info.has) startNewGameNewPlayers(); else go('names'); };
-  if(info.resumable && game.phase==='play') showConfirm(`A game is still in progress (${info.where}, ${info.n} players). Starting a new game ends it. Continue?`, run);
+  if(info.has && !info.finished && game.phase==='play') showConfirm(`A game is still saved (${info.where}, ${info.n} players). Starting a new game ends it. Continue?`, run);
   else run();
 }
 function confirmResetGame(){
@@ -3016,6 +3034,7 @@ screens['home'] = () => {
       <button class="primary home-btn" onclick="homeStartNew('new')"><b>Start a new game</b><small>Players join on their phones with a code</small></button>
     `}
     ${i.finished ? `<p class="muted" style="font-size:13px;margin:6px 0 0;">The last game has ended (${game.result.winner==='good'?'Good':'Evil'} won). <a href="#" onclick="resumeSavedGame(); return false;" style="color:var(--mist);">Open it anyway</a></p>` : ''}
+    ${i.idle ? `<p class="muted" style="font-size:13px;margin:6px 0 0;">The last game (${i.where}, ${i.n} players) has had no activity ${i.ago ? `since ${i.ago}` : 'for over 2 hours'}. <a href="#" onclick="resumeSavedGame(); return false;" style="color:var(--mist);">Open it anyway</a></p>` : ''}
     <p class="muted" style="font-size:13px;margin-top:18px;"><a href="./" style="color:var(--mist);">⇄ Switch between Classic and Modern mode</a></p>
   </div>`;
 };
@@ -3072,7 +3091,7 @@ screens['names'] = () => `
     ` : ''}` : ''}
     <div class="hr"></div>
     <div class="row between">
-      <span class="muted">${game.players.length} player${game.players.length===1?'':'s'} in the game</span>
+      <div class="row" style="align-items:center;gap:12px;"><button class="ghost small" onclick="go('home')" title="Back to the home page — nothing here is lost">‹ Back</button><span class="muted">${game.players.length} player${game.players.length===1?'':'s'} in the game</span></div>
       <div class="row">
         <button class="ghost small" onclick="openTestGameModal()" style="border-color:#8a5fd6;" title="Play as every player yourself, each one in its own browser tab">🧪 Test game</button>
         ${game.players.length>0 ? `<button class="ghost small" onclick="resetAllPlayers()">Reset players</button>` : ''}
@@ -12683,6 +12702,7 @@ function appRoomModalHtml(){
     ui.pendingRosterUpdatePrompt = true;
   }
   const saved = await loadGame();
+  ui.bootSavedAt = saved ? (saved.savedAt || 0) : 0;
   if(saved && saved.players && saved.players.length){
     try{
       game = saved;
