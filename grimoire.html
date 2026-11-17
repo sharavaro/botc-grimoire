@@ -620,6 +620,9 @@ bdi{unicode-bidi:isolate;}
 
 .msg-box-send-btn.sent{border-color:#4caf6a !important;color:#7fe0a0 !important;background:rgba(76,175,106,.18) !important;}
 .msg-box-send-btn.sent::after{content:"✓";position:absolute;top:-8px;right:-8px;width:18px;height:18px;border-radius:50%;background:#4caf6a;color:#0d1a12;font-size:12px;font-weight:700;line-height:18px;text-align:center;font-family:sans-serif;}
+
+.align-badge{position:absolute;top:-4px;left:-4px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;z-index:3;box-shadow:0 0 0 2px rgba(0,0,0,.55);pointer-events:none;}
+.align-badge.good{background:#1e9e6a;} .align-badge.evil{background:#b8323f;}
 </style>
 </head>
 <body>
@@ -928,7 +931,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.14.7';
+const APP_BUILD = '2026.11.18.1';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -5339,9 +5342,21 @@ const TYPE_COLORS = {townsfolk:'#4caf6a', outsider:'#4a90d9', minion:'#f28c28', 
 // Distinct shades used when a player's alignment has been manually overridden, so they read
 // as clearly different from the normal Townsfolk-green / Demon-red at a glance.
 const ALIGNMENT_OVERRIDE_COLORS = {good:'#1e9e6a', evil:'#b8323f'};
+// True when a player's team is not the one their character normally has (a good player turned
+// into a Minion by the Pit-Hag, an evil player who received a Townsfolk in a Barber swap, a Goon…).
+// Travellers are not counted: their team is always chosen by the Storyteller.
+function alignmentMismatch(p){
+  if(!p || !p.alignmentOverride || !p.character || isTravellerPlayer(p)) return false;
+  const natural = TEAM_OF[p.character];
+  return !!natural && natural!==p.alignmentOverride;
+}
 function effectivePlayerColor(p){
-  if(p.alignmentOverride==='good') return ALIGNMENT_OVERRIDE_COLORS.good;
-  if(p.alignmentOverride==='evil') return ALIGNMENT_OVERRIDE_COLORS.evil;
+  // The ring always shows the character type (green / blue / orange / red). A player whose team
+  // does not match their character gets a small 😇 / 😈 badge on the token instead (see tokenHtml).
+  // Travellers (and anyone without a character yet) keep the team colour the Storyteller set.
+  const trav = isTravellerPlayer(p) || !p.character;
+  if(trav && p.alignmentOverride==='good') return ALIGNMENT_OVERRIDE_COLORS.good;
+  if(trav && p.alignmentOverride==='evil') return ALIGNMENT_OVERRIDE_COLORS.evil;
   if(p.isDrunk) return TYPE_COLORS.outsider;
   if(p.character && TYPE_OF[p.character] && TYPE_COLORS[TYPE_OF[p.character]]) return TYPE_COLORS[TYPE_OF[p.character]];
   return null;
@@ -5417,6 +5432,7 @@ function tokenHtml(p){
         </div>
         ${nameTagHtml(p)}
         ${extraAbilityBadgeHtml(p)}
+        ${alignmentMismatch(p) ? `<span class="align-badge ${p.alignmentOverride}" title="${p.alignmentOverride==='evil'?'Evil, although this character is normally good':'Good, although this character is normally evil'}">${p.alignmentOverride==='evil'?'😈':'😇'}</span>` : ''}
       </div>
       ${!p.alive ? `<div class="death-x-wrap ${p.ghostVoteUsed?'red':'white'}"><span class="bar bar1"></span><span class="bar bar2"></span></div>` : ''}
       <div class="sub">${p.isDrunk ? (p.drunkCover || 'Townsfolk (cover pending)') : (p.character || '—')}</div>
@@ -9486,10 +9502,12 @@ function confirmPitHagPick(k){
   const target = game.players.find(x=>x.id===pick.p1);
   if(target){
     const wasVigormortis = target.character==='Vigormortis';
-    // Lock the player's visual alignment color to whatever they were before the change —
-    // Pit-Hag swaps the character, not the player's underlying good/evil side, visually.
-    target.alignmentOverride = isEvil(target) ? 'evil' : 'good';
+    // The Pit-Hag changes the character, not the player's team (wiki). Keep the team; record it
+    // as an override only when it differs from the new character's normal team.
+    const teamBefore = isEvil(target) ? 'evil' : 'good';
+    pick.alignmentBefore = target.alignmentOverride || null;
     target.character = pick.char;
+    target.alignmentOverride = (TEAM_OF[pick.char]===teamBefore) ? null : teamBefore;
     target.isDrunk = false;
     target.drunkCover = null;
     delete target.swapSkipAtNight;
@@ -9513,7 +9531,17 @@ function confirmPitHagPick(k){
 // from the target lists (the acting Demon himself remains selectable).
 function barberSwapCardHtml(step){
   const demon = game.players.find(p=>p.character===step && p.alive && p.barberSwapPending && p.barberSwapAtNight===game.nightNum);
-  if(!demon) return '';
+  if(!demon){
+    // The Demon may swap himself (wiki), after which he no longer holds this character. The swap
+    // is done, but its two "you are now…" messages still belong on this card.
+    const doneKey = Object.keys(game.infoPicks||{}).find(k=>/^barber-swap-.+-\d+$/.test(k) && k.endsWith('-'+game.nightNum)
+      && game.infoPicks[k].swapped && game.infoPicks[k].demonChar===step);
+    if(!doneKey) return '';
+    return `
+    <div class="hr" style="margin:10px 0;"></div>
+    <div class="muted" style="font-size:11px;">Barber's swap ability — done</div>
+    ${barberSwapResultMessagesHtml(doneKey)}`;
+  }
   const k = `barber-swap-${demon.id}-${game.nightNum}`;
   const pick = game.infoPicks[k] || {};
   const otherDemonIds = game.players.filter(x=>x.character && TYPE_OF[x.character]==='demon' && x.alive && x.id!==demon.id).map(x=>x.id);
@@ -9559,13 +9587,29 @@ function confirmBarberSwap(k){
   const pick = game.infoPicks[k];
   if(!pick || !pick.p1 || !pick.p2) return;
   const actingDemon = game.players.find(x=>x.character && TYPE_OF[x.character]==='demon' && x.alive);
-  swapPlayerCharacters(pick.p1, pick.p2, actingDemon ? actingDemon.character : null);
   const p1 = game.players.find(x=>x.id===pick.p1);
   const p2 = game.players.find(x=>x.id===pick.p2);
+  // A Barber swap exchanges characters only: both players keep their team (wiki: "The players'
+  // alignments stay the same when they swap characters").
+  const teamBefore = {};
+  [p1, p2].forEach(p=>{ if(p) teamBefore[p.id] = isEvil(p) ? 'evil' : 'good'; });
+  pick.demonChar = actingDemon ? actingDemon.character : null;
+  pick.demonId = actingDemon ? actingDemon.id : null;
+  swapPlayerCharacters(pick.p1, pick.p2, actingDemon ? actingDemon.character : null);
+  [p1, p2].forEach(p=>{
+    if(!p || isTravellerPlayer(p)) return;
+    const natural = TEAM_OF[p.character];
+    p.alignmentOverride = (natural===teamBefore[p.id]) ? null : teamBefore[p.id];
+  });
   pick.swapped = true;
   if(p1 && p2) logAction(`Barber's swap: ${p1.name} and ${p2.name} exchanged characters.`);
   saveGame();
   refreshPlay();
+}
+// Added to a "your character changed" message when the player's team no longer matches the new character.
+function teamReminderAr(p){
+  if(!alignmentMismatch(p)) return '';
+  return p.alignmentOverride==='evil' ? '\nتنبيه: فريقك لم يتغيّر، ما زلت من فريق الأشرار.' : '\nتنبيه: فريقك لم يتغيّر، ما زلت من فريق الأخيار.';
 }
 function barberSwapResultMessagesHtml(k){
   const pick = game.infoPicks[k];
@@ -9574,8 +9618,8 @@ function barberSwapResultMessagesHtml(k){
   if(!p1 || !p2) return '';
   const k1 = `${k}-result-${p1.id}`;
   const k2 = `${k}-result-${p2.id}`;
-  const text1 = game.messageOverrides[k1] !== undefined ? game.messageOverrides[k1] : withHeader(`لقد تم استبدال شخصيتك مع شخصية أخرى وهي ${charBoth(p1.character)}.`);
-  const text2 = game.messageOverrides[k2] !== undefined ? game.messageOverrides[k2] : withHeader(`لقد تم استبدال شخصيتك مع شخصية أخرى وهي ${charBoth(p2.character)}.`);
+  const text1 = game.messageOverrides[k1] !== undefined ? game.messageOverrides[k1] : withHeader(`لقد تم استبدال شخصيتك مع شخصية أخرى وهي ${charBoth(p1.character)}.${teamReminderAr(p1)}`);
+  const text2 = game.messageOverrides[k2] !== undefined ? game.messageOverrides[k2] : withHeader(`لقد تم استبدال شخصيتك مع شخصية أخرى وهي ${charBoth(p2.character)}.${teamReminderAr(p2)}`);
   return `
     <div class="hr" style="margin:10px 0;"></div>
     <div class="muted" style="font-size:10px;">To ${escapeHtml(p1.name)}</div>
@@ -11318,6 +11362,44 @@ function appScriptIcons(scriptData){
   return out;
 }
 
+// Every phone downloads these pictures each time it connects, so large ones are scaled down to
+// phone size first (the copies kept in the grimoire are not touched). Pictures that are already
+// small, or a browser that cannot redraw them, are sent unchanged.
+const ICON_SEND_MAX_PX = 160, ICON_SEND_MAX_CHARS = 40000;
+const iconShrinkCache = {};
+function appShrinkOneIcon(src){
+  return new Promise(resolve=>{
+    try{
+      if(typeof src!=='string' || src.length<=ICON_SEND_MAX_CHARS || !/^data:image\//.test(src) || typeof Image==='undefined' || typeof document==='undefined') return resolve(src);
+      const img = new Image();
+      img.onload = ()=>{
+        try{
+          const scale = Math.min(1, ICON_SEND_MAX_PX/Math.max(img.width||1, img.height||1));
+          const w = Math.max(1, Math.round((img.width||1)*scale)), h = Math.max(1, Math.round((img.height||1)*scale));
+          const c = document.createElement('canvas'); c.width = w; c.height = h;
+          const ctx = c.getContext && c.getContext('2d'); if(!ctx) return resolve(src);
+          ctx.drawImage(img, 0, 0, w, h);
+          let out = c.toDataURL('image/webp', 0.85);
+          if(!/^data:image\/webp/.test(out)) out = c.toDataURL('image/png');
+          resolve(out && out.length < src.length ? out : src);
+        }catch(e){ resolve(src); }
+      };
+      img.onerror = ()=>resolve(src);
+      img.src = src;
+    }catch(e){ resolve(src); }
+  });
+}
+async function appShrinkIcons(icons){
+  const out = {};
+  await Promise.all(Object.keys(icons||{}).map(async k=>{
+    const src = icons[k];
+    const ck = k+':'+(src ? src.length : 0);
+    if(!iconShrinkCache[ck]) iconShrinkCache[ck] = await appShrinkOneIcon(src);
+    out[k] = iconShrinkCache[ck];
+  }));
+  return out;
+}
+
 // ---- Publishing ----
 function appSyncSoon(){
   if(!appState.attached) return;
@@ -11334,7 +11416,7 @@ async function appPublish(){
   if(appState.lastScriptKey !== scriptKey){
     const sd = appBuildScriptData();
     await NET.set(appRoomPath('script'), sd);
-    await NET.set(appRoomPath('icons'), appScriptIcons(sd));
+    await NET.set(appRoomPath('icons'), await appShrinkIcons(appScriptIcons(sd)));
     appState.lastScriptKey = scriptKey;
   }
   const pub = appBuildPublicState();

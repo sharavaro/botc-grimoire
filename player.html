@@ -6,6 +6,12 @@
 <meta name="theme-color" content="#120e1c">
 <title>Clocktower Player</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://botc-grimoire-e8ad4-default-rtdb.europe-west1.firebasedatabase.app">
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com">
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js">
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js">
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Noto+Kufi+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -16,6 +22,8 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Noto Kufi Arabic',system-ui,sans-serif;font-size:15px;min-height:100%;}
 body{background:radial-gradient(ellipse 120% 60% at 50% -10%, #2a2140 0%, transparent 60%), var(--bg);min-height:100vh;}
+.reconn{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:60;background:#2a2240;border:1px solid var(--gold);color:var(--gold-bright);border-radius:99px;padding:6px 14px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.5);white-space:nowrap;}
+.reconn button{padding:3px 10px;font-size:12px;margin-inline-start:6px;}
 .en{font-family:'Cinzel',serif;direction:ltr;unicode-bidi:isolate;}
 #app{max-width:560px;margin:0 auto;padding:14px 16px calc(84px + env(safe-area-inset-bottom));}
 h1,h2,h3{margin:0;color:var(--gold-bright);font-weight:700;}
@@ -226,7 +234,7 @@ textarea.plain{width:100%;box-sizing:border-box;background:var(--panel-2);color:
    player's own private node (role + inbox). Writes only: its own claim,
    presence, and read receipts. Firebase rules enforce all of this.
    ========================================================================== */
-const PLAYER_BUILD = '2026.11.14.1';
+const PLAYER_BUILD = '2026.11.18.1';
 // Public project identifiers (not secrets) -- access is controlled by database.rules.json.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBipnpL4ROv_GfMy5tTOcstQjC__8g8-tc",
@@ -283,15 +291,68 @@ function makeFirebaseNet(db, uid){
     on:(p,cb)=>{ const r=db.ref(p); const h=s=>cb(s.val()); r.on('value',h,()=>cb(null)); return ()=>r.off('value',h); },
     onConnected:(cb)=>{ const r=db.ref('.info/connected'); const h=s=>cb(!!s.val()); r.on('value',h); return ()=>r.off('value',h); },
     onDisconnectSet:(p,v)=>db.ref(p).onDisconnect().set(v),
+    // Drop and reopen the connection straight away (used when the phone comes back to the app,
+    // instead of waiting for Firebase's own retry timer).
+    reconnect:()=>{ try{ db.goOffline(); db.goOnline(); }catch(e){} },
   };
 }
+/* ---------- connecting: timings, last-known view, retry ---------- */
+// How long each step of connecting took (shown under المرجع, and on a slow connecting screen),
+// so a slow phone can be diagnosed from a screenshot.
+const CONN = {t0: Date.now(), step: null, marks: {}};
+function connStep(name){ CONN.step = name; CONN.stepAt = Date.now(); if(S.stage==='loading') render(); }
+function connMark(name){ if(CONN.marks[name]===undefined) CONN.marks[name] = Date.now() - CONN.t0; }
+const CONN_LABEL = {sdk:'تحميل الاتصال', auth:'تسجيل الدخول', room:'فتح الغرفة', public:'استلام اللعبة', seat:'تأكيد مقعدك'};
+function connTimingsText(){
+  return ['sdk','auth','room','public','seat'].map(k=>`${CONN_LABEL[k]}: ${CONN.marks[k]===undefined ? '—' : (CONN.marks[k]/1000).toFixed(1)+'ث'}`).join(' · ');
+}
+// The phone remembers the last game view (board, script, its own role and messages), so after
+// reopening the app the player sees it at once while the live connection is made in the background.
+const CACHE_MAX_AGE = 6*60*60*1000;
+function saveViewCache(){
+  if(TEST_AS || !S.room || !S.pid || S.cached) return;
+  clearTimeout(saveViewCache._t);
+  saveViewCache._t = setTimeout(()=>{ lsSet('cache', {room:S.room, uid:S.uid, pid:S.pid, pub:S.pub, script:S.script, priv:S.priv, at:Date.now()}); }, 800);
+}
+function restoreViewCache(){
+  if(TEST_AS) return false;
+  const c = lsGet('cache'), j = mySavedJoin();
+  if(!c || !j || c.room!==S.room || c.pid!==j.pid || !c.pub || !c.priv) return false;
+  if(Date.now() - (c.at||0) > CACHE_MAX_AGE) return false;
+  S.pub = c.pub; S.script = c.script || null; S.priv = c.priv; S.pid = c.pid; S.uid = c.uid;
+  S.stage = 'joined'; S.cached = true; S.cachedSince = Date.now();
+  return true;
+}
+// While showing the remembered view, only looking around works; anything that needs the server
+// waits until the phone is connected again.
+const CACHED_OK = /^(setTab|toggleRole|pickBluff|setRefTab|toggleEnglish|retryConnect|closeView|closeWin|reopenWin|dismissNudge)\b/;
+if(typeof document!=='undefined' && document.addEventListener){
+  document.addEventListener('click', e=>{
+    if(!S.cached) return;
+    const el = e.target && e.target.closest ? e.target.closest('[onclick],[onchange],button,input,select,textarea') : null;
+    if(!el) return;
+    const oc = (el.getAttribute && el.getAttribute('onclick')) || '';
+    if(oc && CACHED_OK.test(oc.trim())) return;
+    e.preventDefault(); e.stopPropagation();
+    showBanner('🔄 لحظة… جارٍ الاتصال باللعبة');
+  }, true);
+  // Back in the app after switching away: reconnect now instead of waiting.
+  // (After more than 20 seconds away the old connection is often dead even if it still looks open.)
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState!=='visible'){ S.hiddenAt = Date.now(); return; }
+    const away = S.hiddenAt ? Date.now()-S.hiddenAt : 0; S.hiddenAt = 0;
+    if(NET && NET.reconnect && (!S.online || away > 20000)) NET.reconnect();
+  });
+}
+function retryConnect(){ try{ location.reload(); }catch(e){} }
 async function connect(){
   if(NET) return NET;
   if(window.BOTC_NET_FACTORY){ NET = await window.BOTC_NET_FACTORY(); return NET; }
   const base = `https://www.gstatic.com/firebasejs/${FB_SDK_VERSION}/`;
+  connStep('sdk');
   await loadScriptOnce(base+'firebase-app-compat.js');
-  await loadScriptOnce(base+'firebase-auth-compat.js');
-  await loadScriptOnce(base+'firebase-database-compat.js');
+  await Promise.all([loadScriptOnce(base+'firebase-auth-compat.js'), loadScriptOnce(base+'firebase-database-compat.js')]);
+  connMark('sdk'); connStep('auth');
   // A named Firebase app per test player keeps each tab's sign-in separate in the same browser.
   const appName = TEST_AS ? 'test-slot-'+TEST_SLOT : '[DEFAULT]';
   const fbApp = firebase.apps.find(a=>a.name===appName) || (TEST_AS ? firebase.initializeApp(FIREBASE_CONFIG, appName) : firebase.initializeApp(FIREBASE_CONFIG));
@@ -301,6 +362,7 @@ async function connect(){
   }
   if(!auth.currentUser) await auth.signInAnonymously();
   NET = makeFirebaseNet(fbApp.database(), auth.currentUser.uid);
+  connMark('auth');
   return NET;
 }
 const R = sub => `rooms/${S.room}/${sub}`;
@@ -313,28 +375,42 @@ async function start(){
   const last = lsGet('room');
   S.room = fromUrl || (last && last.code) || null;
   if(!S.room){ S.stage = 'code'; render(); return; }
+  if(restoreViewCache()){ render(); setTimeout(render, 10500); }
   await enterRoom(S.room);
 }
 async function enterRoom(code){
   S.room = String(code||'').replace(/[^0-9]/g,'');
   if(S.room.length!==4){ S.stage = 'code'; S.error = 'رمز الغرفة 4 أرقام.'; render(); return; }
-  S.stage = 'loading'; S.error = null; render();
+  if(!S.cached){ S.stage = 'loading'; S.loadingSince = Date.now(); setTimeout(render, 10500); }
+  S.error = null; render();
   try{
     await connect();
+    if(S.cached && S.uid && S.uid!==NET.uid){ S.cached = false; leaveSeat(); }   // signed in as someone else: the remembered view is not ours
     S.uid = NET.uid;
-    const owner = await NET.get(R('owner'));
-    if(!owner){ forgetRoom('لم يتم العثور على هذه الغرفة. تأكد من الرمز مع الراوي.'); return; }
-    let meta = null; try{ meta = await NET.get(R('meta')); }catch(e){ meta = true; }
+    connStep('room');
+    // The room checks and (for a returning phone) the seat check go out together.
+    const saved = mySavedJoin();
+    S.claimPre = saved ? NET.get(R('claims/'+appKey(saved.pid))).catch(()=>null) : null;
+    const [owner, meta0] = await Promise.all([NET.get(R('owner')), NET.get(R('meta')).catch(()=>true)]);
+    connMark('room');
+    if(!owner){ S.cached = false; forgetRoom('لم يتم العثور على هذه الغرفة. تأكد من الرمز مع الراوي.'); return; }
+    let meta = meta0;
     if(!meta){
       // The Storyteller may be opening the room this very second: look once more before giving up.
       await new Promise(r=>setTimeout(r, 1200));
       try{ meta = await NET.get(R('meta')); }catch(e){ meta = true; }
     }
-    if(!meta){ forgetRoom('هذه الغرفة أُغلقت. أدخل رمز الغرفة الجديد من الراوي.'); return; }
+    if(!meta){ S.cached = false; forgetRoom('هذه الغرفة أُغلقت. أدخل رمز الغرفة الجديد من الراوي.'); return; }
     lsSet('room', {code:S.room});
     loadReads();
+    connStep('public');
     subscribeShared();
   }catch(e){
+    if(S.cached){
+      // Keep showing the remembered view; the banner offers "try again".
+      S.connError = (e && (e.code||e.message)) ? String(e.code||e.message).slice(0,80) : 'network';
+      render(); return;
+    }
     S.stage = 'code';
     S.error = 'تعذّر الاتصال. تحقق من الإنترنت ثم حاول مرة أخرى.' + (e && (e.code||e.message) ? ` (${String(e.code||e.message).slice(0,80)})` : '');
     render();
@@ -347,7 +423,7 @@ function forgetRoom(message){
   S.unsubs.forEach(u=>u()); S.unsubs = [];
   if(S.trav && S.trav.unsub){ S.trav.unsub(); }
   if(S.pid || S.privUnsub || S.chatUnsub) leaveSeat();
-  lsDel('room'); lsDel('join');
+  lsDel('room'); lsDel('join'); lsDel('cache'); S.cached = false;
   S.room = null; S.pub = null; S.script = null; S.icons = {}; S.notes = null; S.metaSeen = false; S.nudgeKey = undefined; S.fxKey = undefined; S.resultKey = undefined;
   S.trav = {open:false, name:'', prefer:'', sent:false, unsub:null};
   S.stage = 'code'; S.error = message || null;
@@ -365,7 +441,7 @@ function subscribeShared(){
   }));
   if(NET.onConnected) S.unsubs.push(NET.onConnected(ok=>{ S.online = ok; if(ok && S.pid) setPresence(); render(); }));
   S.unsubs.push(NET.on(R('public'), v=>{ S.pub = v; onPublic(); }));
-  S.unsubs.push(NET.on(R('script'), v=>{ S.script = v; render(); }));
+  S.unsubs.push(NET.on(R('script'), v=>{ S.script = v; saveViewCache(); render(); }));
   S.unsubs.push(NET.on(R('icons'), v=>{ S.icons = v || {}; render(); }));
 }
 function mySavedJoin(){ const j = lsGet('join'); return j && j.room===S.room ? j : null; }
@@ -544,6 +620,14 @@ function checkNudge(pub){
   if(key && key!==S.nudgeKey){ S.nudgeKey = key; if(S.stage==='joined') fireNudge(); }
 }
 async function onPublic(){
+  connMark('public');
+  if(S.cached){
+    // The live game is here: confirm the remembered seat is still ours, then carry on as normal.
+    S.cached = false;
+    let owned = null; try{ owned = await (S.claimPre || NET.get(R('claims/'+appKey(S.pid)))); }catch(e){ owned = null; }
+    S.claimPre = null;
+    if(owned===S.uid && S.pid){ takeSeat(S.pid); connMark('seat'); } else { leaveSeat(); }
+  }
   const pub = S.pub;
   try{ notesSync(); }catch(e){}
   try{ checkNudge(pub); }catch(e){}
@@ -580,8 +664,9 @@ async function onPublic(){
     if(saved){
       const key = appKey(saved.pid);
       if(seats[key] && seats[key].claimed){
-        let owned = null; try{ owned = await NET.get(R('claims/'+key)); }catch(e){ owned = null; }
-        if(owned===S.uid && (!TEST_AS || saved.pid===TEST_AS)){ takeSeat(saved.pid); render(); return; }
+        let owned = null; try{ owned = await (S.claimPre || NET.get(R('claims/'+key))); }catch(e){ owned = null; }
+        S.claimPre = null;
+        if(owned===S.uid && (!TEST_AS || saved.pid===TEST_AS)){ takeSeat(saved.pid); connMark('seat'); render(); return; }
       }
       // New game, same room: re-join automatically under the same name if it's free.
       // (Not for a test tab: it always takes the seat it was opened for. Test names are drawn at random
@@ -592,6 +677,7 @@ async function onPublic(){
     if(TEST_AS && seats[appKey(TEST_AS)] && !seats[appKey(TEST_AS)].claimed){ await claimSeat(TEST_AS, true); return; }
     S.stage = 'join';
   }
+  saveViewCache();
   render();
 }
 async function claimSeat(pid, silent){
@@ -625,6 +711,7 @@ function takeSeat(pid){
   setPresence();
   if(S.privUnsub) S.privUnsub();
   S.privUnsub = NET.on(R('private/'+S.uid), v=>onPrivate(v));
+  if(S.readsUnsent){ Object.keys(S.readsUnsent).forEach(id=>NET.set(R(`reads/${S.uid}/${id}`), S.readsUnsent[id]).catch(()=>{})); S.readsUnsent = null; }
   S.chatReadAt = lsGet('chatread_'+S.room) || 0; S.chatLoaded = false;
   if(S.chatUnsub) S.chatUnsub();
   S.chatUnsub = NET.on(R('chat/'+S.uid), v=>onChat(v));
@@ -635,6 +722,7 @@ function leaveSeat(){
   if(S.chatUnsub){ S.chatUnsub(); S.chatUnsub = null; }
   S.chat = {}; S.view = null;
   S.pid = null; S.priv = null; S.stage = 'join'; S.roleShown = false; S.seenMsgs = {};
+  lsDel('cache');
 }
 function setPresence(){
   if(!S.pid) return;
@@ -643,6 +731,7 @@ function setPresence(){
   if(NET.onDisconnectSet) NET.onDisconnectSet(path, {online:false, at:Date.now()});
 }
 function onPrivate(v){
+  setTimeout(saveViewCache, 0);
   const prev = S.priv;
   const prevInbox = (S.priv && S.priv.inbox) || {};
   const firstLoad = S.priv===null;
@@ -677,6 +766,8 @@ function markAllRead(){
   const ids = unreadIds();
   ids.forEach(id=>{
     S.reads[id] = Date.now();
+    // Not connected yet (showing the remembered view): send the "read" mark once connected.
+    if(!NET || S.cached){ S.readsUnsent = S.readsUnsent || {}; S.readsUnsent[id] = S.reads[id]; return; }
     NET.set(R(`reads/${S.uid}/${id}`), S.reads[id]).catch(()=>{});
   });
   if(ids.length) lsSet('reads_'+S.room, S.reads);
@@ -1475,7 +1566,7 @@ function referenceTab(){
           <div class="a">${esc(c.abilityAr||'')}</div>
           ${S.showEnglish && c.ability ? `<div class="ability-en">${esc(c.ability)}</div>` : ''}
         </div></div>`).join('');
-    }).join('') + `</div>`;
+    }).join('') + `</div>` + buildFooterHtml();
   }
   const list = (arr, title)=>`
     <div class="card"><h3 style="font-size:16px;margin-bottom:4px;">${title}</h3>
@@ -1486,7 +1577,10 @@ function referenceTab(){
         </div></div>`; }).join('') || '<p class="muted">—</p>'}
     </div>`;
   return head + list(S.script.firstNight, '🌙 الليلة الأولى') + list(S.script.otherNight, '🌘 الليالي الأخرى') +
-    `<p class="muted" style="text-align:center;">هذا هو ترتيب الاستيقاظ لكل شخصيات النص، وليس قائمة بمن هو في اللعب.</p>`;
+    `<p class="muted" style="text-align:center;">هذا هو ترتيب الاستيقاظ لكل شخصيات النص، وليس قائمة بمن هو في اللعب.</p>` + buildFooterHtml();
+}
+function buildFooterHtml(){
+  return `<p class="muted" style="text-align:center;font-size:11px;margin-top:18px;" onclick="S.showTimings=!S.showTimings; render();">إصدار ${PLAYER_BUILD}${S.showTimings ? `<br>${esc(connTimingsText())}` : ''}</p>`;
 }
 function joinedScreen(){
   liveVote(); // registers a newly opened vote first (vibrate + jump to the Courthouse tab)
@@ -1517,11 +1611,21 @@ function joinedScreen(){
       ${tab('ref','📖','المرجع')}
     </nav>`;
 }
+function loadingScreen(){
+  const slow = S.loadingSince && Date.now()-S.loadingSince > 10000;
+  return `<div class="card" style="text-align:center;margin-top:40px;">
+    <div>...جارٍ الاتصال</div>
+    ${CONN.step ? `<div class="muted" style="font-size:12px;margin-top:6px;">${esc(CONN_LABEL[CONN.step]||'')}…</div>` : ''}
+    ${slow ? `<p class="muted" style="font-size:13px;margin:14px 0 8px;">الاتصال بطيء. تأكد من الإنترنت ثم حاول مرة أخرى.</p>
+      <button class="primary" onclick="retryConnect()">🔄 حاول مرة أخرى</button>
+      <div class="muted" style="font-size:11px;margin-top:10px;direction:rtl;">${esc(connTimingsText())}</div>` : ''}
+  </div>`;
+}
 function render(){
   const app = document.getElementById('app');
   if(!app) return;
   let html = '';
-  if(S.stage==='loading') html = `<div class="card" style="text-align:center;margin-top:40px;">...جارٍ الاتصال</div>`;
+  if(S.stage==='loading') html = loadingScreen();
   else if(S.stage==='code') html = codeScreen();
   else if(S.stage==='join') html = joinScreen();
   else html = joinedScreen();
@@ -1534,6 +1638,10 @@ function render(){
   const ov = document.getElementById('overlay');
   if(ov){
     let o = '';
+    if(S.cached){
+      const slow = S.connError || (S.cachedSince && Date.now()-S.cachedSince > 10000);
+      o += `<div class="reconn">🔄 ${slow ? 'الاتصال بطيء' : 'جارٍ الاتصال باللعبة…'}${slow ? ` <button class="ghost" onclick="retryConnect()">حاول مرة أخرى</button>` : ''}</div>`;
+    }
     if(S.banner) o += `<div class="banner" onclick="${S.banner.includes('💬') ? 'openChat()' : `setTab('${S.banner.includes('دور')?'role':'inbox'}')`}">${esc(S.banner)}</div>`;
     if(S.nudgeOn){
       o += `<div class="modal" onclick="dismissNudge()"><div class="card" style="text-align:center;border-color:var(--gold);"><div style="font-size:64px;">🔔</div><p style="font-size:22px;font-weight:700;margin:6px 0;">الراوي ينبّهك</p><p style="font-size:17px;margin:0 0 14px;">أمسك هاتفك وانتبه للعبة</p><button class="primary" style="width:100%;" onclick="dismissNudge()">حاضر</button></div></div>`;
