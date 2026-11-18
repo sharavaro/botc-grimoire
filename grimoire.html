@@ -623,6 +623,51 @@ bdi{unicode-bidi:isolate;}
 
 .align-badge{position:absolute;top:-4px;left:-4px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;z-index:3;box-shadow:0 0 0 2px rgba(0,0,0,.55);pointer-events:none;}
 .align-badge.good{background:#1e9e6a;} .align-badge.evil{background:#b8323f;}
+
+/* ---------- phone layout (700px or less) ---------- */
+@media (max-width: 700px){
+  #app{padding:0 10px 20px;}
+  body.m-playing #app{padding-bottom:150px;}
+  .name-grid{grid-template-columns:1fr 1fr !important;}
+  .panel{padding:14px 12px;}
+  .row{flex-wrap:wrap;}
+  .zebra-list > *{padding-left:10px !important;}
+  .night-item{padding:12px 2px;}
+  .msg-box{font-size:16px;}
+  select{max-width:100%;}
+  .token .name-tag, .token .char-label{max-width:84px;}
+}
+.m-topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:6px;margin:0 -10px 10px;padding:9px 10px 8px;background:rgba(14,12,21,.97);border-bottom:1px solid var(--line);}
+.m-home{background:none;border:0;padding:2px 4px;font-size:20px;min-width:0;}
+.m-phase{flex:1;min-width:0;line-height:1.15;}
+.m-phase b{display:block;font-family:'Cinzel',serif;color:var(--gold-bright);font-size:15px;letter-spacing:.06em;}
+.m-phase small{color:var(--mist);font-size:12px;font-variant-numeric:tabular-nums;font-family:'Spectral',serif;}
+.m-ib{position:relative;width:40px;height:40px;padding:0;border-radius:10px;border:1px solid var(--line);background:var(--bg-panel);font-size:17px;display:grid;place-items:center;text-transform:none;letter-spacing:0;}
+.m-bd{position:absolute;top:-6px;right:-6px;background:var(--blood-bright);color:#fff;border-radius:99px;font-size:11px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 4px;font-family:sans-serif;}
+.m-dot{position:absolute;bottom:4px;right:4px;width:7px;height:7px;border-radius:50%;}
+.m-bottom{position:fixed;left:0;right:0;bottom:0;z-index:60;background:rgba(14,12,21,.98);border-top:1px solid var(--line);}
+.m-adv{display:flex;gap:8px;padding:8px 10px 6px;}
+.m-back{width:54px;padding:0;font-size:18px;border-radius:12px;}
+.m-go{flex:1;min-height:50px;border-radius:12px;font-size:14.5px;}
+.m-tabs{display:flex;background:#0b0a11;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);}
+.m-tabs button{flex:1;background:none;border:0;border-radius:0;padding:7px 0 6px;color:var(--mist);font-family:'Spectral',serif;font-size:12px;letter-spacing:0;text-transform:none;display:flex;flex-direction:column;align-items:center;gap:1px;position:relative;}
+.m-tabs button span{font-size:19px;}
+.m-tabs button.on{color:var(--gold-bright);}
+.m-tabs button.on::before{content:"";position:absolute;top:0;left:28%;right:28%;height:2px;background:var(--gold-bright);border-radius:2px;}
+.m-play .m-circle{margin-top:4px;}
+.m-inline{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.m-inline > button, .m-inline > div{position:static !important;max-width:none !important;width:100%;}
+.m-inline > div{display:flex !important;gap:8px;justify-content:stretch !important;}
+.m-inline > div > button{flex:1;min-height:46px;}
+.m-inline > button{min-height:46px;}
+.m-all{margin-top:12px;}
+.m-all > summary{cursor:pointer;color:var(--mist);font-size:14px;padding:10px 4px;list-style:none;}
+.m-all > summary::before{content:"▸ ";} .m-all[open] > summary::before{content:"▾ ";}
+body.m-ui #alert-host{top:62px;}
+
+.m-day .panel{padding-top:34px;}
+@media (max-width: 700px){ .circle-wrap .token .sub{margin-top:9px;} .name-tag{font-size:10px;} }
+@media (max-width: 700px){ .m-play svg[viewBox^="0 0 160"]{max-width:220px;display:block;margin:0 auto;} }
 </style>
 </head>
 <body>
@@ -931,7 +976,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.18.1';
+const APP_BUILD = '2026.11.18.2';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1919,6 +1964,7 @@ function render(){
   if(game) syncPhilosopherAbility();
   const app = document.getElementById('app');
   app.innerHTML = topbarHtml() + appSeatTrackerHtml() + (screens[route] ? screens[route]() : '');
+  try{ document.body.classList.toggle('m-ui', isMobileUI()); document.body.classList.toggle('m-playing', isMobileUI() && route==='play'); }catch(e){}
   positionTokens();
   renderModal();
 }
@@ -1996,6 +2042,7 @@ function go(r){
 function topbarHtml(){
   if(route==='boot' || route==='resume-check' || route==='court' || route==='boot-error' || route==='home') return '';
   const inPlay = !!(game && game.phase==='play');
+  if(isMobileUI()) return mobileTopbarHtml(inPlay && route==='play');
   return `
     <div class="topbar">
       <div class="brand" onclick="goHomeFromBrand(event)" title="Home page" style="cursor:pointer;">🕯️ Storyteller's Grimoire<div class="brand-build" title="Grimoire build">Modern · Build ${APP_BUILD}</div>${game && game.testMode ? `<div onclick="openAppRoomPanel()" title="Testing mode: every player's phone runs as a Chrome tab" style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:9px;background:#3b2d6b;border:1px solid #8a5fd6;color:#d6c2ff;font-size:11px;font-family:system-ui;cursor:pointer;">🧪 TEST MODE</div>` : ''}</div>
@@ -2034,7 +2081,9 @@ function moreMenuHtml(){
     item('🪑','Seating','Change where players sit', "moreMenuDo(()=>pageTurnTransition(()=>go('seating')))"),
     (game.activeLoric && game.activeLoric.length>0) ? item('🌀',`Loric reminders (${game.activeLoric.length})`,'Active Loric rules', "moreMenuDo(showLoricReminder)") : ''
   ]]);
+  if(inPlay && isMobileUI()) groups[0][1].unshift(item('🗡️','Death sound','Play the death sound effect', "moreMenuDo(playDeathSound)"));
   if(inPlay) groups.push(['Players', [ item('➕','Add a Traveller','Someone joining late or leaving early', "moreMenuDo(openAddTravellerModal)") ]]);
+  else if(isMobileUI() && game && game.scriptConfirmed && ['tokens','review','seating'].includes(route)) groups.unshift(['Players', [ item('➕','Add a Traveller','They wake on the first night like everyone else', "moreMenuDo(openAddTravellerModal)") ]]);
   groups.push(['Save and restore', [
     item('💾','Backup','Download names, icons and this game as one file', "moreMenuDo(exportBackup)"),
     item('📥','Restore','Load a backup file made on another device', "moreMenuDo(triggerTopbarImportBackup)")
@@ -3160,7 +3209,7 @@ function addAllRoster(){
 }
 function nameListHtml(){
   if(game.players.length===0) return `<p class="muted">${appState.code ? 'Nobody has joined yet — show the players the QR code.' : 'No players yet.'}</p>`;
-  return `<div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;">` + seatedPlayers().map((p,i)=>`
+  return `<div class="name-grid" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;">` + seatedPlayers().map((p,i)=>`
     <div class="seat-row" style="margin-bottom:0;padding:7px 8px;gap:6px;">
       <span class="seat-num">${i+1}</span>
       <bdi style="flex:1;min-width:40px;">${escapeHtml(p.name)}${isTravellerPlayer(p) ? ' 🧳' : ''}</bdi>
@@ -5297,7 +5346,111 @@ if(typeof setInterval==='function' && typeof document!=='undefined'){
   }, 1000);
 }
 screens['court'] = () => courtScreenHtml();
+
+/* ---------------- PHONE LAYOUT ----------------
+   The same grimoire, laid out for a phone when the screen is narrow (700px or less): a one-row top
+   bar, Advance + Back pinned at the bottom, and three tabs — Tonight/Day, Board, Game. A computer
+   keeps the normal layout. */
+const MOBILE_MAX_PX = 700;
+function isMobileUI(){
+  if(ui && ui.forceMobile!==undefined) return !!ui.forceMobile;
+  try{ return !!(window.matchMedia && window.matchMedia(`(max-width: ${MOBILE_MAX_PX}px)`).matches); }catch(e){ return false; }
+}
+function mobileTab(){ return (ui && ui.mtab) || 'main'; }
+function setMobileTab(t){ ui.mtab = t; render(); try{ window.scrollTo(0,0); }catch(e){} }
+(function(){
+  try{
+    if(!window.matchMedia) return;
+    const mq = window.matchMedia(`(max-width: ${MOBILE_MAX_PX}px)`);
+    const onChange = ()=>{ try{ render(); }catch(e){} };
+    if(mq.addEventListener) mq.addEventListener('change', onChange); else if(mq.addListener) mq.addListener(onChange);
+  }catch(e){}
+})();
+function mobileTopbarHtml(inPlay){
+  const phase = inPlay ? (game.subphase==='night' ? `Night ${game.nightNum}` : `Day ${game.dayNum}`) : ({names:'Players', tokens:'Tokens', review:'Review', seating:'Seating'}[route] || 'Setup');
+  const t = inPlay ? (timersNow() || {phase:'00:00', game:'00:00'}) : null;
+  const chatN = appState.code && typeof appChatUnreadTotal==='function' ? appChatUnreadTotal() : 0;
+  const joinN = appState.code ? appPendingJoinRequests().length : 0;
+  const ib = (icon, js, title, badge, extra)=>`<button class="m-ib" onclick="${js}" title="${title}">${icon}${badge ? `<span class="m-bd">${badge}</span>` : ''}${extra||''}</button>`;
+  return `
+    <div class="m-topbar">
+      <button class="m-home" onclick="go('home')" title="Home page">🕯️</button>
+      <div class="m-phase"><b>${phase}</b>${inPlay ? `<small><span class="tm-phase">${t.phase}</span> · 🕰 <span class="tm-game">${t.game}</span>${game.result ? ' (ended)' : ''}</small>` : `<small>Build ${APP_BUILD}</small>`}</div>
+      ${appState.code && inPlay ? ib('🔔', 'appNudge()', 'Nudge every phone') : ''}
+      ${appState.code ? ib('💬', 'openChat()', 'Chat with players', chatN) : ''}
+      ${ib('📱', 'openAppRoomPanel()', "Players' phones", joinN, appState.code ? `<span class="m-dot" style="background:${appState.online?'#4caf6a':'#e0943f'};"></span>` : '')}
+      ${ib('☰', 'openMoreMenu()', 'More')}
+      <input type="file" id="topbar-backup-import-input" accept="application/json" style="display:none;" onchange="handleImportBackupFile(this)">
+    </div>`;
+}
+function mobileBottomBarHtml(){
+  const night = game.subphase==='night';
+  const tab = mobileTab();
+  const tabBtn = (t, icon, label)=>`<button class="${tab===t?'on':''}" onclick="setMobileTab('${t}')"><span>${icon}</span>${label}</button>`;
+  return `
+    <div class="m-bottom">
+      <div class="m-adv">
+        <button class="ghost m-back" onclick="goBackPhase()" ${night && game.nightNum<=1 ? 'disabled' : ''} title="Go back to the previous night/day">⬅️</button>
+        ${night ? `<button class="primary m-go" onclick="advanceToDay()">☀️ Advance to Day</button>` : `<button class="primary m-go" onclick="advanceToNight()">🌙 Advance to Night</button>`}
+      </div>
+      <div class="m-tabs">
+        ${tabBtn('main', night ? '🌙' : '🏛️', night ? 'Tonight' : 'Day')}
+        ${tabBtn('board', '⭕', 'Board')}
+        ${tabBtn('game', '📊', 'Game')}
+      </div>
+    </div>`;
+}
+function mobilePlayHtml(){
+  const night = game.subphase==='night';
+  const tab = mobileTab();
+  let body = '';
+  if(tab==='board'){
+    body = `
+      <div class="circle-wrap panel m-circle" style="padding:8px;">
+        <svg id="evil-twin-string-svg" class="fx-svg"></svg>
+        <svg id="grandmother-string-svg" class="fx-svg"></svg>
+        <svg id="butler-chain-svg" class="fx-svg"></svg>
+        <svg id="nodashii-poison-svg" class="fx-svg"></svg>
+        <svg id="poisoner-poison-svg" class="fx-svg"></svg>
+        <svg id="monk-protect-svg" class="fx-svg"></svg>
+        <svg id="witch-curse-svg" class="fx-svg"></svg>
+        <svg id="vortox-tornado-svg" class="fx-svg"></svg>
+        <div class="circle-center"><div class="clock-icon">🕰️</div><div class="muted" style="font-size:10.5px;">${game.players.filter(p=>p.alive).length} alive</div></div>
+        ${svVoteFlagOverlayHtml()}
+        ${seatedPlayers().map(p=>tokenHtml(p)).join('')}
+      </div>
+      <p class="muted" style="text-align:center;font-size:13px;margin:8px 0 0;">Tap a player for their options.</p>`;
+  } else if(tab==='game'){
+    body = `
+      <div class="m-inline">${winButtonsHtml()}</div>
+      ${funMeterHtml()}${boardSideStatsHtml()}
+      <button class="ghost small" onclick="openTranscript()" style="width:100%;margin-bottom:12px;">📜 Transcript</button>
+      ${translationWidgetHtml()}
+      <div class="panel"><h3 style="margin-top:0;">End-of-night summary</h3><div class="hr"></div>${summaryHtml()}</div>`;
+  } else {
+    const declare = declareButtonHtml();
+    if(night){
+      body = `
+        ${declare ? `<div class="m-inline" style="margin-bottom:10px;">${declare}</div>` : ''}
+        <div class="m-active">${currentActiveNightCardHtml()}</div>
+        <details class="m-all" ${ui.mAllOpen?'open':''} ontoggle="ui.mAllOpen=this.open">
+          <summary>All of tonight's steps</summary>
+          ${nightChecklistHtml()}
+        </details>`;
+    } else {
+      body = `
+        ${declare ? `<div class="m-inline" style="margin-bottom:10px;">${declare}</div>` : ''}
+        <div class="m-active m-day">${currentActiveDayCardHtml() || dayPhaseHtml()}</div>
+        ${currentActiveDayCardHtml() ? `<details class="m-all" ${ui.mAllOpen?'open':''} ontoggle="ui.mAllOpen=this.open">
+          <summary>Everything for today</summary>
+          ${dayPhaseHtml()}
+        </details>` : ''}`;
+    }
+  }
+  return `<div class="m-play">${roleCountPillsHtml()}${body}</div>${mobileBottomBarHtml()}`;
+}
 screens['play'] = () => {
+  if(isMobileUI()) return mobilePlayHtml();
   const phaseLabel = game.subphase==='night' ? `Night ${game.nightNum}` : `Day ${game.dayNum}`;
   return `
     <div class="row between" style="margin-bottom:10px;">
@@ -6678,7 +6831,7 @@ function currentActiveNightCardHtml(){
       return wrapDuplicatedCard(`${step}-${undoneRows[0].id}`, progressBadge + undoneRows.map((p,idx)=>nightStepCardHtml(step, p, i, p.extraAbilityChar===step, false, allDoneAfterThisGroup && idx===undoneRows.length-1)).join(''));
     }
   }
-  return `<div class="panel"><p style="margin:0;">✅ All caught up for tonight. When you are ready, press <b>☀️ Advance to Day</b> at the top.</p></div>`;
+  return `<div class="panel"><p style="margin:0;">✅ All caught up for tonight. When you are ready, press <b>☀️ Advance to Day</b> ${isMobileUI()?'at the bottom':'at the top'}.</p></div>`;
 }
 function evilTwinCardHtml(i, isLastCard){
   const evilTwin = game.players.find(x=>x.character==='Evil Twin');
@@ -10387,7 +10540,7 @@ function executionCardHtml(showAdvanceButton){
       </div>
       <div class="exec-announcement">${execAnnouncementInnerHtml('butcherExecAnnouncementText')}</div>
       ` : ''}
-      ${showAdvanceButton ? `<p class="muted" style="margin:10px 0 0;">When the day is over, press <b>🌙 Advance to Night</b> at the top.</p>` : ''}
+      ${showAdvanceButton ? `<p class="muted" style="margin:10px 0 0;">When the day is over, press <b>🌙 Advance to Night</b> ${isMobileUI()?'at the bottom':'at the top'}.</p>` : ''}
     </div>
   `;
 }
@@ -10995,6 +11148,7 @@ function generateExecutionAnnouncement(btn, selectClass, textField){
   }
 }
 function advanceToDay(){
+  if(ui) ui.mtab = 'main';
   clearAlerts('reply');   // answers from the phase that just ended are no longer news
   game.totalAdvanceClicks = (game.totalAdvanceClicks||0) + 1;
   game.subphase='day'; game.dayNum+=1; game.dayHasDeath=false; appFx('day'); game.phaseStartedAt = Date.now();
@@ -11008,6 +11162,7 @@ function advanceToDay(){
   saveGame(); go('play');
 }
 function advanceToNight(){
+  if(ui) ui.mtab = 'main';
   clearAlerts('reply');   // answers from the phase that just ended are no longer news
   // Mayor win-condition reminder: purely informational, matching the same lightweight approach
   // already used for Saint and Scarlet Woman — no automatic game-ending logic at all, just a
