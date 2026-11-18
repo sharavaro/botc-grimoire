@@ -654,7 +654,7 @@ bdi{unicode-bidi:isolate;}
 .m-tabs button span{font-size:19px;}
 .m-tabs button.on{color:var(--gold-bright);}
 .m-tabs button.on::before{content:"";position:absolute;top:0;left:28%;right:28%;height:2px;background:var(--gold-bright);border-radius:2px;}
-.m-play .m-circle{margin-top:4px;}
+.m-play .m-circle{margin-top:4px;aspect-ratio:4/5;max-width:none;}
 .m-inline{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
 .m-inline > button, .m-inline > div{position:static !important;max-width:none !important;width:100%;}
 .m-inline > div{display:flex !important;gap:8px;justify-content:stretch !important;}
@@ -666,8 +666,15 @@ bdi{unicode-bidi:isolate;}
 body.m-ui #alert-host{top:62px;}
 
 .m-day .panel{padding-top:34px;}
-@media (max-width: 700px){ .circle-wrap .token .sub{margin-top:9px;} .name-tag{font-size:10px;} }
 @media (max-width: 700px){ .m-play svg[viewBox^="0 0 160"]{max-width:220px;display:block;margin:0 auto;} }
+
+/* tokens sized to fit the circle (see positionTokens) */
+.token .avatar-wrap{margin-bottom:11px;}
+.circle-wrap.tok-scaled .token{width:calc(92px * var(--tok-s));}
+.circle-wrap.tok-scaled .token .avatar{width:calc(64px * var(--tok-s));height:calc(64px * var(--tok-s));border-width:3px;padding:2px;}
+.circle-wrap.tok-scaled .name-tag{font-size:9px;padding:0 5px;bottom:-7px;}
+.circle-wrap.tok-compact .token .sub{display:none;}
+.circle-wrap.tok-compact .token .badges .mini-badge{transform:scale(.85);}
 </style>
 </head>
 <body>
@@ -976,7 +983,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.18.2';
+const APP_BUILD = '2026.11.18.3';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -1121,10 +1128,10 @@ function cardAssetStyle(assetType, charName, extra){
 
 function freshGame(){
   return {
-    phase:'names',           // names | tokens | review | seating | reveal | play
+    phase:'names',           // names | tokens | review | seating | play
     script:'tb',             // 'tb' (Trouble Brewing) | 'sv' (Sects & Violets)
     totalAdvanceClicks:0,    // increments on every Advance to Day/Night click — used for temp-effect countdowns
-    telegramBotToken:null, telegramUpdateOffset:0, telegramPendingContacts:{},
+    waSentReveal:{},          // key playerId -> true once their role has been sent to their phone
     court:{ nomination:null, nominatedToday:[], nomineesToday:[], historyByDay:{}, closedForDay:false, publicMessage:null, executionReason:null, butcherGoldenLight:false },
     pendingExecutionId:null,
     pendingButcherExecutionId:null, // the Butcher's own separate execution slot — tracked independently of pendingExecutionId, since courtLeadingExecutionIds() only ever returns the single highest-voted nominee(s) of the day, which can't represent two independently-successful nominations at different vote counts
@@ -1145,7 +1152,6 @@ function freshGame(){
     mathPicks:{},             // key `${nightNum}` -> number (Mathematician dropdown, 0-10)
     savantStatements:{},      // key `${dayNum}` -> {trueText, falseText} or {custom:true}
     jugglerGuesses:[],        // flat [{playerId,char} x up to 5] -- her "1st day" is whichever day she chooses to use it, not literally day 1, so this is no longer keyed by day at all
-    waSentReveal:{},          // key playerId -> true once their reveal has been sent via WhatsApp
     seatingLayout:'circle',   // 'circle' | 'ushape' | 'free'
     dayHasDeath:false,        // BMR Zombuul: tracks whether anyone died during the current/most recent day
     actionLog:[],             // running transcript of significant actions, grouped by day/night segment
@@ -2045,7 +2051,7 @@ function topbarHtml(){
   if(isMobileUI()) return mobileTopbarHtml(inPlay && route==='play');
   return `
     <div class="topbar">
-      <div class="brand" onclick="goHomeFromBrand(event)" title="Home page" style="cursor:pointer;">🕯️ Storyteller's Grimoire<div class="brand-build" title="Grimoire build">Modern · Build ${APP_BUILD}</div>${game && game.testMode ? `<div onclick="openAppRoomPanel()" title="Testing mode: every player's phone runs as a Chrome tab" style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:9px;background:#3b2d6b;border:1px solid #8a5fd6;color:#d6c2ff;font-size:11px;font-family:system-ui;cursor:pointer;">🧪 TEST MODE</div>` : ''}</div>
+      <div class="brand" onclick="goHomeFromBrand(event)" title="Home page" style="cursor:pointer;">🕯️ Storyteller's Grimoire<div class="brand-build" title="Grimoire build">Build ${APP_BUILD}</div>${game && game.testMode ? `<div onclick="openAppRoomPanel()" title="Testing mode: every player's phone runs as a Chrome tab" style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:9px;background:#3b2d6b;border:1px solid #8a5fd6;color:#d6c2ff;font-size:11px;font-family:system-ui;cursor:pointer;">🧪 TEST MODE</div>` : ''}</div>
       <div class="navlinks">
         <input type="file" id="topbar-backup-import-input" accept="application/json" style="display:none;" onchange="handleImportBackupFile(this)">
         ${appState.code ? appNudgeButtonHtml() + appChatButtonHtml() : ''}
@@ -2090,8 +2096,7 @@ function moreMenuHtml(){
   ]]);
   groups.push(['Start over', [
     item('🆕','New game','Same players, new characters', "moreMenuDo(confirmReset)", true),
-    item('🏠','Home page','Resume, or start a different game', "moreMenuDo(()=>go('home'))"),
-    item('⇄','Switch mode','Classic (WhatsApp) or Modern (phones)', "moreMenuDo(()=>{location.href='./';})")
+    item('🏠','Home page','Resume, or start a different game', "moreMenuDo(()=>go('home'))")
   ]]);
   return `<div class="modal-overlay" onclick="if(event.target===this){ui.modal=null;renderModal();}">
     <div class="modal" style="max-width:460px;">
@@ -2373,7 +2378,6 @@ function startNewGameSamePlayers(){
   {
     const keepPlayers = game.players.map(p=>({
       id:p.id, name:p.name, phone:p.phone||'', seat:p.seat,
-      telegramChatId:p.telegramChatId||null,
       freeX:p.freeX!=null?p.freeX:null, freeY:p.freeY!=null?p.freeY:null,
       alive:true, ghostVoteUsed:false,
       character:null, isDrunk:false, drunkCover:null,
@@ -2386,15 +2390,11 @@ function startNewGameSamePlayers(){
     const prevSeatsLocked = !!game.seatsLockedByHost;
     const prevScript = game.script || 'tb';
     const prevSeatingLayout = game.seatingLayout || 'circle';
-    const prevTelegramToken = game.telegramBotToken;
-    const prevTelegramOffset = game.telegramUpdateOffset;
     const newGame = freshGame();
     newGame.players = keepPlayers;
     newGame.seatLocks = prevSeatLocks; newGame.seatsLockedByHost = prevSeatsLocked;
     newGame.script = prevScript;
     newGame.seatingLayout = prevSeatingLayout;
-    newGame.telegramBotToken = prevTelegramToken;
-    newGame.telegramUpdateOffset = prevTelegramOffset;
     newGame.keepSeating = keepPlayers.length>0 && keepPlayers.every(p=>(p.seat!==null && p.seat!==undefined) || (p.freeX!=null && p.freeY!=null));
     game = newGame;
     applyScript(game.script);
@@ -2410,9 +2410,7 @@ function startNewGameSamePlayers(){
 }
 // A clean table: no players, and a brand-new room so old phones cannot wander in.
 async function startNewGameNewPlayers(){
-  const keepToken = game ? game.telegramBotToken : null, keepOffset = game ? game.telegramUpdateOffset : null;
   game = freshGame();
-  if(keepToken){ game.telegramBotToken = keepToken; game.telegramUpdateOffset = keepOffset; }
   applyScript(game.script);
   ui.collapsedNightCards = {}; ui.collapsedReveals = {}; ui.expandedLogSegments = {};
   ui.lastActiveCardKey = null; ui.lastKnownLogSegment = null; ui.modal = null; ui.alerts = [];
@@ -2556,7 +2554,48 @@ function positionTokens(){
         g.style.left = x+'%'; g.style.top = y+'%';
       });
     } else {
-      const r = rect.width/2 - 58;
+      // Fit the tokens to the space between seats: with many players, or on a narrow phone screen,
+      // the tokens get smaller (and below a size the character name under each one is left out —
+      // the picture already shows it) so no token or label lands on another.
+      const NEED = 124, NEED_COMPACT = 94;   // room one full-size token needs along the circle: with / without the character name
+      let compact = false;
+      const fit = len=>{ compact = len/NEED < 0.8; return compact ? Math.max(0.5, Math.min(0.95, len/NEED_COMPACT)) : Math.min(1, len/NEED); };
+      let sc = 1, r = rect.width/2 - 58;
+      for(let k=0;k<3;k++){
+        sc = fit(2*r*Math.sin(Math.PI/(n+1)));
+        r = rect.width/2 - 58*sc - 4;
+      }
+      // A tall board (the phone's Board tab) uses an oval, with the seats spread evenly along it.
+      const tall = rect.height > rect.width*1.05 && !wrap.querySelector('.seat-gap');
+      let oval = null;
+      if(tall){
+        const pts = (rx, ry)=>{ const N=720, out=[]; let L=0, px=null, py=null;
+          for(let k=0;k<=N;k++){ const t=Math.PI/2 + (k/N)*2*Math.PI; const x=rx*Math.cos(t), y=ry*Math.sin(t);
+            if(px!==null) L += Math.hypot(x-px, y-py); out.push([x,y,L]); px=x; py=y; }
+          return {out, L}; };
+        for(let k=0;k<3;k++){
+          const rx = rect.width/2 - 58*sc - 4, ry = rect.height/2 - 58*sc - 4;
+          oval = pts(rx, ry);
+          sc = fit((oval.L/(n+1))*0.97);
+        }
+        const rx = rect.width/2 - 58*sc - 4, ry = rect.height/2 - 58*sc - 4;
+        oval = pts(rx, ry);
+      }
+      wrap.style.setProperty('--tok-s', sc.toFixed(3));
+      wrap.classList.toggle('tok-scaled', sc<0.999);
+      wrap.classList.toggle('tok-compact', compact);
+      if(oval){
+        tokens.forEach((t,i)=>{
+          const target = oval.L*(i+1)/(n+1);
+          let j = 0; while(j < oval.out.length-1 && oval.out[j][2] < target) j++;
+          const [x,y] = oval.out[j];
+          t.style.left = (50 + x/rect.width*100)+'%'; t.style.top = (50 + y/rect.height*100)+'%';
+        });
+        stPlaceHostMark(wrap, layout, rect);
+        const mk = wrap.querySelector(':scope > .st-host-mark');
+        if(mk) mk.style.top = (50 + (rect.height/2 - 58*sc - 4)/rect.height*100)+'%';   // the Storyteller's place at the bottom of the oval
+        return;
+      }
       // Seat positions leave the bottom slot for the Storyteller, exactly like the players' phones.
       tokens.forEach((t,i)=>{
         const angle = ((i+1)/(n+1))*2*Math.PI + Math.PI/2;
@@ -3032,7 +3071,7 @@ screens['home'] = () => {
   return `
   <div class="home-wrap">
     <div class="home-brand">🕯️ Storyteller's Grimoire</div>
-    <div class="home-build">Modern · Build ${APP_BUILD}</div>
+    <div class="home-build">Build ${APP_BUILD}</div>
     ${i.resumable ? `
       <button class="home-resume" onclick="resumeSavedGame()">
         <span class="hr-dot"></span>
@@ -3046,7 +3085,6 @@ screens['home'] = () => {
     `}
     ${i.finished ? `<p class="muted" style="font-size:13px;margin:6px 0 0;">The last game has ended (${game.result.winner==='good'?'Good':'Evil'} won). <a href="#" onclick="resumeSavedGame(); return false;" style="color:var(--mist);">Open it anyway</a></p>` : ''}
     ${i.idle ? `<p class="muted" style="font-size:13px;margin:6px 0 0;">The last game (${i.where}, ${i.n} players) has had no activity ${i.ago ? `since ${i.ago}` : 'for over 2 hours'}. <a href="#" onclick="resumeSavedGame(); return false;" style="color:var(--mist);">Open it anyway</a></p>` : ''}
-    <p class="muted" style="font-size:13px;margin-top:18px;"><a href="./" style="color:var(--mist);">⇄ Switch between Classic and Modern mode</a></p>
   </div>`;
 };
 screens['resume-check'] = () => `<p class="muted center" style="margin-top:60px;">Loading...</p>`;
@@ -11283,7 +11321,7 @@ function summaryHtml(){
 
 /* ==========================================================================
    PLAYERS' PHONES — live sync with the Player app (player.html) through
-   Firebase Realtime Database. Replaces WhatsApp/Telegram.
+   Firebase Realtime Database.
    PRIVACY: phones only ever receive (a) the public board built by
    appBuildPublicState() and (b) their own private role + inbox. Hidden
    states (poison, drunkenness, markers, real characters) are never sent.
@@ -11768,7 +11806,7 @@ async function sendToPlayerText(pid, text, btn, kind, extra){
     if(status==='queued' && !appState.attached) showInfo(`Saved for ${p.name}. Open 📱 Phones and start a room so it reaches their phone.`);
   }catch(e){ showInfo(`Couldn't send to ${p.name}'s phone: ${e && e.message ? e.message : e}`); }
 }
-// Reads the text from the message box next to the clicked button, exactly like the old WhatsApp button.
+// Reads the text from the message box next to the clicked button.
 function sendStepMessageWA(pid, btn){
   const box = btn && btn.parentElement ? btn.parentElement.querySelector('.msg-box') : null;
   sendToPlayerText(pid, box ? box.innerText : '', btn, 'night');

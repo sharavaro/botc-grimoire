@@ -4,74 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Storyteller's Grimoire</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Spectral:wght@400;500&family=Noto+Kufi+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg:#0e0c15; --panel:#1e1830; --panel-2:#2a2240; --line:#3a3350;
-    --gold:#c9a94a; --gold-bright:#e6c65c; --text:#ece3cc; --mist:#a49bc4;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;min-height:100%;}
-  body{
-    background:radial-gradient(ellipse 900px 520px at 50% -10%, #2a2140 0%, transparent 60%), var(--bg);
-    color:var(--text); font-family:'Spectral',serif; min-height:100vh;
-    display:flex; flex-direction:column; align-items:center; padding:48px 16px 40px;
-  }
-  h1{font-family:'Cinzel',serif;color:var(--gold-bright);font-size:30px;margin:0 0 6px;text-align:center;letter-spacing:.02em;}
-  .sub{color:var(--mist);margin:0 0 34px;text-align:center;}
-  .modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;width:100%;max-width:760px;}
-  a.mode{
-    display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--line);
-    border-radius:16px;padding:24px 22px;transition:transform .15s, border-color .15s, box-shadow .15s;position:relative;
-  }
-  a.mode:hover,a.mode:focus-visible{transform:translateY(-3px);border-color:var(--gold);box-shadow:0 10px 30px #0008, 0 0 0 1px var(--gold);outline:none;}
-  .icon{font-size:38px;line-height:1;}
-  .name{font-family:'Cinzel',serif;font-size:22px;color:var(--gold-bright);margin:12px 0 2px;}
-  .ar{font-family:'Noto Kufi Arabic',sans-serif;color:var(--mist);font-size:14px;margin-bottom:12px;}
-  ul{margin:0;padding-left:18px;color:var(--text);font-size:15px;line-height:1.6;}
-  .tag{position:absolute;top:14px;right:14px;font-size:11px;padding:2px 9px;border-radius:10px;border:1px solid var(--line);color:var(--mist);font-family:system-ui,sans-serif;}
-  .tag.last{border-color:var(--gold);color:var(--gold-bright);}
-  .note{color:var(--mist);font-size:13px;margin-top:26px;text-align:center;max-width:620px;line-height:1.6;}
-</style>
+<meta http-equiv="refresh" content="0; url=grimoire.html">
+<script>location.replace('grimoire.html' + location.search + location.hash);</script>
+<style>html,body{margin:0;background:#0e0c15;color:#ece3cc;font-family:Georgia,serif;}p{text-align:center;margin-top:30vh;}a{color:#e6c65c;}</style>
 </head>
-<body>
-  <h1>🕯️ Storyteller's Grimoire</h1>
-  <p class="sub">Choose how tonight's game runs.</p>
-  <div class="modes">
-    <a class="mode" href="classic.html" id="m-classic" onclick="remember('classic')">
-      <span class="tag" id="t-classic">Stable</span>
-      <div class="icon">📜</div>
-      <div class="name">Classic Mode</div>
-      <div class="ar">الوضع الكلاسيكي</div>
-      <ul>
-        <li>Messages go out by WhatsApp or Telegram</li>
-        <li>You run seating and voting in the grimoire</li>
-        <li>The version you've played with before</li>
-      </ul>
-    </a>
-    <a class="mode" href="grimoire.html" id="m-modern" onclick="remember('modern')">
-      <span class="tag" id="t-modern">New</span>
-      <div class="icon">📱</div>
-      <div class="name">Modern Mode</div>
-      <div class="ar">الوضع الحديث</div>
-      <ul>
-        <li>Players join on their phones with a QR code</li>
-        <li>Roles, messages and choices in the player app</li>
-        <li>Phones pick seats and vote in the Courthouse</li>
-      </ul>
-    </a>
-  </div>
-  <p class="note">Both modes share the same saved game and player list, so you can switch mid-game with the ⇄ Mode button.</p>
-<script>
-  function remember(m){ try{ localStorage.setItem('cbg_last-mode', m); }catch(e){} }
-  try{
-    const last = localStorage.getItem('cbg_last-mode');
-    if(last){
-      const t = document.getElementById('t-'+last);
-      if(t){ t.textContent = 'Last used'; t.classList.add('last'); }
-    }
-  }catch(e){}
-</script>
-</body>
+<body><p>Opening the grimoire… <a href="grimoire.html">Tap here if it does not open.</a></p></body>
 </html>
