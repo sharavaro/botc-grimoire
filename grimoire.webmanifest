@@ -1,10 +1,10 @@
 {
-  "id": "botc-grimoire",
+  "id": "grimoire.html",
   "name": "Storyteller's Grimoire",
   "short_name": "Grimoire",
   "description": "Blood on the Clocktower — the Storyteller's grimoire.",
   "start_url": "grimoire.html",
-  "scope": "./",
+  "scope": "./grimoire.html",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0e0c15",
