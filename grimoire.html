@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Storyteller's Grimoire</title>
-<link rel="manifest" href="grimoire.webmanifest">
+<link rel="manifest" href="app.webmanifest">
 <meta name="theme-color" content="#0e0c15">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Grimoire">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/grimoire-192.png">
-<link rel="apple-touch-icon" href="icons/grimoire-apple-180.png">
+<meta name="apple-mobile-web-app-title" content="Clocktower">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/app-192.png">
+<link rel="apple-touch-icon" href="icons/app-apple-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Naskh+Arabic:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -1007,7 +1007,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.19.2';
+const APP_BUILD = '2026.11.19.3';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -2144,7 +2144,8 @@ function moreMenuHtml(){
   ]]);
   groups.push(['Start over', [
     item('🆕','New game','Same players, new characters', "moreMenuDo(confirmReset)", true),
-    item('🏠','Home page','Resume, or start a different game', "moreMenuDo(()=>go('home'))")
+    item('🏠','Home page','Resume, or start a different game', "moreMenuDo(()=>go('home'))"),
+    item('🙂','Switch to player','Back to the start screen (Storyteller or Player)', "moreMenuDo(()=>{ location.href='./'; })")
   ]]);
   return `<div class="modal-overlay" onclick="if(event.target===this){ui.modal=null;renderModal();}">
     <div class="modal" style="max-width:460px;">
