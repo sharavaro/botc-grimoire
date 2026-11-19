@@ -1,0 +1,20 @@
+{
+  "id": "botc-player",
+  "name": "Blood on the Clocktower — Player",
+  "short_name": "BotC Player",
+  "description": "The players' app for Blood on the Clocktower games.",
+  "start_url": "player.html",
+  "scope": "./player.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "ar",
+  "dir": "rtl",
+  "background_color": "#120e1c",
+  "theme_color": "#120e1c",
+  "icons": [
+    {"src": "icons/player-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icons/player-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icons/player-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "icons/player-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

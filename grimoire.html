@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Storyteller's Grimoire</title>
+<link rel="manifest" href="grimoire.webmanifest">
+<meta name="theme-color" content="#0e0c15">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Grimoire">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/grimoire-192.png">
+<link rel="apple-touch-icon" href="icons/grimoire-apple-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Naskh+Arabic:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -684,6 +692,13 @@ body.m-ui #alert-host{top:62px;}
   .pool-actions > div{flex-direction:row !important;flex-wrap:wrap;justify-content:center;gap:14px !important;order:-1;}
   .pool-actions > button{min-height:48px;}
 }
+
+@media (max-width: 700px){
+  /* Review & adjust: name on its own line, the character menu full width, the tag and button below */
+  .seat-row .rv-name{flex:1 1 100%;min-width:0 !important;font-size:17px;font-weight:600;}
+  .seat-row .rv-sel{flex:1 1 100%;max-width:none !important;}
+  .seat-row > .ghost.small{margin-left:auto;}
+}
 </style>
 </head>
 <body>
@@ -992,7 +1007,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.19.1';
+const APP_BUILD = '2026.11.19.2';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -2086,6 +2101,28 @@ function triggerTopbarImportBackup(){
 // ---- ☰ More: everything that is not needed minute-to-minute lives here, so the top bar stays short ----
 function openMoreMenu(){ ui.modal = {type:'moreMenu'}; renderModal(); }
 function moreMenuDo(fn){ ui.modal = null; renderModal(); fn(); }
+// Full screen (hides the browser's address bar). Not shown when the grimoire is already running as an
+// installed app (no address bar there) or when the browser cannot do it.
+function runningAsApp(){
+  try{ return window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches); }catch(e){ return false; }
+}
+function isFullscreen(){ try{ return !!(document.fullscreenElement || document.webkitFullscreenElement); }catch(e){ return false; } }
+function toggleFullscreen(){
+  try{
+    if(isFullscreen()){ (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if(req) req.call(el);
+  }catch(e){}
+}
+function fullscreenMenuItem(item){
+  if(runningAsApp()) return '';
+  let can = false; try{ const el = document.documentElement; can = !!(el.requestFullscreen || el.webkitRequestFullscreen); }catch(e){}
+  if(!can) return '';
+  return isFullscreen()
+    ? item('⛶','Leave full screen','Show the browser bar again', "moreMenuDo(toggleFullscreen)")
+    : item('⛶','Full screen','Hide the browser\'s address bar (install the app to hide it for good)', "moreMenuDo(toggleFullscreen)");
+}
 function moreMenuHtml(){
   const inPlay = !!(game && game.phase==='play');
   const item = (icon, label, hint, js, danger)=>`<button class="more-item ${danger?'danger':''}" onclick="${js}"><span class="mi-ic">${icon}</span><span><b>${label}</b><small>${hint}</small></span></button>`;
@@ -2099,6 +2136,8 @@ function moreMenuHtml(){
   if(inPlay && isMobileUI()) groups[0][1].unshift(item('🗡️','Death sound','Play the death sound effect', "moreMenuDo(playDeathSound)"));
   if(inPlay) groups.push(['Players', [ item('➕','Add a Traveller','Someone joining late or leaving early', "moreMenuDo(openAddTravellerModal)") ]]);
   else if(isMobileUI() && game && game.scriptConfirmed && ['tokens','review','seating'].includes(route)) groups.unshift(['Players', [ item('➕','Add a Traveller','They wake on the first night like everyone else', "moreMenuDo(openAddTravellerModal)") ]]);
+  const fsItem = fullscreenMenuItem(item);
+  if(fsItem) groups.push(['Screen', [fsItem]]);
   groups.push(['Save and restore', [
     item('💾','Backup','Download names, icons and this game as one file', "moreMenuDo(exportBackup)"),
     item('📥','Restore','Load a backup file made on another device', "moreMenuDo(triggerTopbarImportBackup)")
@@ -3911,8 +3950,8 @@ function reviewListHtml(){
     }).join('') : '';
     return `
       <div class="seat-row" style="flex-wrap:wrap;">
-        <bdi style="min-width:110px;">${escapeHtml(p.name)}</bdi>
-        <select style="max-width:220px;${p.character?'':'border-color:#ff5a52;'}" onchange="if(this.value) reassignChar('${p.id}', this.value)">${p.character ? '' : '<option value="" selected>Choose a character...</option>'}${opts}</select>
+        <bdi class="rv-name" style="min-width:110px;">${escapeHtml(p.name)}</bdi>
+        <select class="rv-sel" style="max-width:220px;${p.character?'':'border-color:#ff5a52;'}" onchange="if(this.value) reassignChar('${p.id}', this.value)">${p.character ? '' : '<option value="" selected>Choose a character...</option>'}${opts}</select>
         ${p.character ? `<span class="tag ${TYPE_OF[p.character]}">${TYPE_OF[p.character]}</span>` : `<span class="tag" style="color:#ff8a84;border-color:#ff5a52;">no token</span>`}
         ${p.isDrunk ? `
           <span class="muted" style="font-size:12px;">🍺 believes they're:</span>
