@@ -637,7 +637,7 @@ bdi{unicode-bidi:isolate;}
   select{max-width:100%;}
   .token .name-tag, .token .char-label{max-width:84px;}
 }
-.m-topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:6px;margin:0 -10px 10px;padding:9px 10px 8px;background:rgba(14,12,21,.97);border-bottom:1px solid var(--line);}
+.m-topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:6px;margin:0 -10px 10px;padding:9px 10px 8px;background:#0e0c15;border-bottom:1px solid var(--line);}
 .m-home{background:none;border:0;padding:2px 4px;font-size:20px;min-width:0;}
 .m-phase{flex:1;min-width:0;line-height:1.15;}
 .m-phase b{display:block;font-family:'Cinzel',serif;color:var(--gold-bright);font-size:15px;letter-spacing:.06em;}
@@ -645,7 +645,7 @@ bdi{unicode-bidi:isolate;}
 .m-ib{position:relative;width:40px;height:40px;padding:0;border-radius:10px;border:1px solid var(--line);background:var(--bg-panel);font-size:17px;display:grid;place-items:center;text-transform:none;letter-spacing:0;}
 .m-bd{position:absolute;top:-6px;right:-6px;background:var(--blood-bright);color:#fff;border-radius:99px;font-size:11px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 4px;font-family:sans-serif;}
 .m-dot{position:absolute;bottom:4px;right:4px;width:7px;height:7px;border-radius:50%;}
-.m-bottom{position:fixed;left:0;right:0;bottom:0;z-index:60;background:rgba(14,12,21,.98);border-top:1px solid var(--line);}
+.m-bottom{position:fixed;left:0;right:0;bottom:0;z-index:60;background:#0e0c15;border-top:1px solid var(--line);}
 .m-adv{display:flex;gap:8px;padding:8px 10px 6px;}
 .m-back{width:54px;padding:0;font-size:18px;border-radius:12px;}
 .m-go{flex:1;min-height:50px;border-radius:12px;font-size:14.5px;}
@@ -675,6 +675,15 @@ body.m-ui #alert-host{top:62px;}
 .circle-wrap.tok-scaled .name-tag{font-size:9px;padding:0 5px;bottom:-7px;}
 .circle-wrap.tok-compact .token .sub{display:none;}
 .circle-wrap.tok-compact .token .badges .mini-badge{transform:scale(.85);}
+
+@media (max-width: 700px){
+  .pool-grid{grid-template-columns:1fr 1fr !important;justify-items:stretch !important;}
+  .pool-grid > label{width:100%;min-width:0;}
+  .pool-actions{display:flex !important;flex-direction:column;align-items:stretch !important;gap:10px;}
+  .pool-actions > *{justify-self:stretch !important;width:100%;}
+  .pool-actions > div{flex-direction:row !important;flex-wrap:wrap;justify-content:center;gap:14px !important;order:-1;}
+  .pool-actions > button{min-height:48px;}
+}
 </style>
 </head>
 <body>
@@ -983,7 +992,7 @@ let customIcons = {}; // persisted map of character name -> user-uploaded icon (
    ========================================================================== */
 // App build label, shown under the title in the topbar. Bump on every delivered change
 // (date-based; add .2, .3 ... for a second release on the same day).
-const APP_BUILD = '2026.11.18.3';
+const APP_BUILD = '2026.11.19.1';
 const BAKED_IN_ROSTER_VERSION = 2;
 const BAKED_IN_ROSTER = [
   { name: "عمر", phone: "+96552225112" },
@@ -3558,7 +3567,7 @@ screens['tokens'] = () => {
     <div class="hr"></div>
     <p class="muted">Choose exactly which characters are in the bag, or skip straight to a fully automatic pool. Either way, the app randomly assigns tokens to players.</p>
     <div id="manual-pool" class="${game.atheistMode ? 'atheist-red-water' : ''}" style="${game.atheistMode ? 'padding:10px;' : ''}">${manualPoolHtml(chart)}</div>
-    <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-top:12px;">
+    <div class="pool-actions" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-top:12px;">
       <button class="primary" id="manual-pool-start-btn" onclick="assignFromManualPool(); appTestModeOpenTabs()" disabled style="justify-self:start;">Start Game</button>
       <div style="display:flex;flex-direction:column;gap:6px;justify-self:center;">
         <div class="row" style="align-items:center;gap:8px;">
@@ -3604,7 +3613,7 @@ function manualPoolHtml(chart){
     return `
     <div style="margin-top:10px;">
       <div class="eyebrow">${type} <span class="muted" id="pool-count-${type}" data-max="${max}" data-base-max="${max}" style="text-transform:none;letter-spacing:0;">(0/${max})</span></div>
-      <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;margin-top:6px;justify-items:start;">
+      <div class="pool-grid" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;margin-top:6px;justify-items:start;">
         ${CHARACTERS[type].map(c=>`
           <label style="display:flex;align-items:center;gap:5px;font-size:12.5px;border:1px solid var(--line);padding:4px 8px;border-radius:14px;cursor:pointer;">
             <input type="checkbox" class="pool-check" data-name="${c.name}" data-type="${type}" style="width:auto;" onchange="onPoolCheckChange(this)"> ${c.name}
